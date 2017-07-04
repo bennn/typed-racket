@@ -807,7 +807,7 @@ the typed racket language.
          (define vs
            (call/ec
             (ann (λ (break)
-                   (define vs (ann (vector) T))
+                   (define: vs : T (vector))
                    (define i 0)
                    (for (clauses ...)
                      (define v body-expr)
@@ -864,10 +864,10 @@ the typed racket language.
        (with-syntax ([(maybe-length ...)  (if (attribute n-expr) #'(#:length n-expr) #'())]
                      [(maybe-fill ...)  (if (attribute fill-expr) #'(#:fill fill-expr) #'())]
                      [body-expr  (if A #`(ann (let () body ...) #,A) #'(let () body ...))]
-                     [T  (cond [(and T A)  #`(U #,T (Vectorof #,A))]
+                     [T  (cond [(and T A)  #`(U #,T (Mutable-Vectorof #,A))]
                                [T  T]
-                               [A  #`(Vectorof #,A)]
-                               [else  #'(Vectorof Any)])])
+                               [A  #`(Mutable-Vectorof #,A)]
+                               [else  #'(Mutable-Vectorof Any)])])
          (quasisyntax/loc stx
            (base-for/vector #,for: ann T ((T -> Nothing) -> T)
                             maybe-length ... maybe-fill ... (clauses ...) body-expr))))]))

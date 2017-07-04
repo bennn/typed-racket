@@ -14,7 +14,7 @@
 
   ;; Construcing frees
   combine-frees flip-variances
-  make-invariant make-constant 
+  make-invariant make-constant
   instantiate-frees
   empty-free-vars
   single-free-var

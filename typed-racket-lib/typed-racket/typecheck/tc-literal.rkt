@@ -110,25 +110,14 @@
         (-pair
          (tc-literal #'i a-ty)
          (tc-literal #'r d-ty))]
-       [t 
+       [t
         (-pair (tc-literal #'i) (tc-literal #'r))])]
     [(~var i (3d vector?))
      (define vec-val (syntax-e #'i))
      (define vec-ty
-       (match (and expected (resolve (intersect expected -VectorTop)))
-         [(Is-a: (Vector: t))
-          (make-Vector
-           (check-below
-            (apply Un (for/list ([l (in-vector vec-val)])
-                        (tc-literal l t)))
-            t))]
-         [(Is-a: (HeterogeneousVector: ts))
-          (make-HeterogeneousVector
-           (for/list ([l (in-vector (syntax-e #'i))]
-                      [t (in-list/rest ts #f)])
-             (cond-check-below (tc-literal l t) t)))]
-         [_ (make-HeterogeneousVector (for/list ([l (in-vector (syntax-e #'i))])
-                                        (generalize (tc-literal l #f))))]))
+       (make-Immutable-HeterogeneousVector
+         (for/list ([l (in-vector vec-val)])
+           (tc-literal l #f))))
      (if (with-refinements?)
          (-refine/fresh v vec-ty (-eq (-lexp (vector-length vec-val))
                                       (-vec-len-of (-id-path v))))

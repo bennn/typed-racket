@@ -105,16 +105,14 @@
    [((Sequence: _) (Val-able: v)) #:no-order (sequence? v)]
    ;; hash tables are two-valued sequences
    [((Sequence: (or (list _) (list _ _ _ ...)))
-     (or (? Mutable-HashTable?)
-         (? Mutable-HashTableTop?)
-         (? Immutable-HashTable?)
-         (? Weak-HashTable?)
-         (? Weak-HashTableTop?)))
+     (or (HashTableTop:)
+         (Mutable-HashTable: _ _)
+         (Weak-HashTable: _ _)))
     #:no-order
     #f]
    ;; these are single-valued sequences
    [((Sequence: (list _ _ _ ...))
-     (or (? Pair?) (? Vector?) (? VectorTop?)))
+     (or (? Pair?) (Vector: _) (VectorTop:)))
     #:no-order
     #f]
    ;; be conservative about other kinds of sequences
@@ -130,11 +128,9 @@
     #:no-order
     #f]
    [((Val-able: (not (? hash?)))
-     (or (? Mutable-HashTable?)
-         (? Mutable-HashTableTop?)
-         (? Immutable-HashTable?)
-         (? Weak-HashTable?)
-         (? Weak-HashTableTop?)))
+     (or (HashTableTop:)
+         (Mutable-HashTable: _ _)
+         (Weak-HashTable: _ _)))
     #:no-order
     #f]
    [((Struct: n _ flds _ _ _)
