@@ -106,10 +106,8 @@
       (cond
        [(not (identifier? constr))
         (values #'(begin) #'(begin) #f null)]
-       [(free-identifier=? constr internal-id)
-        (mk-value-quad constr (generate-temporary constr) constr-type)]
        [else
-        (mk constr)]))
+        (mk-value-quad constr (generate-temporary constr) constr-type)]))
 
     (define/with-syntax (constr* type-desc* pred* super* accs* ...)
       (for/list ([i (in-list (cons constr-new-id new-ids))])
