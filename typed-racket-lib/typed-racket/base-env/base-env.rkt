@@ -853,7 +853,7 @@
 [vector (-poly (a) (->* (list) a (-mvec a)))]
 [vector-immutable (-poly (a) (->* (list) a (-ivec a)))]
 [vector->immutable-vector (-poly (a) (-> (-vec a) (-ivec a)))]
-[vector-fill! (-poly (a) (-> (-vec a) a -Void))]
+[vector-fill! (-poly (a) (-> (-vec a) a -Void : (-PS (-not-type 0 (-ivec Univ)) -ff)))]
 [vector-argmax (-poly (a) (-> (-> a -Real) (-vec a) a))]
 [vector-argmin (-poly (a) (-> (-> a -Real) (-vec a) a))]
 [vector-memq (-poly (a) (-> Univ (-vec a) (-opt -Index)))]
@@ -947,8 +947,8 @@
 [make-immutable-hasheq (-poly (a b) (->opt [(-lst (-pair a b))] (-Immutable-HT a b)))]
 [make-immutable-hasheqv (-poly (a b) (->opt [(-lst (-pair a b))] (-Immutable-HT a b)))]
 
-[hash-set (-poly (a b) ((-HT a b) a b . -> . (-Immutable-HT a b)))]
-[hash-set! (-poly (a b) ((-HT a b) a b . -> . -Void))]
+[hash-set (-poly (a b) ((-HT a b) a b . -> . (-Immutable-HT a b) : (-PS (-is-type 0 (-Immutable-HT Univ Univ)) -ff)))]
+[hash-set! (-poly (a b) ((-HT a b) a b . -> . -Void : (-PS (-not-type 0 (-Immutable-HT Univ Univ)) -ff)))]
 [hash-ref (-poly (a b c)
                  (cl-> [((-HT a b) a) b]
                        [((-HT a b) a (-val #f)) (-opt b)]
@@ -968,7 +968,7 @@
                                 [(-HashTableTop Univ) (-Immutable-HT Univ Univ)]))]
 [hash-remove! (-poly (a b) (cl-> [((-HT a b) a) -Void]
                                  [(-HashTableTop a) -Void]))]
-[hash-clear! (-> -HashTableTop -Void)]
+[hash-clear! (-> -HashTableTop -Void : (-PS (-not-type 0 (-Immutable-HT Univ Univ)) -ff))]
 [hash-clear (-poly (a b) (cl-> [((-HT a b)) (-Immutable-HT a b)]
                                [(-HashTableTop) (-Immutable-HT Univ Univ)]))]
 [hash-copy-clear (-poly (a b) (cl-> [((-Immutable-HT a b)) (-Immutable-HT a b)]

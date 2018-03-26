@@ -222,14 +222,14 @@
    [unsafe-vector*-ref (-poly (a) (cl->* ((-vec a) index-type . -> . a)
                                          (-VectorTop index-type . -> . Univ)))]
    [build-vector (-poly (a) (index-type (-Index . -> . a) . -> . (-mvec a)))]
-   [vector-set! (-poly (a) (-> (-vec a) index-type a -Void))]
-   [unsafe-vector-set! (-poly (a) (-> (-vec a) index-type a -Void))]
-   [unsafe-vector*-set! (-poly (a) (-> (-vec a) index-type a -Void))]
+   [vector-set! (-poly (a) (-> (-vec a) index-type a -Void : (-PS (-not-type 0 (-ivec Univ)) -ff)))]
+   [unsafe-vector-set! (-poly (a) (-> (-vec a) index-type a -Void : (-PS (-not-type 0 (-ivec Univ)) -ff)))]
+   [unsafe-vector*-set! (-poly (a) (-> (-vec a) index-type a -Void : (-PS (-not-type 0 (-ivec Univ)) -ff)))]
    [vector-copy!
     (-poly (a)
-           (cl->* ((-vec a) -Integer (-vec a) . -> . -Void)
-                  ((-vec a) -Integer (-vec a) -Integer . -> . -Void)
-                  ((-vec a) -Integer (-vec a) -Integer -Integer . -> . -Void)))]
+           (cl->* ((-vec a) -Integer (-vec a) . -> . -Void : (-PS (-not-type 0 (-ivec Univ)) -ff))
+                  ((-vec a) -Integer (-vec a) -Integer . -> . -Void : (-PS (-not-type 0 (-ivec Univ)) -ff))
+                  ((-vec a) -Integer (-vec a) -Integer -Integer . -> . -Void : (-PS (-not-type 0 (-ivec Univ)) -ff))))]
    [make-vector (-poly (a) (cl-> [(index-type) (-mvec (Un -Zero a))]
                                  [(index-type a) (-mvec a)]))]
 
