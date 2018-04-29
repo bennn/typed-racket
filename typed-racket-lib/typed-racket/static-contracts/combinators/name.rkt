@@ -12,6 +12,7 @@
 (require "../../utils/utils.rkt"
          "../structures.rkt"
          "../constraints.rkt"
+         "../utils.rkt"
          "../../rep/type-rep.rkt" ; only for contract
          (contract-req)
          racket/match
@@ -100,6 +101,12 @@
      (void))
    (define (sc->contract v f)
      (name-combinator-gen-name v))
+   (define (sc->constructor/c v f)
+     ;;bg; flatten all auxilliary defs
+     (let ([tbl (name-defs-table)])
+       (for ([(k v*) (in-hash tbl)])
+         (hash-set! tbl k (map f v*))))
+     v)
    (define (sc->constraints v f)
      (variable-contract-restrict (name-combinator-gen-name v)))])
 

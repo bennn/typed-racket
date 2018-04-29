@@ -17,6 +17,7 @@
 
 (provide/cond-contract
  [add-typeof-expr (syntax? tc-results/c . -> . any/c)]
+ ;;bg maybe need to set-typeof `(define (set-typeof-expr e t) (hash-set! type-table e t))`
  [type-of (syntax? . -> . tc-results/c)]
  [reset-type-table (-> any/c)]
  [type-table->tooltips

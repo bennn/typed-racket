@@ -266,6 +266,7 @@ don't depend on any other portion of the system
 
 ;; for reporting internal errors in the type checker
 (define-struct (exn:fail:tc exn:fail) ())
+(module+ for-bg (provide exn:fail:tc?))
 
 ;; raise an internal error - typechecker bug!
 (define (int-err msg . args)

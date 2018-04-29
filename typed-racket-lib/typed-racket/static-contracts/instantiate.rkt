@@ -19,7 +19,8 @@
   "parametric-check.rkt"
   "structures.rkt"
   "constraints.rkt"
-  "equations.rkt")
+  "equations.rkt"
+  "utils.rkt")
 
 (provide static-contract-may-contain-free-ids?)
 
@@ -41,6 +42,7 @@
            instantiate/inner))
 
 (define (instantiate/optimize sc fail [kind 'impersonator] #:cache [cache #f] #:trusted-positive [trusted-positive #f] #:trusted-negative [trusted-negative #f])
+  ;;bg;(log-static-contract-info "begin instantiate ~a" sc)
   (define recursive-kinds
     (with-handlers [(exn:fail:constraint-failure?
                     (lambda (exn)

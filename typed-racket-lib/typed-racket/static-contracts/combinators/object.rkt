@@ -30,6 +30,8 @@
        (void))
      (define (sc->contract v f)
        (object/sc->contract v f))
+     (define (sc->constructor/c v f)
+       (raise-user-error 'sc->constructor/c "not implemented for object/sc ~a" v))
      (define (sc->constraints v f)
        (merge-restricts* 'impersonator (map f (member-seq->list (combinator-args v)))))])
 
@@ -48,6 +50,8 @@
           (void)]))
      (define (sc->contract v f)
        (class/sc->contract v f))
+     (define (sc->constructor/c v f)
+       (raise-user-error 'sc->constructor/c "not implemented for class/sc ~a" v))
      (define (sc->constraints v f)
        (merge-restricts* 'impersonator (map f (member-seq->list (combinator-args v)))))])
 
@@ -66,6 +70,8 @@
           (void)]))
      (define (sc->contract v f)
        (instance/sc->contract v f))
+     (define (sc->constructor/c v f)
+       (raise-user-error 'sc->constructor/c  "not implemented for instance/sc ~a" v))
      (define (sc->constraints v f)
        (match v
          [(instanceof-combinator (list class))
