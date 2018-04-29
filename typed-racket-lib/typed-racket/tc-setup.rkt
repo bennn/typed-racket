@@ -10,10 +10,11 @@
          (for-syntax racket/base)
          (for-template racket/base))
 (lazy-require [typed-racket/optimizer/optimizer (optimize-top)])
+(lazy-require [typed-racket/defender/defender (defend-top)])
 (lazy-require [typed-racket/typecheck/tc-toplevel (tc-module)])
 (lazy-require [typed-racket/typecheck/toplevel-trampoline (tc-toplevel-start)])
 
-(provide maybe-optimize init-current-type-names
+(provide maybe-optimize maybe-defend init-current-type-names
          tc-module/full
          tc-toplevel/full)
 
@@ -31,12 +32,27 @@
   ;; current code inspector has sufficient privileges
   (if (and (optimize?)
            (not (getenv "PLT_TR_NO_OPTIMIZE"))
+           (not (locally-defensive?)) ;; TODO (bg) locally-defensive _should_ be compatible with the optimizer
            (authorized-code-inspector?))
       (begin
         (do-time "Starting optimizer")
         (begin0 (stx-map optimize-top body)
           (do-time "Optimized")))
       body))
+
+(define (maybe-defend body ctc-cache sc-cache)
+  ;; TODO maybe check (authorized-code-inspector?)
+  (cond
+    [(locally-defensive?)
+     (do-time "Starting defender")
+     (define extra-def* (box '()))
+     (define body+
+       (for/list ([b (in-list (syntax-e body))])
+         (defend-top b ctc-cache sc-cache extra-def*)))
+     (do-time "Defended")
+     (append (reverse (unbox extra-def*)) body+)]
+    [else
+     body]))
 
 ;; -> Promise<Dict<Name, Type>>
 ;; initialize the type names for printing
@@ -51,7 +67,7 @@
 (define-logger online-check-syntax)
 
 (define (tc-setup orig-stx stx expand-ctxt do-expand stop-forms k)
-  (set-box! typed-context? #t)
+  (set-box! typed-context? #true)
   ;(start-timing (syntax-property stx 'enclosing-module-name))
   (with-handlers
       (#;[(λ (e) (and (exn:fail? e) (not (exn:fail:syntax? e)) (not (exn:fail:filesystem? e))))

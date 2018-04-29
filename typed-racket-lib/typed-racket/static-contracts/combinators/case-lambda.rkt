@@ -6,6 +6,9 @@
 (require "../../utils/utils.rkt"
          "../structures.rkt"
          "../constraints.rkt"
+         "any.rkt"
+         (only-in "structural.rkt" and/sc or/sc)
+         (only-in "derived.rkt" procedure?/sc procedure-arity-includes/sc)
          racket/list racket/match
          (contract-req)
          (for-template racket/base racket/contract/base)
@@ -33,6 +36,8 @@
        (void))
      (define (sc->contract v f)
        #`(case-> #,@(map f (combinator-args v))))
+     (define (sc->tag/sc v f)
+       (f (apply or/sc (combinator-args v))))
      (define (sc->constraints v f)
        (merge-restricts* 'chaperone (map f (combinator-args v))))])
 (struct arr-combinator combinator ()
@@ -51,6 +56,11 @@
                        [(rest-stx ...) (if rest #`(#:rest #,(f rest)) #'())]
                        [range-stx (if range #`(values #,@(map f range)) #'any)])
            #'(arg-stx ... rest-stx ... . -> . range-stx))]))
+     (define (sc->tag/sc v f)
+       ;;bg TODO, amybe should be any/sc ? see if jpeg works
+       (match-define (arr-combinator (arr-seq args _ _)) v)
+       ;;bg; contract ignores rest, could be more precise
+       (f (and/sc procedure?/sc (procedure-arity-includes/sc (length args) #f))))
      (define (sc->constraints v f)
        (merge-restricts* 'chaperone (map f (arr-seq->list (combinator-args v)))))])
 

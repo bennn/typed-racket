@@ -4,7 +4,11 @@
 
 (require "../../utils/utils.rkt"
          "../structures.rkt" "../constraints.rkt"
-         racket/match
+         (only-in "derived.rkt" struct-type?/sc)
+         (only-in "simple.rkt" flat/sc)
+          racket/match
+         (only-in racket/syntax format-id)
+         (only-in racket/struct-info extract-struct-info)
          (contract-req)
          (for-template racket/base racket/contract/base "../../utils/struct-type-c.rkt")
          (for-syntax racket/base syntax/parse))
@@ -39,6 +43,11 @@
        (match v
         [(struct-combinator args name _)
          #`(struct/c #,name #,@(map f args))]))
+     (define (sc->tag/sc v _f)
+       (match-define (struct-combinator _ name _) v)
+       (define pred-id
+         (caddr (extract-struct-info (syntax-local-value name))))
+       (flat/sc pred-id))
      (define (sc->constraints v f)
        (match v
         [(struct-combinator args _ mut?)
@@ -73,6 +82,8 @@
        (match v
          [(struct-type/sc args)
           #`(struct-type/c #f)]))
+     (define (sc->tag/sc _v f)
+       (f struct-type?/sc))
      (define (sc->constraints v f)
        (match v
          [(struct-type/sc args) (simple-contract-restrict 'chaperone)]))])

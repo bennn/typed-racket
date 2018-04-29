@@ -19,7 +19,7 @@
      . ->* . full-tc-results/c)])
 (define (tc/funapp1 f-stx args-stx ftype0 arg-ress expected #:check [check? #t])
   ;; update tooltip-table with inferred function type
-  (add-typeof-expr f-stx (ret (make-Fun (list ftype0))))
+  (add-typeof-expr f-stx (ret (make-Fun (list ftype0)))) ;;bg maybe should be set-typeof-expr
   (match* (ftype0 arg-ress)
     ;; we check that all kw args are optional
     [((Arrow: dom rst (list (Keyword: _ _ #f) ...) rng)

@@ -63,6 +63,7 @@
                    (ormap Keyword-required? kws)))
      (or
       (for/or ([arrow (in-list arrows)])
+        ;; bg may need to bind this and `(add-typeof-expr f (ret (make-Fun (list arrow))))`
         (match arrow
           [(Arrow: domain rst _ rng)
            ;; Takes a possible substitution and computes

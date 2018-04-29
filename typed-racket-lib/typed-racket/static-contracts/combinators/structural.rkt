@@ -3,9 +3,22 @@
 ;; Static contracts for structural contracts.
 ;; Ex: list/sc, vectorof/sc
 
+(provide
+  ;; also provides all combinator-structs
+  empty-set/sc
+  mutable-hash?/sc
+  immutable-hash?/sc
+  weak-hash?/sc
+  empty-hash/sc
+  immutable-vector?/sc
+  mutable-vector?/sc)
+
 (require "../../utils/utils.rkt"
          "../structures.rkt"
          "../constraints.rkt"
+         "derived.rkt"
+         "lengths.rkt"
+         "simple.rkt"
          racket/match
          (for-syntax racket/base racket/syntax syntax/stx syntax/parse)
          racket/set
@@ -110,7 +123,8 @@
 
 (define-syntax (combinator-struct stx)
   (syntax-parse stx
-    [(_ sc:static-combinator-form c:expr kind:contract-category-keyword)
+    [(_ sc:static-combinator-form c:expr (~optional pre-constr-sc:expr #:defaults ((pre-constr-sc #'#f))) kind:contract-category-keyword)
+     #:with constr-sc (if (syntax-e #'pre-constr-sc) #'pre-constr-sc #'sc.name)
      #'(begin
          (struct sc.struct-name combinator ()
            #:transparent
@@ -121,6 +135,10 @@
               (apply
                (sc.combinator2 (lambda (args) #`(c #,@args)))
                (map recur (combinator-args v))))
+            (define (sc->tag/sc v recur)
+              (apply constr-sc
+                     (for/list ([arg (in-list (combinator-args v))])
+                       (recur arg))))
             (define (sc->constraints v recur)
               (merge-restricts* 'kind.category-stx (sc.->restricts v recur)))]
            #:methods gen:equal+hash
@@ -153,27 +171,40 @@
 (combinator-structs
   ((or/sc . (#:covariant)) or/c #:flat)
   ((and/sc . (#:covariant)) and/c #:flat)
-  ((list/sc . (#:covariant)) list/c #:flat)
-  ((listof/sc (#:covariant)) listof #:flat)
-  ((cons/sc (#:covariant) (#:covariant)) cons/c #:flat)
-  ((set/sc (#:covariant #:chaperone)) set/c #:flat)
-  ((struct-property/sc (#:invariant)) struct-type-property/c #:impersonator)
-  ((immutable-vectorof/sc (#:covariant)) immutable-vectorof/c #:flat)
-  ((mutable-vectorof/sc (#:invariant)) mutable-vectorof/c #:chaperone)
-  ((vectorof/sc (#:invariant)) vectorof #:chaperone)
-  ((immutable-vector/sc . (#:covariant)) immutable-vector/c #:flat)
-  ((mutable-vector/sc . (#:invariant)) mutable-vector/c #:chaperone)
-  ((vector/sc . (#:invariant)) vector/c #:chaperone)
-  ((promise/sc (#:covariant)) promise-not-name/c #:chaperone)
-  ((syntax/sc (#:covariant #:flat)) syntax/c #:flat)
-  ((hash/sc (#:invariant) (#:invariant)) typed-racket-hash/c #:chaperone)
-  ((mutable-hash/sc (#:invariant) (#:invariant)) mutable-hash/c #:chaperone)
-  ((immutable-hash/sc (#:covariant) (#:covariant)) immutable-hash/c #:flat)
-  ((weak-hash/sc (#:invariant) (#:invariant)) weak-hash/c #:chaperone)
-  ((box/sc (#:invariant)) box/c #:chaperone)
-  ((parameter/sc (#:contravariant) (#:covariant)) parameter/c #:chaperone)
-  ((sequence/sc . (#:covariant)) sequence/c #:impersonator)
-  ((channel/sc . (#:invariant)) channel/c #:chaperone)
-  ((continuation-mark-key/sc (#:invariant)) continuation-mark-key/c #:chaperone)
-  ((evt/sc (#:covariant)) tr:evt/c #:chaperone)
-  ((async-channel/sc (#:invariant)) async-channel/c #:chaperone))
+  ((list/sc . (#:covariant)) list/c (λ args (list-length/sc (length args))) #:flat)
+  ((listof/sc (#:covariant)) listof (λ (_) list?/sc) #:flat)
+  ((cons/sc (#:covariant) (#:covariant)) cons/c (λ (_x _y) cons?/sc) #:flat)
+  ((struct-property/sc (#:invariant)) struct-type-property/c (λ (_x) struct-type-property?) #:impersonator)
+  ((set/sc (#:covariant #:chaperone)) set/c (λ (_x) set?/sc) #:flat)
+  ((vector/sc . (#:invariant)) vector/c (λ args (vector-length/sc (length args))) #:chaperone)
+  ((immutable-vector/sc . (#:covariant)) immutable-vector/c (λ args (immutable-vector-length/sc (length args))) #:flat)
+  ((mutable-vector/sc . (#:invariant)) mutable-vector/c (λ args (mutable-vector-length/sc (length args))) #:chaperone)
+  ((vectorof/sc (#:invariant)) vectorof (λ (_x) vector?/sc) #:chaperone)
+  ((immutable-vectorof/sc (#:covariant)) immutable-vectorof/c  (λ (_x) immutable-vector?/sc) #:flat)
+  ((mutable-vectorof/sc (#:invariant)) mutable-vectorof/c (λ (_x) mutable-vector?/sc) #:chaperone)
+  ((promise/sc (#:covariant)) promise-not-name/c (λ (_x) promise?/sc) #:chaperone) ;;bg TODO not-name?
+  ((syntax/sc (#:covariant #:flat)) syntax/c (λ (_x) syntax?/sc) #:flat)
+  ((hash/sc (#:invariant #:flat) (#:invariant)) hash/c (λ (_x _y)hash?/sc) #:chaperone)
+  ((mutable-hash/sc (#:invariant #:flat) (#:invariant)) mutable-hash/c (λ (_x _y) mutable-hash?/sc) #:chaperone)
+  ((immutable-hash/sc (#:covariant #:flat) (#:covariant)) immutable-hash/c (λ (_x _y) immutable-hash?/sc) #:flat)
+  ((weak-hash/sc (#:invariant #:flat) (#:invariant)) weak-hash/c (λ (_x _y) weak-hash?/sc) #:chaperone)
+  ((box/sc (#:invariant)) box/c (λ (_x) box?/sc) #:chaperone)
+  ((parameter/sc (#:contravariant) (#:covariant)) parameter/c (λ (_x _y) parameter?/sc) #:chaperone)
+  ((sequence/sc . (#:covariant)) sequence/c (λ args sequence?/sc) #:impersonator)
+  ((channel/sc . (#:invariant)) channel/c (λ args channel?/sc) #:chaperone)
+  ((continuation-mark-key/sc (#:invariant)) continuation-mark-key/c (λ (_x) continuation-mark-key?/sc) #:chaperone)
+  ((evt/sc (#:covariant)) tr:evt/c (λ (_x) evt?/sc) #:chaperone) ;;bg TODO why is tr: ???
+  ((async-channel/sc (#:invariant)) async-channel/c (λ (_x) async-channel?/sc) #:chaperone))
+
+(define empty-set/sc (and/sc set?/sc (flat/sc #'set-empty?)))
+
+(define mutable-hash?/sc (and/sc hash?/sc
+                                 (flat/sc #'(λ (h) (not (immutable? h))))
+                                 (flat/sc #'(λ (h) (not (hash-weak? h))))))
+(define immutable-hash?/sc (and/sc hash?/sc (flat/sc #'immutable?)))
+(define weak-hash?/sc (and/sc hash?/sc (flat/sc #'hash-weak?)))
+(define empty-hash/sc (and/sc hash?/sc (flat/sc #'(λ (h) (zero? (hash-count h))))))
+(define immutable-vector?/sc (and/sc vector?/sc
+                                     (flat/sc #'immutable?)))
+(define mutable-vector?/sc (and/sc vector?/sc
+                                   (flat/sc #'(λ (v) (not (immutable? v))))))

@@ -4,7 +4,15 @@
 ;; Supports the whole range of possible options that -> does.
 
 (require "../../utils/utils.rkt"
-         "../structures.rkt" "../constraints.rkt"
+         "../structures.rkt" "../constraints.rkt" "../utils.rkt"
+         (only-in "structural.rkt"
+           and/sc)
+         (only-in "derived.rkt"
+           procedure?/sc
+           procedure-arity-includes/sc
+           procedure-mandatory-keywords/sc
+           procedure-optional-keywords/sc
+           make-procedure-arity-flat/sc)
          racket/list racket/match
          (contract-req)
          (for-template racket/base racket/contract/base "../../utils/simple-result-arrow.rkt")
@@ -29,6 +37,7 @@
                                   (define (hash2-proc v recur) (function-sc-hash2 v recur))]
         #:methods gen:sc
           [(define (sc->contract v f) (function-sc->contract v f))
+           (define (sc->tag/sc v f) (function-sc->tag-sc v f))
            (define (sc-map v f) (function-sc-map v f))
            (define (sc-traverse v f) (function-sc-map v f) (void))
            (define (sc-terminal-kind v) (function-sc-terminal-kind v))
@@ -82,6 +91,16 @@
        #,@rest-ctc-stx
        . ->* . #,range-ctc)]))
 
+(define (function-sc->tag-sc sc recur)
+  (match-define (function-combinator args indices mand-kws opt-kws _) sc)
+  (define-values (mand-scs _opt _mkw _okw _rst _rng)
+    (apply split-function-args args indices))
+  (recur
+    #;(and/sc procedure?/sc
+            (procedure-arity-includes/sc (length mand-scs) (not (null? mand-kws)))
+            (procedure-mandatory-keywords/sc mand-kws)
+            (procedure-optional-keywords/sc opt-kws))
+    (make-procedure-arity-flat/sc (length mand-scs) mand-kws opt-kws)))
 
 (define (function/sc typed-side? mand-args opt-args mand-kw-args opt-kw-args rest range)
   (define mand-args-end (length mand-args))

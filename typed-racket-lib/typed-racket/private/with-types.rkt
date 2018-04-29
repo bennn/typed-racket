@@ -41,7 +41,8 @@
   (define old-context (unbox typed-context?))
   (unless (not old-context)
     (tc-error/stx stx "with-type cannot be used in a typed module."))
-  (set-box! typed-context? #t)
+  (define typed-sym (current-typed-side))
+  (set-box! typed-context? typed-sym)
   (do-standard-inits)
   (define fv-types (for/list ([t (in-syntax fvtys)])
                      (parse-type t)))
@@ -50,10 +51,10 @@
   (define-values (fv-ctc-ids fv-ctc-defs)
     (type-stxs->ids+defs (syntax->list fvtys) 'untyped))
   (define-values (ex-ctc-ids ex-ctc-defs)
-    (type-stxs->ids+defs (syntax->list extys) 'typed))
+    (type-stxs->ids+defs (syntax->list extys) typed-sym))
   (define-values (region-ctc-ids region-ctc-defs)
     (if expr?
-        (type-stxs->ids+defs (values-stx->type-stxs resty) 'typed)
+        (type-stxs->ids+defs (values-stx->type-stxs resty) typed-sym)
         (values null null)))
   (define region-tc-result
     (and expr? (parse-tc-results resty)))

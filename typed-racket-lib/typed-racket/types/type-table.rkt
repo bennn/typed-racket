@@ -17,6 +17,11 @@
 
 (provide/cond-contract
  [add-typeof-expr (syntax? tc-results/c . -> . any/c)]
+ [set-typeof-expr (syntax? tc-results/c . -> . any/c)] ;;bg
+ ;; need this to forget type information, because the 1st typechecking pass
+ ;; optimistically assumes everything is well typed, and the 2nd pass needs
+ ;; to pessimisitcally assume "Any" about things from untyped code
+
  [type-of (syntax? . -> . tc-results/c)]
  [reset-type-table (-> any/c)]
  [type-table->tooltips
@@ -77,9 +82,18 @@
                             [else t]))
                 #f))
 
+(define (set-typeof-expr e t)
+  (hash-set! type-table e t))
+
+;; Need to define/provide this, because `type-of` doesnt actually raise an exception, just delays an int-err
+;; TODO though, probably an issue with missing type and argument happesn to be a format string
+(provide maybe-type-of)
+(define (maybe-type-of e)
+  (hash-ref type-table e #false))
+
 (define (type-of e)
   (hash-ref type-table e
-            (lambda () (int-err (format "no type for ~s at: ~a line ~a col ~a"
+            (lambda () (int-err (format "no type for ~a at: ~a line ~a col ~a"
                                         (syntax->datum e)
                                         (syntax-source e)
                                         (syntax-line e)

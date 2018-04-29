@@ -3,7 +3,7 @@
 (require (rename-in "utils/utils.rkt")
          (for-syntax racket/base)
          (for-template racket/base)
-         (private with-types type-contract)
+         (private with-types type-contract syntax-properties)
          (except-in syntax/parse id)
          racket/match racket/syntax
          syntax/flatten-begin
@@ -23,16 +23,29 @@
                (~or (~and #:optimize    (~bind [opt? #'#t])); kept for backward compatibility
                     (~and #:no-optimize (~bind [opt? #'#f]))))
               (~optional
-               (~and #:with-refinements refinement-reasoning?)))
+               (~and #:with-refinements refinement-reasoning?))
+              (~optional
+               (~and #:locally-defensive ld?)))
          ...
          forms ...)
      (let ([pmb-form (syntax/loc stx (#%plain-module-begin forms ...))])
+       ;; TODO enable optimizer
        (parameterize ([optimize? (or (and (not (attribute opt?)) (optimize?))
                                      (and (attribute opt?) (syntax-e (attribute opt?))))]
                       [with-refinements? (or (attribute refinement-reasoning?)
-                                             (with-refinements?))])
+                                             (with-refinements?))]
+                      [locally-defensive? (if (attribute ld?) #true #false)])
          (tc-module/full stx pmb-form
           (λ (new-mod pre-before-code pre-after-code)
+#|bg|# (define ctc-cache (make-hash))
+#|bg|# (define sc-cache (make-hash))
+#|bg|# (define (change-contract-fixups/cache forms)
+#|bg|#   (change-contract-fixups forms ctc-cache sc-cache))
+#|bg|# (define (change-provide-fixups/cache forms)
+#|bg|#   (change-provide-fixups forms ctc-cache sc-cache))
+#|bg|# (define (defend/cache forms)
+#|bg|#   ;;bg; TODO cannot re-use other caches because `define`s will be out of order
+#|bg|#   (maybe-defend forms (make-hash) (make-hash)))
             (with-syntax*
              (;; pmb = #%plain-module-begin
               [(pmb . body2) new-mod]
@@ -40,14 +53,18 @@
               [transformed-body (begin0 (remove-provides #'body2) (do-time "Removed provides"))]
               ;; add the real definitions of contracts on requires
               [transformed-body
-               (begin0 (change-contract-fixups (syntax->list #'transformed-body))
+               (begin0 #;(change-contract-fixups (syntax->list #'transformed-body))
+#|bg|#                       (change-contract-fixups/cache (syntax->list #'transformed-body)) ;; bg
                        (do-time "Fixed contract ids"))]
               ;; add the real definitions of contracts on the before- and after-code
-              [(before-code ...) (change-provide-fixups (flatten-all-begins pre-before-code))]
-              [(after-code ...) (begin0 (change-provide-fixups (flatten-all-begins pre-after-code))
-                                  (do-time "Generated contracts"))]
+              #;[(before-code ...) (change-provide-fixups (flatten-all-begins pre-before-code))]
+              #;[(after-code ...) (begin0 (change-provide-fixups (flatten-all-begins pre-after-code))
+                                          (do-time "Generated contracts"))]
+#|bg|#             [(before-code ...) (change-provide-fixups/cache (flatten-all-begins pre-before-code))]
+#|bg|#             [(after-code ...) (begin0 (change-provide-fixups/cache (flatten-all-begins pre-after-code))
+#|bg|#                                 (do-time "Generated contracts"))]
               ;; potentially optimize the code based on the type information
-              [(optimized-body ...) (maybe-optimize #'transformed-body)] ;; has own call to do-time
+#|bg|#              [(optimized-body ...) (maybe-optimize (defend/cache #'transformed-body))]
               ;; add in syntax property on useless expression to draw check-syntax arrows
               [check-syntax-help (syntax-property
                                   (syntax-property
