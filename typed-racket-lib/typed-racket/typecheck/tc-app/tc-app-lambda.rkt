@@ -21,14 +21,24 @@
   #:for-label
   (null? pair? null))
 
+(define (bg-parse-return r)
+  ;;bg TODO this is bad ... not sure what to do though, should it be AnyValues ???
+  (match r
+    [(tc-result1: t) t]
+    [_ Univ]))
+
 (define-tc/app-syntax-class (tc/app-lambda expected)
   #:literal-sets (kernel-literals)
   ;; let loop
-  (pattern ((letrec-values ([(lp) (~and lam (#%plain-lambda (args ...) . body))]) lp*:id) . actuals)
+  (pattern ((~and loop (letrec-values ([(lp) (~and lam (#%plain-lambda (args ...) . body))]) lp*:id)) . actuals)
     #:when expected
     #:when (not (andmap type-annotation (syntax->list #'(lp args ...))))
     #:when (free-identifier=? #'lp #'lp*)
-    (let-loop-check #'lam #'lp #'actuals #'(args ...) #'body expected))
+#|bg|#    (let ([r (let-loop-check #'lam #'lp #'actuals #'(args ...) #'body expected)])
+#|bg|#      (define univ* (for/list ([_arg (in-list (syntax-e #'(args ...)))]) Univ))
+#|bg|#      (add-typeof-expr #'loop (ret (->* univ* Univ)))
+#|bg|#      r)
+    #;(let-loop-check #'lam #'lp #'actuals #'(args ...) #'body expected))
   ;; inference for ((lambda
   (pattern ((~and lam (#%plain-lambda (x ...) . body)) args ...)
    #:fail-when (plambda-property #'lam) #f

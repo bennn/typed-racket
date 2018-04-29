@@ -287,7 +287,7 @@
          (if types
              #`(U #,@types)
              #f)))
-     `#s(contract-def ,type-stx ,flat? ,maker? typed))))
+     `#s(contract-def ,type-stx ,flat? ,maker? ,(current-typed-side)))))
 
 
 (define (define-predicate stx)

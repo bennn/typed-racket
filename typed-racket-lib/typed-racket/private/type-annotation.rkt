@@ -12,6 +12,7 @@
          racket/match)
 
 (provide type-annotation
+         type-annotation2
          type-annotation^
          get-type
          get-types
@@ -46,6 +47,9 @@
        (maybe-finish-register-type stx))
      ty]
     [_ #f]))
+
+(define (type-annotation2 stx)
+  (type-annotation stx #:infer #f #:id #f))
 
 (define-syntax-class type-annotation^
   [pattern i:id

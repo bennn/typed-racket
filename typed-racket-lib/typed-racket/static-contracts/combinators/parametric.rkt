@@ -6,6 +6,7 @@
   "../../utils/utils.rkt"
   "../structures.rkt"
   "../constraints.rkt"
+  "../utils.rkt"
   "../terminal.rkt"
   racket/match
   (contract-req)
@@ -47,6 +48,10 @@
        (match v
         [(parametric-combinator (list arg) vars)
          #`(parametric->/c #,vars #,(f arg))]))
+     (define (sc->tag/sc v f)
+       (match-define (parametric-combinator (list arg) _) v)
+       ;;bg; assuming it has a type constructor that corresponds to a value constructor
+       (f arg))
      (define (sc->constraints v f)
        (match v
         [(parametric-combinator (list arg) vars)

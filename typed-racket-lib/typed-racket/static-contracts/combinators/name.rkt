@@ -12,6 +12,7 @@
 (require "../../utils/utils.rkt"
          "../structures.rkt"
          "../constraints.rkt"
+         "../utils.rkt"
          "../../rep/type-rep.rkt" ; only for contract
          (contract-req)
          racket/match
@@ -71,8 +72,9 @@
   (and result
        (case typed-side
          [(both)    (car result)]
-         [(typed)   (cadr result)]
-         [(untyped) (caddr result)])))
+         [(typed tagged)   (cadr result)]
+         [(untyped) (caddr result)]
+         [else (raise-argument-error 'lookup-name-sc "side?" typed-side)])))
 
 (define (register-name-sc type typed-thunk untyped-thunk both-thunk)
   (define-values (typed-name untyped-name both-name)
@@ -100,6 +102,12 @@
      (void))
    (define (sc->contract v f)
      (name-combinator-gen-name v))
+   (define (sc->tag/sc v f)
+     ;;bg; flatten all auxilliary defs
+     (let ([tbl (name-defs-table)])
+       (for ([(k v*) (in-hash tbl)])
+         (hash-set! tbl k (map f v*))))
+     v)
    (define (sc->constraints v f)
      (variable-contract-restrict (name-combinator-gen-name v)))])
 

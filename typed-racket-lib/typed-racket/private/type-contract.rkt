@@ -17,8 +17,8 @@
  racket/format
  racket/string
  syntax/flatten-begin
- (only-in (types abbrev) -Bottom -Boolean)
- (static-contracts instantiate structures combinators constraints)
+ (only-in (types abbrev) -Bottom -Boolean VectorTop:)
+ (static-contracts instantiate structures combinators constraints utils tag-reduce) ;;bg
  (only-in (submod typed-racket/static-contracts/instantiate internals) compute-constraints)
  ;; TODO make this from contract-req
  (prefix-in c: racket/contract)
@@ -119,8 +119,20 @@
   (match-define (list type untyped-id orig-id blame-id)
                 (contract-def/provide-property stx))
   (define failure-reason #f)
+  (define depth
+    (if (locally-defensive?)
+      0 ;;bg using '0' adds some overhead, but the contracts are all any/c
+      #f))
   (define result
-    (type->contract type
+#|bg|#    (type->contract type
+#|bg|#                    #:typed-side #t
+#|bg|#                    #:kind 'impersonator
+#|bg|#                    #:cache cache
+#|bg|#                    #:sc-cache sc-cache
+#|bg|#                    #:contract-depth depth
+#|bg|#                    ;; FIXME: get rid of this interface, make it functional
+#|bg|#                    (λ (#:reason [reason #f]) (set! failure-reason reason)))
+    #;(type->contract type
                     #:typed-side #t
                     #:kind 'impersonator
                     #:cache cache
@@ -130,30 +142,30 @@
     #:literal-sets (kernel-literals)
     [(define-values (ctc-id) _)
      ;; no need for ignore, the optimizer doesn't run on this code
-     (cond [failure-reason
-            #`(define-syntax (#,untyped-id stx)
-                (tc-error/fields #:stx stx
-                                 "could not convert type to a contract"
-                                 #:more #,failure-reason
-                                 "identifier" #,(symbol->string (syntax-e orig-id))
-                                 "type" #,(pretty-format-rep type #:indent 8)))]
-           [else
-            (match-define (list defs ctc) result)
-            (define maybe-inline-val
-              (should-inline-contract?/cache ctc cache))
-            #`(begin #,@defs
-                     #,@(if maybe-inline-val
-                            null
-                            (list #`(define-values (ctc-id) #,ctc)))
-                     (define-module-boundary-contract #,untyped-id
-                       #,orig-id
-                       #,(or maybe-inline-val #'ctc-id)
-                       #:pos-source #,blame-id
-                       #:srcloc (vector (quote #,(syntax-source orig-id))
-                                        #,(syntax-line orig-id)
-                                        #,(syntax-column orig-id)
-                                        #,(syntax-position orig-id)
-                                        #,(syntax-span orig-id))))])]))
+#|bg|#     (cond [failure-reason
+#|bg|#            #`(define-syntax (#,untyped-id stx)
+#|bg|#                (tc-error/fields #:stx stx
+#|bg|#                                 "could not convert type to a contract"
+#|bg|#                                 #:more #,failure-reason
+#|bg|#                                 "identifier" #,(symbol->string (syntax-e orig-id))
+#|bg|#                                 "type" #,(pretty-format-rep type #:indent 8)))]
+#|bg|#           [else
+#|bg|#            (match-define (list defs ctc) result)
+#|bg|#            (define maybe-inline-val
+#|bg|#              (should-inline-contract?/cache ctc cache))
+#|bg|#            #`(begin #,@defs
+#|bg|#                     #,@(if maybe-inline-val
+#|bg|#                            null
+#|bg|#                            (list #`(define-values (ctc-id) #,ctc)))
+#|bg|#                     (define-module-boundary-contract #,untyped-id
+#|bg|#                       #,orig-id
+#|bg|#                       #,(or maybe-inline-val #'ctc-id)
+#|bg|#                       #:pos-source #,blame-id
+#|bg|#                       #:srcloc (vector (quote #,(syntax-source orig-id))
+#|bg|#                                        #,(syntax-line orig-id)
+#|bg|#                                        #,(syntax-column orig-id)
+#|bg|#                                        #,(syntax-position orig-id)
+#|bg|#                                        #,(syntax-span orig-id))))])]))
 
 ;; Syntax (Dict Static-Contract (Cons Id Syntax)) -> (Option Syntax)
 ;; A helper for generate-contract-def/provide that helps inline contract
@@ -191,10 +203,9 @@
 ;;   This box is only used for contracts generated for `require/typed`
 ;;   and `cast`, contracts for `provides go into the `#%contract-defs`
 ;;   submodule, which always has the above `require`s.
-(define include-extra-requires? (box #f))
+(define include-extra-requires? (box #t)) ;;bg; always true for now TODO
 
-(define (change-contract-fixups forms)
-  (define ctc-cache (make-hash))
+(define (change-contract-fixups forms [ctc-cache (make-hash)] [sc-cache (make-hash)])
   (with-new-name-tables
    (for/list ((e (in-list forms)))
      (if (not (has-contract-def-property? e))
@@ -264,18 +275,27 @@
 (define (from-typed? side)
   (case side
    [(typed both) #t]
-   [(untyped) #f]))
+   [(untyped tagged) #f]
+   [else (raise-argument-error 'from-typed? "side?" side)]))
 
 (define (from-untyped? side)
   (case side
    [(untyped both) #t]
-   [(typed) #f]))
+   [(typed tagged) (not (eq? side (current-typed-side)))]
+   [else (raise-argument-error 'from-untyped? "side?" side)]))
+
+(define (from-tagged? side)
+  (case side
+   [(tagged) #t]
+   [(untyped both typed) #f]
+   [else (raise-argument-error 'from-tagged? "side?" side)]))
 
 (define (flip-side side)
   (case side
-   [(typed) 'untyped]
-   [(untyped) 'typed]
-   [(both) 'both]))
+   [(typed tagged) 'untyped]
+   [(untyped) (current-typed-side)]
+   [(both) 'both]
+   [else (raise-argument-error 'flip-side "side?" side)]))
 
 ;; type->contract : Type Procedure
 ;;                  #:typed-side Boolean #:kind Symbol #:cache Hash
@@ -294,7 +314,7 @@
      #:trusted-positive typed-side
      #:trusted-negative (not typed-side))))
 
-(define any-wrap/sc (chaperone/sc #'any-wrap/c))
+#|bg|# (define any-wrap/sc (chaperone/sc #'any-wrap/c #:tag #'any/c))
 
 (define (no-duplicates l)
   (= (length l) (length (remove-duplicates l))))
@@ -303,8 +323,9 @@
 (define (triple-lookup trip side)
   (case side
     ((untyped) (triple-untyped trip))
-    ((typed) (triple-typed trip))
-    ((both) (triple-both trip))))
+    ((typed tagged) (triple-typed trip))
+    ((both) (triple-both trip))
+    (else (raise-argument-error 'triple-lookup "side?" 1 trip side))))
 (define (same sc)
   (triple sc sc sc))
 
@@ -312,7 +333,7 @@
                                #:typed-side [typed-side #t])
   (let/ec return
     (define (fail #:reason reason) (return (init-fail #:reason reason)))
-    (let loop ([type type] [typed-side (if typed-side 'typed 'untyped)] [recursive-values (hash)])
+    (let loop ([type type] [typed-side (if typed-side (current-typed-side) 'untyped)] [recursive-values (hash)])
       (define (t->sc t #:recursive-values (recursive-values recursive-values))
         (loop t typed-side recursive-values))
       (define (t->sc/neg t #:recursive-values (recursive-values recursive-values))
@@ -390,7 +411,7 @@
                (define resolved-name (resolve-once type))
                (register-name-sc type
                                  (λ () (loop resolved-name 'untyped rv))
-                                 (λ () (loop resolved-name 'typed rv))
+                                 (λ () (loop resolved-name (current-typed-side) rv))
                                  (λ () (loop resolved-name 'both rv)))
                (lookup-name-sc type typed-side)])]
        ;; Ordinary type applications or struct type names, just resolve
@@ -401,7 +422,17 @@
        ;; This comes before Base-ctc to use the Value-style logic
        ;; for the singleton base types (e.g. -Null, 1, etc)
        [(Val-able: v)
-        (if (and (c:flat-contract? v)
+#|bg|#        (cond
+#|bg|#         [(eof-object? v)
+#|bg|#          (flat/sc #'eof-object?)]
+#|bg|#         [(void? v)
+#|bg|#          (flat/sc #'void?)]
+#|bg|#         [(or (symbol? v) (boolean? v) (keyword? v) (null? v))
+#|bg|#          (flat/sc #`(λ (x) (eq? '#,v x)))]
+#|bg|#         [else #;(or (number? v) (regexp? v) (string? v) (bytes? v) (char? v))
+#|bg|#          (flat/sc #`(λ (x) (equal? '#,v x)))])
+;; bg this is for performance tuning
+        #;(if (and (c:flat-contract? v)
                  ;; numbers used as contracts compare with =, but TR
                  ;; requires an equal? check
                  (not (number? v))
@@ -518,7 +549,8 @@
        [(Promise: t)
         (promise/sc (t->sc t))]
        [(Opaque: p?)
-        (flat/sc #`(flat-named-contract (quote #,(syntax-e p?)) #,p?))]
+#|bg|#        (flat/sc p?) ;; bg performance
+        #;(flat/sc #`(flat-named-contract (quote #,(syntax-e p?)) #,p?))]
        [(Continuation-Mark-Keyof: t)
         (continuation-mark-key/sc (t->sc t))]
        ;; TODO: this is not quite right for case->
@@ -528,16 +560,20 @@
                (fail #:reason "contract generation not supported for Self")]
        ;; TODO
        [(F: v)
-        (triple-lookup
-         (hash-ref recursive-values v
-                   (λ () (error 'type->static-contract
-                                "Recursive value lookup failed. ~a ~a" recursive-values v)))
-         typed-side)]
+#|bg|#        (if (equal? contract-depth 0) ;; bg do we really need this?
+#|bg|#          any/sc
+          (triple-lookup
+           (hash-ref recursive-values v
+                     (λ () (error 'type->static-contract
+                                  "Recursive value lookup failed. ~a ~a" recursive-values v)))
+           typed-side))]
+       [(VectorTop:) (only-untyped vector?/sc)]
        [(BoxTop:) (only-untyped box?/sc)]
        [(ChannelTop:) (only-untyped channel?/sc)]
        [(Async-ChannelTop:) (only-untyped async-channel?/sc)]
        [(MPairTop:) (only-untyped mpair?/sc)]
        [(ThreadCellTop:) (only-untyped thread-cell?/sc)]
+       [(ThreadCell: _) (when-tagged thread-cell?/sc)]
        [(Prompt-TagTop:) (only-untyped prompt-tag?/sc)]
        [(Continuation-Mark-KeyTop:) (only-untyped continuation-mark-key?/sc)]
        [(ClassTop:) (only-untyped class?/sc)]
@@ -566,18 +602,19 @@
                    (list both-n*)
                    (list (loop b 'both rv))
                    (recursive-sc-use both-n*))]
-          [(typed untyped)
+          [(typed untyped tagged)
            (define (rec b side rv)
              (loop b side rv))
            ;; TODO not fail in cases that don't get used
            (define untyped (rec b 'untyped rv))
-           (define typed (rec b 'typed rv))
+           (define typed (rec b (current-typed-side) rv))
            (define both (rec b 'both rv))
 
            (recursive-sc
             n*s
             (list untyped typed both)
-            (recursive-sc-use (if (from-typed? typed-side) typed-n* untyped-n*)))])]
+            (recursive-sc-use (if (from-typed? typed-side) typed-n* untyped-n*)))]
+          [else (raise-argument-error 'Mu-case "side?" typed-side)])]
        ;; Don't directly use the class static contract generated for Name,
        ;; because that will get an #:opaque class contract. This will do the
        ;; wrong thing for object types since it errors too eagerly.
@@ -589,7 +626,7 @@
                (define resolved (make-Instance (resolve-once t)))
                (register-name-sc type
                                  (λ () (loop resolved 'untyped rv))
-                                 (λ () (loop resolved 'typed rv))
+                                 (λ () (loop resolved (current-typed-side) rv))
                                  (λ () (loop resolved 'both rv)))
                (lookup-name-sc type typed-side)])]
        [(Instance: (Class: _ _ fields methods _ _))
@@ -754,7 +791,7 @@
        (proceed)]
       ;; functions with props or objects
       [(Values: (list (Result: rngs _ _) ...))
-       (if (from-untyped? typed-side)
+       (if (and (from-untyped? typed-side) (not (locally-defensive?)))
            (fail #:reason (~a "cannot generate contract for function type"
                               " with props or objects."))
            (proceed))]
@@ -834,7 +871,7 @@
          (handle-arrow-range a (λ () (convert-arr a))))
        (define arities
          (for/list ([t (in-list arrows)]) (length (Arrow-dom t))))
-       (define maybe-dup (check-duplicates arities))
+       (define maybe-dup (and (not (locally-defensive?)) (check-duplicates arities)))
        (when maybe-dup
          (fail #:reason (~a "function type has two cases of arity " maybe-dup)))
        (if (= (length arrows) 1)
@@ -1077,11 +1114,13 @@
        [_ #false]))))
 
 (module predicates racket/base
-  (require racket/extflonum (only-in racket/contract/base >=/c <=/c))
+#|bg|#  (require racket/extflonum #;(only-in racket/contract/base >=/c <=/c)) ;; performance
   (provide nonnegative? nonpositive?
            extflonum? extflzero? extflnonnegative? extflnonpositive?)
-  (define nonnegative? (>=/c 0))
-  (define nonpositive? (<=/c 0))
+  (define nonnegative? (lambda (x) (and (real? x) (>= x 0))) #;(>=/c 0))
+  (define nonpositive? (lambda (x) (and (real? x) (<= x 0))) #;(<=/c 0))
+  ;;bg;;(define nonnegative? (>=/c 0))
+  ;;bg;;(define nonpositive? (<=/c 0))
   (define extflzero? (lambda (x) (extfl= x 0.0t0)))
   (define extflnonnegative? (lambda (x) (extfl>= x 0.0t0)))
   (define extflnonpositive? (lambda (x) (extfl<= x 0.0t0))))
@@ -1140,7 +1179,11 @@
   (define exact-number/sc (numeric/sc Exact-Number (and/c number? exact?)))
   (define inexact-complex/sc
     (numeric/sc Inexact-Complex
-                 (and/c number?
+#|bg|#                 (lambda (x)
+#|bg|#                   (and (number? x)
+#|bg|#                        (inexact-real? (imag-part x))
+#|bg|#                        (inexact-real? (real-part x))))
+                 #;(and/c number?
                    (lambda (x)
                      (and (inexact-real? (imag-part x))
                           (inexact-real? (real-part x)))))))

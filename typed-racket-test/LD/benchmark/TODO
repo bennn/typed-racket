@@ -5,8 +5,10 @@
 - [X] sc->tag/c why return a static contract and not a contract? (issue with recursion?)
       yeah it's gotta be an sc because we're not ready to instantiate yet
 - [X] fsm, expected (StructTypeTop ....) failed
-
-- [ ] plot build fails (see in-cycle.rkt test)
+- [X] plot build fails (see in-cycle.rkt test)
+      opened issue in TR (), hacked-around for LD for now
+      EDIT closed the TR issue, hack validated
+- [X] make-typed-renaming needs 3 args but sometimes gets 2 ... how? (in-array.rkt)
 
 - [ ] quadU errors in untyped and typed, by cadr
       error changed after revert x4:

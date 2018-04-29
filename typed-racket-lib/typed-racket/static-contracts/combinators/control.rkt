@@ -5,6 +5,7 @@
 
 (require "../../utils/utils.rkt"
          "../structures.rkt" "../constraints.rkt"
+         (only-in "derived.rkt" prompt-tag?/sc)
          racket/list racket/match
          (contract-req)
          (for-template racket/base racket/contract/base)
@@ -32,6 +33,8 @@
                             #`(#:call/cc (values #,@(map f call-cc)))
                             empty)])
            #'(prompt-tag/c vals-stx ... call-cc-stx ...))]))
+     (define (sc->tag/sc v f)
+       (f prompt-tag?/sc))
      (define (sc->constraints v f)
        (merge-restricts* 'chaperone (map f (pt-seq->list (combinator-args v)))))])
 

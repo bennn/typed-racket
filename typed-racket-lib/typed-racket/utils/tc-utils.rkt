@@ -42,6 +42,10 @@ don't depend on any other portion of the system
          id-from?
          id-from
 
+         ;; parameter to toggle "transient" runtime type checking
+         locally-defensive?
+         current-typed-side
+
          (all-from-out "disappeared-use.rkt"))
 
 ;; a parameter representing the original location of the syntax being
@@ -309,3 +313,9 @@ don't depend on any other portion of the system
 (define-syntax-class (id-from sym mod)
   (pattern i:id
            #:fail-unless (id-from? #'i sym mod) #f))
+
+(define locally-defensive? (make-parameter #f))
+
+(define (current-typed-side)
+  (if (locally-defensive?) 'tagged 'typed))
+

@@ -31,6 +31,7 @@
           [(define (sc-map v f) v)
            (define (sc-traverse v f) (void))
            (define (sc->contract v f) #'any/c)
+           (define (sc->tag/sc v f) v)
            (define (sc->constraints v f) (simple-contract-restrict 'flat))
            (define (sc-terminal-kind v) 'flat)]
         #:methods gen:custom-write [(define write-proc any-write-proc)])
