@@ -69,7 +69,13 @@
       stx]
      [(~or _:ignore^ _:ignore-some^) ;; for struct definitions ... not sure what else
       stx]
-     [((~literal define-syntaxes) . _)
+     [((~or (~literal #%provide)
+            (~literal #%require)
+            (~literal begin-for-syntax)
+            (~literal define-syntaxes)
+            (~literal module)
+            (~literal module*)) . _)
+      ;; ignore the same things the optimizer ignores
       stx]
      [(~and _:kw-lambda^ ((~literal let-values) ([(f) fun]) body))
       (syntax/loc stx (let-values ([(f) fun]) body))]
