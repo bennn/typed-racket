@@ -79,7 +79,7 @@
       (define dom-map (type->domain-map (stx->arrow-type stx) #f))
       (with-syntax ([body+ (loop #'body)]
                     [formals+ (protect-formals dom-map #'formals ctc-cache sc-cache extra-defs*)])
-        (syntax/loc stx
+        (quasisyntax/loc stx
           (op formals (void . formals+) . body+)))]
      #;[(define-values (var ...) expr) (TODO need this?)]
      [(x* ...)
@@ -91,16 +91,12 @@
       (if (is-ignored? f)
         stx+
         (let ()
-          ;; TODO don't use orig?
-          (define-values [_orig-pre* orig-f orig-post*] (split-application stx))
-          (define-values [dom-types cod-type]
-            (let ([ty (stx->arrow-type orig-f (length (syntax-e orig-post*)))])
-              (values (type->domain-map ty f) (type->codomain-type ty f))))
+          (define cod-type (tc-results->type (maybe-type-of stx)))
           (define stx/dom
             (with-syntax ([(pre ...) pre*]
                           [f f]
-                          [(dom ...) (protect-domain dom-types post* ctc-cache sc-cache extra-defs*)])
-              (syntax/loc stx+ (pre ... f dom ...))))
+                          [post* post*])
+              (syntax/loc stx+ (pre ... f . post*))))
           (define stx/cod
             (protect-codomain cod-type stx/dom ctc-cache sc-cache extra-defs*))
           stx/cod))]
