@@ -61,7 +61,7 @@
 #|bg|#                                 (do-time "Generated contracts"))]
               ;; potentially optimize the code based on the type information
               #;[(optimized-body ...) (maybe-optimize #'transformed-body)] ;; has own call to do-time
-#|bg|#              [(optimized-body ...) (defend/cache #'transformed-body)]
+#|bg|#              [(optimized-body ...) (maybe-optimize (defend/cache #'transformed-body))]
               ;; add in syntax property on useless expression to draw check-syntax arrows
               [check-syntax-help (syntax-property
                                   (syntax-property

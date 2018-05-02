@@ -19,6 +19,8 @@
   (only-in typed-racket/typecheck/internal-forms
     typed-struct
     typed-struct/exec)
+  (only-in typed-racket/typecheck/tc-metafunctions
+    tc-results->values)
   (only-in typed-racket/types/base-abbrev
     make-Listof)
   (only-in typed-racket/types/abbrev
@@ -83,10 +85,13 @@
       (syntax/loc stx (let-values ([(f) fun]) body))]
      [(op:lambda-identifier formals . body)
       (define dom-map (type->domain-map (stx->arrow-type stx) #f))
-      (with-syntax ([body+ (loop #'body)]
-                    [formals+ (protect-formals dom-map #'formals ctc-cache sc-cache extra-defs*)])
-        (quasisyntax/loc stx
-          (op formals (void . formals+) . body+)))]
+      (define new-stx
+        (with-syntax ([body+ (loop #'body)]
+                      [formals+ (protect-formals dom-map #'formals ctc-cache sc-cache extra-defs*)])
+          (quasisyntax/loc stx
+            (op formals (void . formals+) . body+))))
+      (register-ignored! new-stx #;(caddr new-stx))
+      new-stx]
      #;[(define-values (var ...) expr) (TODO need this?)]
      [(x* ...)
       #:when (is-application? stx)
@@ -103,6 +108,7 @@
                           [f f]
                           [post* post*])
               (syntax/loc stx+ (pre ... f . post*))))
+          (add-typeof-expr stx/dom (ret Univ)) ;; TODO we can do better!
           (define stx/cod
             (protect-codomain cod-type stx/dom ctc-cache sc-cache extra-defs*))
           stx/cod))]
@@ -118,7 +124,11 @@
       (raise-user-error 'defend-top "strange type-ascription ~a" (syntax->datum stx))]
      [(x* ...)
       (datum->syntax stx
-        (map loop (syntax-e #'(x* ...))))]
+        (for/list ((x (in-list (syntax-e #'(x* ...)))))
+          (define t (maybe-type-of x))
+          (define x+ (loop x))
+          (when t (add-typeof-expr x+ t))
+          x+))]
      [_
       stx])))
 
@@ -657,6 +667,7 @@
         #:cache ctc-cache
         #:sc-cache sc-cache
         #:contract-depth 1))
+    (for-each register-ignored! defs)
     (set-box! extra-defs* (append (reverse defs) (unbox extra-defs*)))
     (with-syntax ([ctc ctc-stx]
                   [dom dom-stx])
@@ -693,11 +704,16 @@
           ;; -- application returns 1 result, just bind it and check it
           (with-syntax ([(ctc) ctc-stx*]
                         [v (generate-temporary var-name)])
-            (syntax/loc app-stx
-              (let ([v app])
-                (if ((begin-encourage-inline ctc) v)
-                  v
-                  (error 'dynamic-typecheck (format "~e : ~a" v 'err))))))
+            (define new-stx
+              (with-type
+                (ret cod-type)
+                (syntax/loc app-stx
+                  (let-values ([(v) app])
+                    (if ((begin-encourage-inline ctc) v)
+                      v
+                      (error 'dynamic-typecheck (format "~e : ~a" v 'err)))))))
+            (register-ignored! new-stx #;(caddr (syntax-e new-stx)))
+            new-stx)
           ;; - application returns +1 results:
           ;;   - bind all,
           ;;   - check the ones with matching contracts,
@@ -705,14 +721,24 @@
           (with-syntax ([v* (for/list ([_t (in-list t*)])
                                ;; should be OK to do this instead of `generate-temporaries`, right?
                                (generate-temporary var-name))])
-            (quasisyntax/loc app-stx
-              (let-values ([v* app])
-                (if (and . #,(for/list ([ctc-stx (in-list ctc-stx*)]
-                                        [v (in-list (syntax-e #'v*))]
-                                        #:when ctc-stx)
-                               (quasisyntax/loc app-stx ((begin-encourage-inline #,ctc-stx) #,v))))
-                  (values . v*)
-                  (error 'dynamic-typecheck 'err))))))))]))
+            (define new-stx
+              (with-type
+                (tc-results->values (-tc-results (map ret t*)))
+                (quasisyntax/loc app-stx
+                  (let-values ([v* app])
+                    (if (and . #,(for/list ([ctc-stx (in-list ctc-stx*)]
+                                            [v (in-list (syntax-e #'v*))]
+                                            #:when ctc-stx)
+                                   (quasisyntax/loc app-stx ((begin-encourage-inline #,ctc-stx) #,v))))
+                      (values . v*)
+                      (error 'dynamic-typecheck 'err))))))
+            (register-ignored! new-stx #;(caddr new-stx))
+            new-stx))))]))
+
+(define-syntax-rule (with-type t e)
+  (let ((v e))
+    (add-typeof-expr v t)
+    v))
 
 ;; protect-formals : TypeMap (Syntaxof List) Hash Hash (Boxof Syntax) -> (Syntaxof List)
 (define (protect-formals dom-map formals ctc-cache sc-cache extra-defs*)
@@ -808,5 +834,6 @@
       #:cache ctc-cache
       #:sc-cache sc-cache
       #:contract-depth 0))
+  (for-each register-ignored! defs)
   (set-box! extra-defs* (append (reverse defs) (unbox extra-defs*)))
   (if (free-identifier=? ctc #'any/c) #f ctc))
