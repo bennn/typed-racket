@@ -17,6 +17,7 @@
 ;; loop variables
 (define-syntax-class unboxed-let-opt-expr
   #:commit
+  #:description "unboxed-let-opt-expr"
   #:attributes (opt)
   (pattern :app-of-unboxed-let-opt-expr)
   (pattern (~var || (unboxed-let-opt-expr-internal #f))))
@@ -27,6 +28,7 @@
 ;; we can extend unboxing
 (define-syntax-class app-of-unboxed-let-opt-expr
   #:commit
+  #:description "app-of-unboxed-let-opt-expr"
   #:literal-sets (kernel-literals)
   #:attributes (opt)
   (pattern (#%plain-app
@@ -43,6 +45,7 @@
 ;; functions
 (define-syntax-class (unboxed-let-opt-expr-internal let-loop?)
   #:commit
+  #:description "unboxed-let-opt-expr-internal"
   #:literal-sets (kernel-literals)
   #:attributes (opt)
   (pattern
@@ -50,6 +53,7 @@
                           body:opt-expr ...)
    #:do [;; Ids that do not escape
          (define-syntax-class non-escaping-function-id
+           #:description "non-escaping-function-id"
            (pattern fun-name:id
               #:when (not (or (escapes? #'fun-name #'(begin rhs ...) #f)
                               (escapes? #'fun-name #'(begin body ...) let-loop?)))))
@@ -101,7 +105,6 @@
            (pattern (clauses:unboxed-clause ...)
              #:attr bindings (delay (template ((?@ . clauses.bindings) ...)))))
          (define top-stx this-syntax)]
-
    #:attr opt
      (syntax-parse #'(clause ...)
       [clauses:unboxed-clauses
@@ -114,6 +117,7 @@
 
 (define-syntax-class constant-var
   #:attributes ()
+  #:description "constant-var"
   (pattern v:id
     #:when (not (is-var-mutated? #'v))))
 
@@ -124,6 +128,7 @@
 ;; from unboxing.
 (define-syntax-class unboxable-fun-definition
   #:attributes ()
+  #:description "unboxable-fun-definition"
   #:literal-sets (kernel-literals)
   (pattern ((fun-name:constant-var) (~and fun (#%plain-lambda params body ...)))
     #:do [(define doms
@@ -162,6 +167,7 @@
 
 (define-splicing-syntax-class let-like-keyword
   #:commit
+  #:description "let-like-keyword"
   #:literal-sets (kernel-literals)
   #:attributes ([key 1] kw)
   (pattern (~and kw let-values)
@@ -232,16 +238,16 @@
     (or (direct-child-of? v exp)
         (ormap rec (syntax->list exp))))
 
-  (define (rec exp)
-    (syntax-parse exp
+  (define (rec exp+)
+    (syntax-parse exp+
       #:literal-sets (kernel-literals)
-
       [(#%plain-app rator:expr rands:expr ...)
        (or (direct-child-of? v #'(rands ...)) ; used as an argument, escapes
            (ormap rec (syntax->list #'(rator rands ...))))]
       [e:kernel-expression
-       (look-at #'(e.sub-exprs ...))]))
-
+       (look-at #'(e.sub-exprs ...))]
+      [_
+       (raise-arguments-error 'escapes? "failed to parse syntax object" "object" exp+ "context" exp)]))
 
   ;; if the given var is the _only_ element of the body and we're in a
   ;; let loop, we let it slide
@@ -260,6 +266,7 @@
 ;; boxed
 (define-syntax-class unbox-fun-clause
   #:commit
+  #:description "unbox-fun-clause"
   #:attributes ([bindings 1])
   #:literal-sets (kernel-literals)
   (pattern ((fun:unboxed-fun) (#%plain-lambda params body:opt-expr ...))
