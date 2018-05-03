@@ -52,8 +52,7 @@
   (for-template
     racket
     racket/unsafe/ops
-    typed-racket/types/numeric-predicates
-    (submod racket/performance-hint begin-encourage-inline)))
+    typed-racket/types/numeric-predicates))
  
 (provide defend-top)
 
@@ -80,21 +79,25 @@
       ;; ignore the same things the optimizer ignores
       stx]
      [(~and _:kw-lambda^ ((~literal let-values) ([(f) fun]) body))
-      (syntax/loc stx (let-values ([(f) fun]) body))]
+      stx
+      #;(syntax/loc stx (let-values ([(f) fun]) body))]
      [(~and _:opt-lambda^ ((~literal let-values) ([(f) fun]) body))
-      (syntax/loc stx (let-values ([(f) fun]) body))]
+      stx
+      #;(syntax/loc stx (let-values ([(f) fun]) body))]
      [(op:lambda-identifier formals . body)
       (define dom-map (type->domain-map (stx->arrow-type stx) #f))
       (define body+ (loop #'body))
       (void
         (maybe-add-typeof-expr body+ #'body))
-      (define new-stx
+      (define stx+
         (with-syntax ([body+ body+]
                       [formals+ (protect-formals dom-map #'formals ctc-cache sc-cache extra-defs*)])
           (quasisyntax/loc stx
-            (op formals (void . formals+) . body+))))
-      (register-ignored! (caddr (syntax-e new-stx)))
-      new-stx]
+            (op formals (#%plain-app void . formals+) . body+))))
+      (register-ignored! (caddr (syntax-e stx+)))
+      (void
+        (maybe-add-typeof-expr stx+ stx))
+      stx+]
      #;[(define-values (var ...) expr) (TODO need this?)]
      [(x* ...)
       #:when (is-application? stx)
@@ -106,7 +109,7 @@
             (maybe-add-typeof-expr x+ x)
             x+)))
       (void
-        (add-typeof-expr stx+ (type-of stx)))
+        (maybe-add-typeof-expr stx+ stx))
       (define-values [pre* f post*] (split-application stx+))
       (if (is-ignored? f)
         stx+
@@ -120,6 +123,7 @@
           (add-typeof-expr stx/dom (ret Univ)) ;; TODO we can do better!
           (define stx/cod
             (protect-codomain cod-type stx/dom ctc-cache sc-cache extra-defs*))
+          (maybe-add-typeof-expr stx/cod stx)
           stx/cod))]
      [((~and x (~literal #%expression)) _)
       #:when (type-inst-property #'x)
@@ -127,19 +131,24 @@
      [((~literal #%expression) e)
       #:when (type-ascription-property stx)
       (define e+ (loop #'e))
-      (void
-        (maybe-add-typeof-expr e+ #'e))
-      (with-syntax ([e+ e+])
-        (syntax/loc stx (#%expression e+)))]
+      (void (maybe-add-typeof-expr e+ #'e))
+      (define e++
+        (with-syntax ([e+ e+])
+          (syntax/loc stx (#%expression e+))))
+      (void (maybe-add-typeof-expr e++ stx))
+      e++]
      [_
       #:when (type-ascription-property stx)
       (raise-user-error 'defend-top "strange type-ascription ~a" (syntax->datum stx))]
      [(x* ...)
-      (datum->syntax stx
-        (for/list ((x (in-list (syntax-e #'(x* ...)))))
-          (define x+ (loop x))
-          (maybe-add-typeof-expr x+ x)
-          x+))]
+      (define stx+
+        (datum->syntax stx
+          (for/list ((x (in-list (syntax-e #'(x* ...)))))
+            (define x+ (loop x))
+            (maybe-add-typeof-expr x+ x)
+            x+)))
+      (maybe-add-typeof-expr stx+ stx)
+      stx+]
      [_
       stx])))
 
@@ -366,7 +375,7 @@
   variable-reference-constant? variable-reference->empty-namespace variable-reference->namespace
   variable-reference->resolved-module-path variable-reference->module-path-index
   variable-reference->module-source variable-reference->phase variable-reference->module-base-phase
-  variable-reference->module-declaration-inspector
+  variable-reference->module-declaration-inspector variable-reference-from-unsafe?
 
 
   ;; --- 15.6
@@ -705,7 +714,7 @@
         (type->flat-contract t ctc-cache sc-cache extra-defs*)))
     (define err-msg
       (parameterize ([error-print-width 20])
-        (format "~e : ~a" (syntax->datum app-stx) cod-type)))
+        (format "~e : ~a" (#%plain-app syntax->datum app-stx) cod-type)))
     (if (not (ormap values ctc-stx*))
       ;; Nothing to check
       app-stx
@@ -725,9 +734,9 @@
                 (ret cod-type)
                 (syntax/loc app-stx
                   (let-values ([(v) app])
-                    (if ((begin-encourage-inline ctc) v)
+                    (if (#%plain-app ctc v)
                       v
-                      (error 'dynamic-typecheck (format "~e : ~a" v 'err)))))))
+                      (#%plain-app error 'dynamic-typecheck (#%plain-app format '"~e : ~a" v 'err)))))))
             (register-ignored! (caddr (syntax-e new-stx)))
             (define chk-stx (car (syntax-e (cadr (syntax-e (caddr (syntax-e new-stx)))))))
             (register-ignored! chk-stx)
@@ -747,11 +756,10 @@
                     (if (and . #,(for/list ([ctc-stx (in-list ctc-stx*)]
                                             [v (in-list (syntax-e #'v*))]
                                             #:when ctc-stx)
-                                   (define chk-stx (quasisyntax/loc app-stx (begin-encourage-inline #,ctc-stx)))
-                                   (register-ignored! chk-stx)
-                                   (quasisyntax/loc app-stx (#,chk-stx #,v))))
+                                   (register-ignored! ctc-stx)
+                                   (quasisyntax/loc app-stx (#%plain-app #,ctc-stx #,v))))
                       (values . v*)
-                      (error 'dynamic-typecheck 'err))))))
+                      (#%plain-app error 'dynamic-typecheck 'err))))))
             (register-ignored! (caddr (syntax-e new-stx)))
             new-stx))))]))
 
