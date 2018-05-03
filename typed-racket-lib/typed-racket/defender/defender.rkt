@@ -85,19 +85,28 @@
       (syntax/loc stx (let-values ([(f) fun]) body))]
      [(op:lambda-identifier formals . body)
       (define dom-map (type->domain-map (stx->arrow-type stx) #f))
+      (define body+ (loop #'body))
+      (void
+        (maybe-add-typeof-expr body+ #'body))
       (define new-stx
-        (with-syntax ([body+ (loop #'body)]
+        (with-syntax ([body+ body+]
                       [formals+ (protect-formals dom-map #'formals ctc-cache sc-cache extra-defs*)])
           (quasisyntax/loc stx
             (op formals (void . formals+) . body+))))
-      (register-ignored! new-stx #;(caddr new-stx))
+      (register-ignored! (caddr (syntax-e new-stx)))
       new-stx]
      #;[(define-values (var ...) expr) (TODO need this?)]
      [(x* ...)
       #:when (is-application? stx)
       (define stx+
-        (datum->syntax stx
-          (map loop (syntax-e #'(x* ...)))))
+        (datum->syntax
+          stx
+          (for/list ([x (in-list (syntax-e #'(x* ...)))])
+            (define x+ (loop x))
+            (maybe-add-typeof-expr x+ x)
+            x+)))
+      (void
+        (add-typeof-expr stx+ (type-of stx)))
       (define-values [pre* f post*] (split-application stx+))
       (if (is-ignored? f)
         stx+
@@ -117,7 +126,10 @@
       stx]
      [((~literal #%expression) e)
       #:when (type-ascription-property stx)
-      (with-syntax ([e+ (loop #'e)])
+      (define e+ (loop #'e))
+      (void
+        (maybe-add-typeof-expr e+ #'e))
+      (with-syntax ([e+ e+])
         (syntax/loc stx (#%expression e+)))]
      [_
       #:when (type-ascription-property stx)
@@ -125,9 +137,8 @@
      [(x* ...)
       (datum->syntax stx
         (for/list ((x (in-list (syntax-e #'(x* ...)))))
-          (define t (maybe-type-of x))
           (define x+ (loop x))
-          (when t (add-typeof-expr x+ t))
+          (maybe-add-typeof-expr x+ x)
           x+))]
      [_
       stx])))
@@ -135,6 +146,11 @@
 (define-syntax-class lambda-identifier
   (pattern (~literal #%plain-lambda))
   (pattern (~literal lambda)))
+
+(define (maybe-add-typeof-expr new-stx old-stx)
+  (let ((old-type (maybe-type-of old-stx)))
+    (when old-type
+      (add-typeof-expr new-stx old-type))))
 
 ;; -----------------------------------------------------------------------------
 
@@ -712,7 +728,9 @@
                     (if ((begin-encourage-inline ctc) v)
                       v
                       (error 'dynamic-typecheck (format "~e : ~a" v 'err)))))))
-            (register-ignored! new-stx #;(caddr (syntax-e new-stx)))
+            (register-ignored! (caddr (syntax-e new-stx)))
+            (define chk-stx (car (syntax-e (cadr (syntax-e (caddr (syntax-e new-stx)))))))
+            (register-ignored! chk-stx)
             new-stx)
           ;; - application returns +1 results:
           ;;   - bind all,
@@ -729,10 +747,12 @@
                     (if (and . #,(for/list ([ctc-stx (in-list ctc-stx*)]
                                             [v (in-list (syntax-e #'v*))]
                                             #:when ctc-stx)
-                                   (quasisyntax/loc app-stx ((begin-encourage-inline #,ctc-stx) #,v))))
+                                   (define chk-stx (quasisyntax/loc app-stx (begin-encourage-inline #,ctc-stx)))
+                                   (register-ignored! chk-stx)
+                                   (quasisyntax/loc app-stx (#,chk-stx #,v))))
                       (values . v*)
                       (error 'dynamic-typecheck 'err))))))
-            (register-ignored! new-stx #;(caddr new-stx))
+            (register-ignored! (caddr (syntax-e new-stx)))
             new-stx))))]))
 
 (define-syntax-rule (with-type t e)
