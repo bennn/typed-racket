@@ -740,6 +740,8 @@
             (register-ignored! (caddr (syntax-e new-stx)))
             (define chk-stx (car (syntax-e (cadr (syntax-e (caddr (syntax-e new-stx)))))))
             (register-ignored! chk-stx)
+            (test-position-add-true chk-stx)
+            (test-position-add-false chk-stx)
             new-stx)
           ;; - application returns +1 results:
           ;;   - bind all,
@@ -757,6 +759,8 @@
                                             [v (in-list (syntax-e #'v*))]
                                             #:when ctc-stx)
                                    (register-ignored! ctc-stx)
+                                   (test-position-add-true ctc-stx)
+                                   (test-position-add-false ctc-stx)
                                    (quasisyntax/loc app-stx (#%plain-app #,ctc-stx #,v))))
                       (values . v*)
                       (#%plain-app error 'dynamic-typecheck 'err))))))

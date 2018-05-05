@@ -17,7 +17,11 @@
 
 (provide/cond-contract
  [add-typeof-expr (syntax? tc-results/c . -> . any/c)]
- ;;bg maybe need to set-typeof `(define (set-typeof-expr e t) (hash-set! type-table e t))`
+ [set-typeof-expr (syntax? tc-results/c . -> . any/c)] ;;bg
+ ;; need this to forget type information, because the 1st typechecking pass
+ ;; optimistically assumes everything is well typed, and the 2nd pass needs
+ ;; to pessimisitcally assume "Any" about things from untyped code
+
  [type-of (syntax? . -> . tc-results/c)]
  [reset-type-table (-> any/c)]
  [type-table->tooltips
@@ -77,6 +81,9 @@
                             [prev (merge-tc-results (list t prev) #t)]
                             [else t]))
                 #f))
+
+(define (set-typeof-expr e t)
+  (hash-set! type-table e t))
 
 (define (type-of e)
   (hash-ref type-table e
