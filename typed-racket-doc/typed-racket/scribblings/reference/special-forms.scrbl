@@ -545,10 +545,11 @@ The value is actually protected with two contracts. The second contract checks
 the new type, but the first contract is put there to enforce the old type, to
 protect higher-order uses of the value.
 
-@ex[
-((cast (lambda ([s : String]) s) (Any -> Any)) "hello")
-(eval:error ((cast (lambda ([s : String]) s) (Any -> Any)) 5))
-]}
+@;@ex[
+@;((cast (lambda ([s : String]) s) (Any -> Any)) "hello")
+@;(eval:error ((cast (lambda ([s : String]) s) (Any -> Any)) 5))
+@;]
+}
 
 @defform*[[(inst e t ...)
            (inst e t ... t ooo bound)]]{

@@ -32,30 +32,31 @@ has the specified type.  These types are also enforced in the surrounding code w
 The @racket[id]s are assumed to
 have the types ascribed to them; these types are converted to contracts and checked dynamically.
 
-@examples[#:eval the-eval
-(with-type #:result Number 3)
-
-(eval:error
- ((with-type #:result (Number -> Number)
-    (lambda: ([x : Number]) (add1 x)))
-  #f))
-
-(let ([x "hello"])
-  (with-type #:result String
-    #:freevars ([x String])
-    (string-append x ", world")))
-
-(eval:error
- (let ([x 'hello])
-   (with-type #:result String
-     #:freevars ([x String])
-     (string-append x ", world"))))
-
-(with-type ([fun (Number -> Number)]
-            [val Number])
-  (define (fun x) x)
-  (define val 17))
-
-(fun val)]}
+@;@examples[#:eval the-eval
+@;(with-type #:result Number 3)
+@;
+@;(eval:error
+@; ((with-type #:result (Number -> Number)
+@;    (lambda: ([x : Number]) (add1 x)))
+@;  #f))
+@;
+@;(let ([x "hello"])
+@;  (with-type #:result String
+@;    #:freevars ([x String])
+@;    (string-append x ", world")))
+@;
+@;(eval:error
+@; (let ([x 'hello])
+@;   (with-type #:result String
+@;     #:freevars ([x String])
+@;     (string-append x ", world"))))
+@;
+@;(with-type ([fun (Number -> Number)]
+@;            [val Number])
+@;  (define (fun x) x)
+@;  (define val 17))
+@;
+@;(fun val)]
+}
 
 @(close-eval the-eval)
