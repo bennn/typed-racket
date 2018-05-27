@@ -1903,6 +1903,8 @@
 
 [infinite? (make-pred-ty (list -Real) B (Un -PosInfinity -NegInfinity))]
 
+[natural? (make-pred-ty -Nat)]
+
 ;; racket/fixnum
 [fx+ (fx+-type)]
 [fx- (fx--type)]

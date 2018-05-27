@@ -20,19 +20,27 @@
 (define (mb-core stx)
   (syntax-parse stx
     [(mb (~or (~optional
+                (~and #:locally-defensive (~bind [defend? #'#true])))
+              (~optional
                (~or (~and #:optimize    (~bind [opt? #'#t])); kept for backward compatibility
                     (~and #:no-optimize (~bind [opt? #'#f]))))
               (~optional
                (~and #:with-linear-integer-arithmetic linear-reasoning?)))
          ...
          forms ...)
-     (let ([pmb-form (syntax/loc stx (#%plain-module-begin forms ...))])
-       (parameterize ([optimize? (or (and (not (attribute opt?)) (optimize?))
-                                     (and (attribute opt?) (syntax-e (attribute opt?))))]
+     (let ([pmb-form (syntax/loc stx (#%plain-module-begin forms ...))]
+           [defend? (and (attribute defend?) (syntax-e (attribute defend?)) #true)])
+       (parameterize ([optimize? (and (not defend?)
+                                      (or (and (not (attribute opt?)) (optimize?))
+                                          (and (attribute opt?) (syntax-e (attribute opt?)))))]
+                      [locally-defensive? defend?]
                       [with-linear-integer-arithmetic? (or (attribute linear-reasoning?)
                                                            (with-linear-integer-arithmetic?))])
          (tc-module/full stx pmb-form
           (λ (new-mod pre-before-code pre-after-code)
+            (define (defend/cache forms)
+              ;;bg; cannot re-use other caches because `define`s will be out of order
+              (maybe-defend forms (make-hash) (make-hash)))
             (with-syntax*
              (;; pmb = #%plain-module-begin
               [(pmb . body2) new-mod]
@@ -47,7 +55,7 @@
               [(after-code ...) (begin0 (change-provide-fixups (flatten-all-begins pre-after-code))
                                   (do-time "Generated contracts"))]
               ;; potentially optimize the code based on the type information
-              [(optimized-body ...) (maybe-optimize #'transformed-body)] ;; has own call to do-time
+              [(optimized-body ...) (maybe-optimize (defend/cache #'transformed-body))] ;; has own call to do-time
               ;; add in syntax property on useless expression to draw check-syntax arrows
               [check-syntax-help (syntax-property
                                   (syntax-property

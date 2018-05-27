@@ -49,10 +49,12 @@
   (define-values (fv-ctc-ids fv-ctc-defs)
     (type-stxs->ids+defs (syntax->list fvtys) 'untyped))
   (define-values (ex-ctc-ids ex-ctc-defs)
-    (type-stxs->ids+defs (syntax->list extys) 'typed))
+    (raise-user-error 'ex-ctc-ids "not implemented sorry") ;; bg
+    #;(type-stxs->ids+defs (syntax->list extys) 'typed))
   (define-values (region-ctc-ids region-ctc-defs)
     (if expr?
-        (type-stxs->ids+defs (values-stx->type-stxs resty) 'typed)
+      (raise-user-error 'region-ctc-ids "unsupported sorry") ;; should 'typed be 'locally-defensive sometimes?
+        #;(type-stxs->ids+defs (values-stx->type-stxs resty) 'typed)
         (values null null)))
   (define region-tc-result
     (and expr? (parse-tc-results resty)))

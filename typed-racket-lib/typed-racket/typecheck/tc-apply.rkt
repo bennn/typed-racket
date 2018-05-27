@@ -3,7 +3,7 @@
 (require (rename-in "../utils/utils.rkt" [infer r:infer])
          racket/match racket/list
          (typecheck signatures tc-app-helper)
-         (types utils abbrev substitute)
+         (types utils abbrev substitute type-table)
          (utils tc-utils)
          (rep type-rep core-rep values-rep)
          (r:infer infer))
@@ -62,27 +62,30 @@
                    (ormap Keyword-required? kws)))
      (or
       (for/or ([arrow (in-list arrows)])
-        (match arrow
-          [(Arrow: domain rst _ rng)
-           ;; Takes a possible substitution and comuptes
-           ;; the substituted range type if it is not #f
-           (define (finish substitution)
-             (and substitution (do-ret (subst-all substitution rng))))
-
-           (finish
-            (infer vars dotted-vars
-                   (list (-Tuple* arg-tys full-tail-ty))
-                   (list (-Tuple* domain
-                                  (match rst
-                                    ;; the actual work, when we have a * function
-                                    [(? Type?) (make-Listof rst)]
-                                    ;; ... function
-                                    [(RestDots: dty dbound)
-                                     (make-ListDots dty dbound)]
-                                    ;; the function has no rest argument,
-                                    ;; but provides all the necessary fixed arguments
-                                    [_ -Null])))
-                   rng))]))
+        (define r
+          (match arrow
+            [(Arrow: domain rst _ rng)
+             ;; Takes a possible substitution and comuptes
+             ;; the substituted range type if it is not #f
+             (define (finish substitution)
+               (and substitution (do-ret (subst-all substitution rng))))
+             (finish
+              (infer vars dotted-vars
+                     (list (-Tuple* arg-tys full-tail-ty))
+                     (list (-Tuple* domain
+                                    (match rst
+                                      ;; the actual work, when we have a * function
+                                      [(? Type?) (make-Listof rst)]
+                                      ;; ... function
+                                      [(RestDots: dty dbound)
+                                       (make-ListDots dty dbound)]
+                                      ;; the function has no rest argument,
+                                      ;; but provides all the necessary fixed arguments
+                                      [_ -Null])))
+                     rng))]))
+          (when r
+            (add-typeof-expr f (ret (make-Fun (list arrow)))))
+          r)
        (failure))]
     [(tc-result1: (AnyPoly: _ _ (Fun: '())))
      (tc-error/expr "Function has no cases")]

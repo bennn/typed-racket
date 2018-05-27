@@ -10,10 +10,12 @@
          (for-syntax racket/base)
          (for-template racket/base))
 (lazy-require [typed-racket/optimizer/optimizer (optimize-top)])
+(lazy-require [typed-racket/defender/defender (defend-top)])
 (lazy-require [typed-racket/typecheck/tc-toplevel (tc-module)])
 (lazy-require [typed-racket/typecheck/toplevel-trampoline (tc-toplevel-start)])
 
-(provide maybe-optimize init-current-type-names
+(provide maybe-optimize maybe-defend
+         init-current-type-names
          tc-module/full
          tc-toplevel/full)
 
@@ -36,6 +38,18 @@
         (do-time "Starting optimizer")
         (begin0 (stx-map optimize-top body)
           (do-time "Optimized")))
+      body))
+
+(define (maybe-defend body ctc-cache sc-cache)
+  (if (locally-defensive?)
+      (let ()
+        (do-time "Starting defender")
+        (define extra-def* (box '()))
+        (define body+
+          (for/list ([b (in-list (syntax-e body))])
+            (defend-top b ctc-cache sc-cache extra-def*)))
+        (do-time "Defended")
+        (append (reverse (unbox extra-def*)) body+))
       body))
 
 ;; -> Promise<Dict<Name, Type>>

@@ -6,7 +6,7 @@
          (env tvar-env)
          (for-syntax syntax/parse racket/base)
          (types utils subtype resolve abbrev
-                substitute classes prop-ops)
+                substitute classes prop-ops type-table)
          (typecheck tc-metafunctions tc-app-helper tc-subst)
          (rep type-rep)
          (r:infer infer))
@@ -78,7 +78,9 @@
           => (λ (a)
                ;; then typecheck here -- we call the separate function so that we get
                ;; the appropriate props/objects
-               (tc/funapp1 f-stx args-stx a args-res expected #:check #f))]
+               (begin0
+                 (tc/funapp1 f-stx args-stx a args-res expected #:check #f)
+                 (set-typeof-expr f-stx (ret (make-Fun (list a))))))]
          [else
           ;; if nothing matched, error
           (match arrows

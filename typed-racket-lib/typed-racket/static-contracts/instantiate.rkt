@@ -15,15 +15,21 @@
   "combinators/case-lambda.rkt"
   "combinators/parametric.rkt"
   "kinds.rkt"
+  "optimize.rkt"
   "parametric-check.rkt"
   "structures.rkt"
   "constraints.rkt"
-  "equations.rkt")
+  "equations.rkt"
+  "utils.rkt")
 
 (provide/cond-contract
+ [instantiate/optimize
+     (parametric->/c (a) ((static-contract? (-> #:reason (or/c #f string?) a))
+                          (contract-kind? #:cache hash? #:trusted-positive boolean? #:trusted-negative boolean?)
+                          . ->* . (or/c a (list/c (listof syntax?) syntax?))))]
  [instantiate
      (parametric->/c (a) ((static-contract? (-> #:reason (or/c #f string?) a))
-                          (contract-kind? #:cache hash?)
+                          (contract-kind? #:cache hash? #:recursive-kinds (or/c hash? #f))
                           . ->* . (or/c a (list/c (listof syntax?) syntax?))))]
  [should-inline-contract? (-> syntax? boolean?)])
 
@@ -33,13 +39,30 @@
            compute-recursive-kinds
            instantiate/inner))
 
+(define (instantiate/optimize sc fail [kind 'impersonator] #:cache [cache #f] #:trusted-positive [trusted-positive #f] #:trusted-negative [trusted-negative #f])
+  ;;bg;(log-static-contract-info "begin instantiate ~a" sc)
+  (define recursive-kinds
+    (with-handlers [(exn:fail:constraint-failure?
+                    (lambda (exn)
+                      ;; Even if the constraints for `sc` are unsolvable,
+                      ;;  the optimizer might be able to reduce parts of
+                      ;;  `sc` to give a contract with solvable constraints.
+                      ;; This currently happens for the `Any-Syntax` type;
+                      ;;  eventually that won't happen for `Any-Syntax`,
+                      ;;  and at that point maybe we can fail here. -- Ben G.
+                      #f))]
+      (compute-recursive-kinds
+        (contract-restrict-recursive-values (compute-constraints sc kind)))))
+  (define sc/opt (optimize sc #:trusted-positive trusted-positive #:trusted-negative trusted-negative #:recursive-kinds recursive-kinds))
+  (instantiate sc/opt fail kind #:cache cache #:recursive-kinds recursive-kinds))
+
 ;; kind is the greatest kind of contract that is supported, if a greater kind would be produced the
 ;; fail procedure is called.
 ;;
 ;; The cache is used to share contract definitions across multiple calls to
 ;; type->contract in a given contract fixup pass. If it's #f then that means don't
 ;; do any sharing (useful for testing).
-(define (instantiate sc fail [kind 'impersonator] #:cache [cache #f])
+(define (instantiate sc fail [kind 'impersonator] #:cache [cache #f] #:recursive-kinds [recursive-kinds #f])
   (if (parametric-check sc)
       (fail #:reason "multiple parametric contracts are not supported")
       (with-handlers [(exn:fail:constraint-failure?

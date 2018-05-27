@@ -24,8 +24,9 @@
 (define-tc/app-syntax-class (tc/app-special expected)
   #:literal-sets (kernel-literals special-literals)
   ;; parameterize
-  (pattern (extend-parameterization pmz (~seq params args) ...)
+  (pattern ((~and ep extend-parameterization) pmz (~seq params args) ...)
     (begin
+      (register-ignored! #'ep)
       (register-ignored! #'pmz)
       (for ([param (in-syntax #'(params ...))]
             [arg (in-syntax #'(args ...))])
@@ -51,10 +52,12 @@
                     (list (ret Univ) (single-value #'arg))
                     expected)]))
   ;; special-case for not - flip the props
-  (pattern ((~or false? not) arg)
+  (pattern ((~and op-name (~or false? not)) arg)
     (match (single-value #'arg)
       [(tc-result1: t (PropSet: p+ p-) _)
-       (ret -Boolean (make-PropSet p- p+))]))
+       (define new-prop (make-PropSet p- p+))
+       (add-typeof-expr #'op-name (ret (-> Univ -Boolean new-prop)))
+       (ret -Boolean new-prop)]))
   ;; special case for (current-contract-region)'s default expansion
   ;; just let it through without any typechecking, since module-name-fixup
   ;; is a private function from syntax/location, so this must have been

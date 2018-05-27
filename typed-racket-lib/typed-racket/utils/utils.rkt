@@ -15,6 +15,8 @@ at least theoretically.
 (provide
  ;; optimization
  optimize?
+ ;; toggle locally-defensive embedding
+ locally-defensive?
  ;; parameter to toggle linear integer reasoning
  with-linear-integer-arithmetic?
  ;; timing
@@ -42,6 +44,7 @@ at least theoretically.
  in-assoc)
 
 (define optimize? (make-parameter #t))
+(define locally-defensive? (make-parameter #t))
 (define with-linear-integer-arithmetic? (make-parameter #f))
 (define-for-syntax enable-contracts? (and (getenv "PLT_TR_CONTRACTS") #t))
 

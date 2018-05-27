@@ -17,7 +17,7 @@
 
 
 (provide/cond-contract
- [optimize ((static-contract?) (#:trusted-positive boolean? #:trusted-negative boolean?)
+ [optimize ((static-contract?) (#:trusted-positive boolean? #:trusted-negative boolean? #:recursive-kinds (or/c #f hash?))
                                . ->* . static-contract?)])
 
 ;; Reduce a static contract to a smaller simpler one that protects in the same way
@@ -206,7 +206,7 @@
 
 
 ;; If we trust a specific side then we drop all contracts protecting that side.
-(define (optimize sc #:trusted-positive [trusted-positive #f] #:trusted-negative [trusted-negative #f])
+(define (optimize sc #:trusted-positive [trusted-positive #f] #:trusted-negative [trusted-negative #f] #:recursive-kinds [recursive-kinds #f])
   ;; single-step: reduce and trusted-side-reduce if appropriate
   (define (single-step sc side)
     (define trusted

@@ -21,21 +21,37 @@
   #:for-label
   (null? pair? null))
 
+(define (bg-parse-return r)
+  ;;bg TODO this is bad ... not sure what to do though, should it be AnyValues ???
+  (match r
+    [(tc-result1: t) t]
+    [_ Univ]))
+
 (define-tc/app-syntax-class (tc/app-lambda expected)
   #:literal-sets (kernel-literals)
   ;; let loop
-  (pattern ((letrec-values ([(lp) (~and lam (#%plain-lambda (args ...) . body))]) lp*:id) . actuals)
+  (pattern ((~and loop (letrec-values ([(lp) (~and lam (#%plain-lambda (args ...) . body))]) lp*:id)) . actuals)
     #:when expected
     #:when (not (andmap type-annotation (syntax->list #'(lp args ...))))
     #:when (free-identifier=? #'lp #'lp*)
-    (let-loop-check #'lam #'lp #'actuals #'(args ...) #'body expected))
+    (let ([r (let-loop-check #'lam #'lp #'actuals #'(args ...) #'body expected)])
+      (define univ* (for/list ([_arg (in-list (syntax-e #'(args ...)))]) Univ))
+      (add-typeof-expr #'loop (ret (->* univ* Univ)))
+      r))
   ;; inference for ((lambda
   (pattern ((~and lam (#%plain-lambda (x ...) . body)) args ...)
    #:fail-when (plambda-property #'lam) #f
    #:fail-unless (= (syntax-length #'(x ...))
                     (syntax-length #'(args ...))) #f
    #:fail-when (andmap type-annotation (syntax->list #'(x ...))) #f
-   (tc/let-values #'((x) ...) #'(args ...) #'body expected))
+   (let ([r (tc/let-values #'((x) ...) #'(args ...) #'body expected)])
+     (define arg-ts
+       (for/list ([arg (in-list (syntax-e #'(args ...)))])
+         (match (type-of arg)
+          [(tc-result1: t) t])))
+     (define return-type (bg-parse-return r))
+     (add-typeof-expr #'lam (ret (->* arg-ts return-type)))
+     r))
   ;; inference for ((lambda with dotted rest
   (pattern ((~and lam (#%plain-lambda (x ... . rst:id) . body)) args ...)
    #:fail-when (plambda-property #'lam) #f

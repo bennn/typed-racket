@@ -5,7 +5,7 @@
 (require "../utils/utils.rkt"
          (contract-req)
          racket/match racket/list racket/generic 
-         "kinds.rkt" "constraints.rkt")
+         "kinds.rkt" "constraints.rkt" "utils.rkt")
 
 (provide prop:combinator-name gen:sc)
 
@@ -88,6 +88,10 @@
   ;; Takes a static contract and returns the corresponding contract.
   ;; The function argument should be used for sub parts of the static contract.
   [sc->contract sc f]
+  ;; sc->constructor/c: static-contract? (static-contract? -> static-contract?) -> static-contract?
+  ;; Takes a static contract and returns a weaker static contact that implements a nearly-constant-time check (to see whether the value matches the type constructor)
+  ;; The function argument should be used for sub parts of the static contract.
+  [sc->constructor/c sc f]
   ;; sc->constraints: static-contract? (static-contract? -> contract-restrict?) -> contract-restrict?
   ;; Takes a static contract and computes the constraint set for a static contract.
   ;; The function argument should be used for sub parts of the static contract.
@@ -123,6 +127,9 @@
                 (for-each (λ (v) (f v 'covariant)) values)
                 (f body 'covariant)
                 (void)]))
+           (define (sc->constructor/c v f)
+             (match-define (recursive-sc names values body) v)
+             (recursive-sc names (map f values) (f body)))
            (define (sc->constraints v f)
              (simple-contract-restrict 'impersonator))]
         #:methods gen:custom-write [(define write-proc recursive-sc-write-proc)])
@@ -135,6 +142,9 @@
           [(define (sc-map v f) v)
            (define (sc-traverse v f) (void))
            (define (sc->contract v f) (recursive-sc-use-name v))
+           (define (sc->constructor/c v f)
+             (log-static-contract-warning "recursive-sc-use ~a" v)
+             v)
            (define (sc->constraints v f) (variable-contract-restrict (recursive-sc-use-name v)))]
         #:methods gen:custom-write [(define write-proc recursive-sc-use-write-proc)])
 
@@ -158,6 +168,7 @@
   (static-contract? (static-contract? variance/c . -> . static-contract?) . -> . static-contract?)]
  [sc-traverse (static-contract? (static-contract? variance/c . -> . any/c) . -> . void?)]
  [sc->contract (static-contract? (static-contract? . -> . syntax?) . -> . syntax?)]
+ [sc->constructor/c (static-contract? (static-contract? . -> . static-contract?) . -> . static-contract?)]
  [sc->constraints
   (static-contract? (static-contract? . -> . contract-restrict?) . -> . contract-restrict?)]
  [sc-terminal-kind (static-contract? . -> . (or/c #f contract-kind?))]
