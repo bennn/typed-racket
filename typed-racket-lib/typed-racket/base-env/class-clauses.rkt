@@ -152,30 +152,30 @@
                  (~literal untyped:abstract))))
 
  (define-syntax-class class-clause
-   (pattern (clause-name:init-like-clause-names names:init-decl ...)
+   (pattern (clause-name:init-like-clause-names ~! names:init-decl ...)
             #:attr data
             (init-clause #'(clause-name names.form ...)
                          #'clause-name
                          (stx->list #'(names.ids ...))
                          (attribute names.type)
                          (attribute names.optional?)))
-   (pattern ((~literal untyped:init-rest) name:private-decl)
+   (pattern ((~literal untyped:init-rest) ~! name:private-decl)
             #:attr data (clause #'(untyped:init-rest name.form)
                                 #'untyped:init-rest
                                 (stx->list #'(name.ids))
                                 (list (attribute name.type))))
-   (pattern ((~literal untyped:field) names:field-decl ...)
+   (pattern ((~literal untyped:field) ~! names:field-decl ...)
             #:attr data (clause #'(untyped:field names.form ...)
                                 #'untyped:field
                                 (stx->list #'(names.ids ...))
                                 (attribute names.type)))
-   (pattern (clause-name:method-like-clause-names names:method-decl ...)
+   (pattern (clause-name:method-like-clause-names ~! names:method-decl ...)
             #:attr data
             (clause #'(clause-name names.form ...)
                     #'clause-name
                     (stx->list #'(names.ids ...))
                     (attribute names.type)))
-   (pattern (clause-name:private-like-clause-names names:private-decl ...)
+   (pattern (clause-name:private-like-clause-names ~! names:private-decl ...)
             #:attr data
             (clause #'(clause-name names.form ...)
                     #'clause-name

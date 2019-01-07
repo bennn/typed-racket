@@ -271,7 +271,7 @@
   #:attributes (init-entries field-entries
                 method-entries augment-entries)
   #:literal-sets (class-type-literals)
-  (pattern ((~or init untyped:init) init-clause:init-type ...)
+  (pattern ((~or init untyped:init) ~! init-clause:init-type ...)
            #:attr init-entries
                   (make-init-entries
                    #'(init-clause.label ...)
@@ -281,7 +281,7 @@
            #:attr field-entries null
            #:attr method-entries null
            #:attr augment-entries null)
-  (pattern ((~or init-field untyped:init-field)
+  (pattern ((~or init-field untyped:init-field) ~!
             init-field-clause:init-type ...)
            #:attr init-entries
                   (make-init-entries
@@ -296,7 +296,7 @@
                    parse-type)
            #:attr method-entries null
            #:attr augment-entries null)
-  (pattern ((~or field untyped:field) field-clause:field-or-method-type ...)
+  (pattern ((~or field untyped:field) ~! field-clause:field-or-method-type ...)
            #:attr init-entries null
            #:attr field-entries
                   (make-field/augment-entries
@@ -305,7 +305,7 @@
                    parse-type)
            #:attr method-entries null
            #:attr augment-entries null)
-  (pattern ((~or augment untyped:augment)
+  (pattern ((~or augment untyped:augment) ~!
             augment-clause:field-or-method-type ...)
            #:attr init-entries null
            #:attr field-entries null
