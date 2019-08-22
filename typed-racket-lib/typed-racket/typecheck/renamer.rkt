@@ -8,11 +8,12 @@
 ;; 'not-free-identifier properties
 (define (make-typed-renaming target alternate side)
   (typed-renaming (syntax-property target 'not-free-identifier=? #t)
-                  (syntax-property alternate 'not-free-identifier=? #t)))
+                  (syntax-property alternate 'not-free-identifier=? #t)
+                  side))
 
 ;; target : identifier
 ;; alternate : identifier
-(struct typed-renaming (target alternate)
+(struct typed-renaming (target alternate side)
   ;; prevent the rename transformer from expanding in
   ;; module-begin context because the typed context flag
   ;; will not be set until the module-begin
@@ -22,7 +23,7 @@
   ;; expansion time when the typed context flag is set correctly
   #:property prop:rename-transformer
   (λ (obj)
-    (if (eq? (current-typed-side) (unbox typed-context?))
+    (if (eq? (current-typed-side) (typed-renaming-side obj))
         (typed-renaming-target obj)
         (typed-renaming-alternate obj))))
 

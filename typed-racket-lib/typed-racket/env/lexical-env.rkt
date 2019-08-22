@@ -70,7 +70,8 @@
 (define (lookup-id-type/lexical i [env (lexical-env)] #:fail [fail #f])
   (env-lookup-id
    env i
-   (λ (i) (lookup-type i (λ ()
+   (λ (i)
+      (lookup-type i (λ ()
                            (cond
                              [(syntax-property i 'constructor-for)
                               => (λ (prop)
@@ -95,6 +96,12 @@
                                                  Err))
                                    (register-type i t)
                                    t)]
+                             [(unhygienic-lookup-type i #f)
+                              ;; TODO i should be a T-redirected identifier
+                              ;;  used in S code. Make this hygienic.
+                              ;;
+                              ;; TODO fails for submodule requires (typed-provide.rkt)
+                              => values]
                              [else ((or fail lookup-fail) i)]))))))
 
 (define (lookup-obj-type/lexical obj [env (lexical-env)] #:fail [fail #f])
