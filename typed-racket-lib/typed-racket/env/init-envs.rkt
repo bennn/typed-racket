@@ -27,7 +27,8 @@
          initialize-type-env
          type->sexp ; for types/printer.rkt
          object->sexp ; for testing
-         make-env-init-codes)
+         make-env-init-codes
+         make-register-type-code)
 
 (define-syntax (define-initial-env stx)
   (syntax-parse stx
@@ -442,7 +443,13 @@
 (define (tname-env-init-code)
   (make-init-code
     type-name-env-map
-    (λ (id ty) #`(register-type-name #'#,id #,(quote-type ty)))))
+    make-register-type-name-code))
+
+(define (make-register-type-code id ty)
+  #`(register-type #'#,id #,(quote-type ty)))
+
+(define (make-register-type-name-code id ty)
+  #`(register-type-name #'#,id #,(quote-type ty)))
 
 (define (tvariance-env-init-code)
   (make-init-code
@@ -457,7 +464,7 @@
 (define (env-init-code)
   (make-init-code
     type-env-map
-    (λ (id ty) #`(register-type #'#,id #,(quote-type ty)))))
+    make-register-type-code))
 
 (define (mvar-env-init-code mvar-env)
   (make-init-code

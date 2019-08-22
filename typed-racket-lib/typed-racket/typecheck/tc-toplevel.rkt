@@ -484,9 +484,10 @@
     (with-syntax*
         ([the-variable-reference (generate-temporary #'blame)]
          [mk-redirect (generate-temporary #'make-redirect)])
-      (define-values (defs export-defs provs aliasess)
+      (define-values (defs export-defs provs aliasess rtss)
         (generate-prov def-tbl provide-tbl #'the-variable-reference #'mk-redirect))
       (define aliases (apply append aliasess))
+      (define rts (apply append rtss))
       (define/with-syntax (new-defs ...) defs)
       (define/with-syntax (new-export-defs ...) export-defs)
       (define/with-syntax (new-provs ...) provs)
@@ -510,6 +511,8 @@
                          typed-racket/types/struct-table typed-racket/types/abbrev
                          (rename-in racket/private/sort [sort raw-sort]))
                 #,@(make-env-init-codes)
+                #,@(for/list ((rt (in-list rts)))
+                     (make-register-type-code (car rt) (cadr rt)))
                 #,@(for/list ([a (in-list aliases)])
                      (match-define (list from to) a)
                      #`(add-alias (quote-syntax #,from) (quote-syntax #,to))))))
