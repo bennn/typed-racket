@@ -27,6 +27,5 @@
 - [ ] fsmoo (population) quadU (utils) quadT (core-types) forth (command) slow to compile
       even typed maybe
 
-- [ ] make-typed-renaming needs 3 args but sometimes gets 2 ... how? (in-array.rkt)
 - [ ] unhygienic S require T identifier
       use contract-def/provide-property ?
