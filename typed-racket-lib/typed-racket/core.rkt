@@ -29,7 +29,6 @@
          ...
          forms ...)
      (let ([pmb-form (syntax/loc stx (#%plain-module-begin forms ...))])
-       ;; TODO enable optimizer
        (parameterize ([optimize? (or (and (not (attribute opt?)) (optimize?))
                                      (and (attribute opt?) (syntax-e (attribute opt?))))]
                       [with-refinements? (or (attribute refinement-reasoning?)
