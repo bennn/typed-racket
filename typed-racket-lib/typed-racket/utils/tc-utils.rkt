@@ -42,8 +42,7 @@ don't depend on any other portion of the system
          id-from?
          id-from
 
-         ;; parameter to toggle "transient" runtime type checking
-         locally-defensive?
+         locally-defensive? ;; parameter to toggle "transient" runtime type checking
          current-typed-side
 
          (all-from-out "disappeared-use.rkt"))
