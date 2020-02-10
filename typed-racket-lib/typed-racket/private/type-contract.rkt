@@ -377,7 +377,8 @@
                           (for/hash ([(obj coeff) (in-terms terms)])
                             (values (obj->sc obj) coeff)))]))
       (define (only-untyped sc)
-        (if (from-typed? typed-side)
+        (if (and (from-typed? typed-side)
+                 (not (locally-defensive?)))
             (and/sc sc any-wrap/sc)
             sc))
       (match type
@@ -416,7 +417,7 @@
                (lookup-name-sc type typed-side)])]
        ;; Ordinary type applications or struct type names, just resolve
        [(or (App: _ _) (Name/struct:)) (t->sc (resolve-once type))]
-       [(Univ:) (if (from-typed? typed-side) any-wrap/sc any/sc)]
+       [(Univ:) (only-untyped any/sc)]
        [(Bottom:) (or/sc)]
        [(Listof: elem-ty) (listof/sc (t->sc elem-ty))]
        ;; This comes before Base-ctc to use the Value-style logic
@@ -632,7 +633,7 @@
        [(Instance: (Class: _ _ fields methods _ _))
         (match-define (list (list field-names field-types) ...) fields)
         (match-define (list (list public-names public-types) ...) methods)
-        (object/sc (from-typed? typed-side)
+        (object/sc (from-typed? typed-side) ;; TODO 2020-02-10 probably need to keep side info
                    (append (map (λ (n sc) (member-spec 'method n sc))
                                 public-names (map t->sc/meth public-types))
                            (map (λ (n sc) (member-spec 'field n sc))
@@ -837,7 +838,8 @@
                      (map conv opt-kws))))
          (define range (map t->sc rngs))
          (define rest (and rst (t->sc/neg rst)))
-         (function/sc (from-typed? typed-side) (process-dom mand-args) opt-args mand-kws opt-kws rest range))
+         (function/sc (from-typed? typed-side) ;; TODO 2020-02-10 probably need to keep side info
+                      (process-dom mand-args) opt-args mand-kws opt-kws rest range))
        (handle-arrow-range first-arrow convert-arrow)]
       [else
        (define ((f case->) a)
@@ -854,7 +856,7 @@
                           (and rst (t->sc/neg rst))
                           (map t->sc rngs))
                   (function/sc
-                    (from-typed? typed-side)
+                    (from-typed? typed-side) ;; TODO 2020-02-10
                     (process-dom (map t->sc/neg dom))
                     null
                     (map conv mand-kws)
@@ -893,7 +895,7 @@
                                    (remove-duplicates
                                     (apply append (map free-ids rngs))
                                     free-identifier=?)))
-          (->i/sc (from-typed? typed-side)
+          (->i/sc (from-typed? typed-side) ;; TODO 2020-02-10
                   ids
                   dom*
                   dom-deps

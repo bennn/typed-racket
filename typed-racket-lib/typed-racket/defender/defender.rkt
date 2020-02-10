@@ -702,7 +702,7 @@
       (raise-user-error 'dynamic-typecheck "failed to convert arrow type ~a to chaperone because ~a" dom-type (syntax-e dom-stx)))
     (match-define (list defs ctc-stx)
       (type->contract dom-type fail
-        #:typed-side #t
+        #:typed-side #t ;; TODO 2020-02-10 should typed-side be #f?
         #:kind 'impersonator
         #:cache ctc-cache
         #:sc-cache sc-cache
