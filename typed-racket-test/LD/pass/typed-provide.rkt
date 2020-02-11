@@ -2,10 +2,6 @@
 
 ;; Test providing a value to an untyped context
 
-;; 2019-07-22 is this file correct? what's it testing?
-;; - (f 0) should be a contract error
-;; - so should evaluating the body of 'c
-
 (module a typed/racket/base
         (provide f)
         (define (f (x : (Boxof (Boxof Integer))))
@@ -18,13 +14,15 @@
 (module c typed/racket/base #:locally-defensive
         (require (submod ".." a))
         (require/typed (submod ".." b) (bbx (Boxof (Boxof Integer))))
-        (provide do-c)
+        (provide do-c bbx)
         (define (do-c)
           (f bbx)))
 
 (require 'a rackunit)
 (check-exn #rx"f: contract violation"
            (lambda () (f 0)))
+
 (require 'c)
+(check-not-exn (lambda () (unbox bbx)))
 (check-exn #rx"f: contract violation"
            do-c)

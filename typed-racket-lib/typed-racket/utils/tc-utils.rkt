@@ -316,5 +316,7 @@ don't depend on any other portion of the system
 (define locally-defensive? (make-parameter #f))
 
 (define (current-typed-side)
-  (if (locally-defensive?) 'tagged 'typed))
+  (if (unbox typed-context?)
+    (if (locally-defensive?) 'tagged 'typed)
+    'untyped))
 

@@ -122,6 +122,7 @@
   (define depth
     (if (locally-defensive?)
       0 ;;bg using '0' adds some overhead, but the contracts are all any/c
+        ;; TODO what does this mean? any/c after optimization? else seems wrong
       #f))
   (define result
 #|bg|#    (type->contract type

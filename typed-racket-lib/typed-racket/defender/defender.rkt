@@ -706,7 +706,7 @@
         #:kind 'impersonator
         #:cache ctc-cache
         #:sc-cache sc-cache
-        #:contract-depth 1))
+        #:contract-depth 0)) ;; TODO bg 1 or 0
     (for-each register-ignored! defs)
     (set-box! extra-defs* (append (reverse defs) (unbox extra-defs*)))
     (with-syntax ([ctc ctc-stx]
