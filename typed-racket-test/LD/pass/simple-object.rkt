@@ -1,6 +1,5 @@
 #lang typed/racket #:locally-defensive
-
-;; Unsupported: type-constructor checks for class, interface, and object types
+(require typed/rackunit)
 
 (define-type C% (Class (f (-> Integer Integer))))
 
@@ -14,4 +13,4 @@
   (define o (vector-ref vo 0))
   (send o f (send o f 2)))
 
-(g (vector (new c%)))
+(check-equal? (g (vector (new c%))) 4)
