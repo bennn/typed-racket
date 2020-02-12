@@ -666,52 +666,22 @@
                      (dynamic-require mpi+ #f)
                      #t)))))))))
 
-;; protect-domain : TypeMap (Syntaxof List) Hash Hash (Boxof Syntax) -> (Syntaxof List)
-;; Return a copy of `dom-stx` that has tag-safety checks.
-;;  (these checks might be chaperones!)
-(define (protect-domain dom-map dom-stx ctc-cache sc-cache extra-defs*)
-  (define dom+
-    (let loop ([dom* (syntax-e dom-stx)]
-               [position 0])
-      (cond
-       [(null? dom*)
-        '()]
-       [(keyword? (syntax-e (car dom*)))
-        (define k-stx (car dom*))
-        (define v-stx (cadr dom*))
-        (define t (type-map-ref dom-map (syntax-e k-stx)))
-        (define v+ (protect-arg t v-stx ctc-cache sc-cache extra-defs*))
-        (list* k-stx v+ (loop (cddr dom*) position))]
-       [else
-        (define t (type-map-ref dom-map position))
-        (define v+ (protect-arg t (car dom*) ctc-cache sc-cache extra-defs*))
-        (cons v+ (loop (cdr dom*) (+ position 1)))])))
-  (with-syntax ([dom+ dom+])
-    (syntax/loc dom-stx dom+)))
-
-;; protect-arg : (U #f Type) Syntax Hash Hash (Boxof Syntax) -> Syntax
-(define (protect-arg dom-type dom-stx ctc-cache sc-cache extra-defs*)
+(define (protect-domain dom-type dom-stx ctc-cache sc-cache extra-defs*)
   (cond
    [(not dom-type)
     dom-stx]
-   [(not (needs-domain-check? dom-type))
-    dom-stx]
    [else
-    ;; TODO should put this in a function ... because `contract` is too expensive
-    (define (fail #:reason r)
-      (raise-user-error 'dynamic-typecheck "failed to convert arrow type ~a to chaperone because ~a" dom-type (syntax-e dom-stx)))
-    (match-define (list defs ctc-stx)
-      (type->contract dom-type fail
-        #:typed-side #t ;; TODO 2020-02-10 should typed-side be #f?
-        #:kind 'impersonator
-        #:cache ctc-cache
-        #:sc-cache sc-cache
-        #:contract-depth 0)) ;; TODO bg 1 or 0
-    (for-each register-ignored! defs)
-    (set-box! extra-defs* (append (reverse defs) (unbox extra-defs*)))
+    (define ctc-stx
+      (type->flat-contract dom-type ctc-cache sc-cache extra-defs*))
+    (define err-msg
+      (parameterize ([error-print-width 20])
+        (format "~e : ~a" (#%plain-app syntax->datum dom-stx) dom-type)))
     (with-syntax ([ctc ctc-stx]
+                  [err err-msg]
                   [dom dom-stx])
-      (syntax/loc dom-stx (contract ctc dom 'typed-world 'dynamic-typecheck)))]))
+      (syntax/loc dom-stx
+        (unless (#%plain-app ctc dom)
+          (#%plain-app error 'dynamic-typecheck (#%plain-app format #;'"die" '"got ~s in ~a" dom 'err)))))]))
 
 ;; protect-codomain : (U #f Tc-Results) (Syntaxof List) Hash Hash (Boxof Syntax) -> (Syntaxof List)
 (define (protect-codomain cod-tc-res app-stx ctc-cache sc-cache extra-defs*)
@@ -793,7 +763,6 @@
 (define (protect-formals dom-map formals ctc-cache sc-cache extra-defs*)
   (define xs
     (let loop ([dom* formals] [position 0])
-      ;; TODO ... kinda similar to protect-domain
       ;;  wow this is off the hook  ... sometimes called with (a b (c . d))
       (cond
        [(null? dom*)
@@ -802,7 +771,7 @@
         (cond
          [(identifier? dom*)
           (define t (type-map-ref dom-map REST-KEY))
-          (list (protect-codomain t (datum->syntax formals dom*) ctc-cache sc-cache extra-defs*))]
+          (list (protect-domain t (datum->syntax formals dom*) ctc-cache sc-cache extra-defs*))]
          [(syntax? dom*)
           (loop (syntax-e dom*) position)]
          [else
@@ -816,7 +785,7 @@
        [else
         (define var (formal->var (car dom*)))
         (define t (type-map-ref dom-map position))
-        (cons (protect-codomain t var ctc-cache sc-cache extra-defs*)
+        (cons (protect-domain t var ctc-cache sc-cache extra-defs*)
               (loop (cdr dom*) (+ position 1)))])))
   (datum->syntax formals xs))
 
@@ -852,7 +821,7 @@
    [a
      #false]))
 
-(define (needs-domain-check? t)
+#;(define (needs-domain-check? t)
   ;; TODO recursion is similar to `function-type?` in `type-contract.rkt`
   (match t
    [(Fun: arrs)
