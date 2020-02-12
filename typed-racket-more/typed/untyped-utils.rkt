@@ -18,10 +18,9 @@
 (define-syntax (define-typed/untyped-identifier stx)
   (syntax-parse stx
     [(_ name:id typed-name:id untyped-name:id)
-     #:with side (current-typed-side)
      (syntax/loc stx
        (define-syntax name
-         (make-typed-renaming #'typed-name #'untyped-name 'side)))]))
+         (make-typed-renaming #'typed-name #'untyped-name 'typed)))]))
 
 (define-for-syntax (freshen ids)
   (stx-map (lambda (id) ((make-syntax-introducer) id)) ids))
