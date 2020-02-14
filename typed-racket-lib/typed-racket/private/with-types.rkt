@@ -42,7 +42,7 @@
   (unless (not old-context)
     (tc-error/stx stx "with-type cannot be used in a typed module."))
   (define typed-sym (current-typed-side))
-  (set-box! typed-context? typed-sym)
+  (set-box! typed-context? #t)
   (do-standard-inits)
   (define fv-types (for/list ([t (in-syntax fvtys)])
                      (parse-type t)))

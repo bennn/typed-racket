@@ -99,8 +99,6 @@
                              [(unhygienic-lookup-type i #f)
                               ;; TODO i should be a T-redirected identifier
                               ;;  used in S code. Make this hygienic.
-                              ;;
-                              ;; TODO fails for submodule requires (typed-provide.rkt)
                               => values]
                              [else ((or fail lookup-fail) i)]))))))
 
