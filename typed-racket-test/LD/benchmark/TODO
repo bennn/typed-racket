@@ -9,6 +9,10 @@
       opened issue in TR (), hacked-around for LD for now
       EDIT closed the TR issue, hack validated
 - [X] make-typed-renaming needs 3 args but sometimes gets 2 ... how? (in-array.rkt)
+- [X] fsm fsmoo --- need to check `type->flat-contract` returns #f
+      application: not a procedure; expected a procedure that can be applied to arguments given: #f arguments...: 0
+- [X] jpeg, can't use for/array because untype-contract restricts Transient
+      uses, but not typed ones
 
 - [ ] quadU errors in untyped and typed, by cadr
       error changed after revert x4:
@@ -26,6 +30,7 @@
 
 - [ ] fsmoo (population) quadU (utils) quadT (core-types) forth (command) slow to compile
       even typed maybe
+      - fsmoo seems much better 2020-02-14 ... forth BAD
 
 - [ ] unhygienic S require T identifier
       use contract-def/provide-property ?
