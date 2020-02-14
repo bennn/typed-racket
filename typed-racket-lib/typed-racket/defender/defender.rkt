@@ -667,12 +667,12 @@
                      #t)))))))))
 
 (define (protect-domain dom-type dom-stx ctc-cache sc-cache extra-defs*)
+  (define ctc-stx
+    (and dom-type (type->flat-contract dom-type ctc-cache sc-cache extra-defs*)))
   (cond
-   [(not dom-type)
+   [(not ctc-stx)
     dom-stx]
    [else
-    (define ctc-stx
-      (type->flat-contract dom-type ctc-cache sc-cache extra-defs*))
     (define err-msg
       (parameterize ([error-print-width 20])
         (format "~e : ~a" (#%plain-app syntax->datum dom-stx) dom-type)))
