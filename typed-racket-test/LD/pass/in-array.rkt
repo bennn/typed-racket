@@ -4,7 +4,7 @@
 ;; inspired by jpeg benchmark
 
 
-(require math/array)
+(require (only-in math/array in-array Array))
 
 (: read-dct-scan (-> (Array Integer) Void))
 (define (read-dct-scan dest)
