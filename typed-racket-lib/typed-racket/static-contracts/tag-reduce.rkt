@@ -34,6 +34,11 @@
 (define ((sc-reduce fuel) sc _variance)
   (cond
    [(zero? fuel)
+    (void
+      ;; ... need to flatten auxiliaries in name/scs
+      ;; ... 2020-02-17 when this call is missing, possible to infinite-loop (forth/command.rkt)
+      ;; TODO definitely a nicer way to do this
+      (reduce-name-defs! recur))
     (sc->tag/sc sc recur)]
    [else
     (define fuel--
@@ -46,12 +51,5 @@
         fuel]
        [_
         (- fuel 1)]))
-    (when (= 1 fuel)
-      ;; if it's a name, need to flatten auxiliaries
-      ;; TODO definitely a nicer way to do this
-      (match sc
-       [(name/sc: _)
-        (sc->tag/sc sc recur)]
-       [_ (void)]))
     (sc-map sc (sc-reduce fuel--))]))
 

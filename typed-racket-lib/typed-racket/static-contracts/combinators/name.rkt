@@ -24,7 +24,8 @@
 (provide with-new-name-tables
          name/sc:
          lookup-name-defined
-         set-name-defined)
+         set-name-defined
+         reduce-name-defs!)
 
 (provide/cond-contract
  [get-all-name-defs
@@ -67,6 +68,12 @@
     (define gen-names (map name-combinator-gen-name scs))
     (cons gen-names defs)))
 
+(define (reduce-name-defs! recur)
+  ;; TODO use `get-all-name-defs` ?
+  (let ([tbl (name-defs-table)])
+    (for ([(k v*) (in-hash tbl)])
+      (hash-set! tbl k (map recur v*)))))
+
 (define (lookup-name-sc type typed-side)
   (define result (hash-ref (name-sc-table) type #f))
   (and result
@@ -103,10 +110,6 @@
    (define (sc->contract v f)
      (name-combinator-gen-name v))
    (define (sc->tag/sc v f)
-     ;;bg; flatten all auxilliary defs
-     (let ([tbl (name-defs-table)])
-       (for ([(k v*) (in-hash tbl)])
-         (hash-set! tbl k (map f v*))))
      v)
    (define (sc->constraints v f)
      (variable-contract-restrict (name-combinator-gen-name v)))])
