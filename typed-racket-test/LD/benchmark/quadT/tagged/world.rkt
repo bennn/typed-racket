@@ -74,6 +74,7 @@
 
 (require
  "../base/core-types.rkt"
+ "../base/macro-s.rkt"
  (for-syntax
   typed/racket/base
   racket/syntax))
