@@ -14,6 +14,7 @@
 (require
   require-typed-check
   "../base/core-types.rkt"
+  "../base/macro-s.rkt"
   "../base/quad-types.rkt"
   "ocm-struct-adapted.rkt"
   "penalty-struct-adapted.rkt"

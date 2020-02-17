@@ -7,6 +7,7 @@
 (require
  require-typed-check
  "../base/core-types.rkt"
+ "../base/macro-s.rkt"
  "../base/quad-types.rkt"
  (only-in racket/list filter-not)
  (only-in typed/racket/draw Font% make-font current-ps-setup pdf-dc% the-color-database)

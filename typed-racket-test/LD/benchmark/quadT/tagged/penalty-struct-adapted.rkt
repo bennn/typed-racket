@@ -6,6 +6,7 @@
 
 (require
   require-typed-check
+  "../base/macro-s.rkt"
   "../base/core-types.rkt")
 
 (require/typed/check "penalty-struct.rkt"

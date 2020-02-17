@@ -13,6 +13,7 @@
   (only-in racket/sequence sequence->list)
   (only-in math/flonum fl+ fl fl>)
   "../base/core-types.rkt"
+  "../base/macro-t.rkt"
   "../base/quad-types.rkt"
 )
 (require/typed/check "quads.rkt"

@@ -50,6 +50,7 @@
  (only-in racket/string string-append*)
  racket/list
  "../base/quad-types.rkt"
+ "../base/macro-t.rkt"
  "../base/core-types.rkt")
 
 ;; =============================================================================
