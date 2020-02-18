@@ -2,10 +2,10 @@
 
 ;; TODO straighten out tagged-world vs. typed-world !!!!!
 ;; (remember we are a LONG WAY from actually combining typed & tagged, need to
-;;  - test occurrence-type optimizer
-;;  - build erasure-racket
-;;  - work out 3-sound theory
-;;  - finally, build)
+;;  - [ ] build + test occurrence-type optimizer
+;;  - [ ] build erasure-racket
+;;  - [X] work out 3-sound theory
+;;  - [ ] finally, build)
 
 (require
   (only-in racket/format ~a)
@@ -851,10 +851,8 @@
   (match-define (list defs ctc)
     (type->contract t fail
       #:typed-side #f
-      #:kind 'impersonator ;;bg; don't care, depth=0 should minimize it
       #:cache ctc-cache
-      #:sc-cache sc-cache
-      #:contract-depth 0))
+      #:sc-cache sc-cache))
   (for-each register-ignored! defs)
   (set-box! extra-defs* (append (reverse defs) (unbox extra-defs*)))
   (if (free-identifier=? ctc #'any/c) #f ctc))

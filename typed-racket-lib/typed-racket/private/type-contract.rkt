@@ -119,21 +119,8 @@
   (match-define (list type untyped-id orig-id blame-id)
                 (contract-def/provide-property stx))
   (define failure-reason #f)
-  (define depth
-    (if (locally-defensive?)
-      0 ;;bg using '0' adds some overhead, but the contracts are all any/c
-        ;; TODO what does this mean? any/c after optimization? else seems wrong
-      #f))
   (define result
-#|bg|#    (type->contract type
-#|bg|#                    #:typed-side #t
-#|bg|#                    #:kind 'impersonator
-#|bg|#                    #:cache cache
-#|bg|#                    #:sc-cache sc-cache
-#|bg|#                    #:contract-depth depth
-#|bg|#                    ;; FIXME: get rid of this interface, make it functional
-#|bg|#                    (λ (#:reason [reason #f]) (set! failure-reason reason)))
-    #;(type->contract type
+    (type->contract type
                     #:typed-side #t
                     #:kind 'impersonator
                     #:cache cache
@@ -307,6 +294,10 @@
                         #:cache [cache (make-hash)])
   (let/ec escape
     (define (fail #:reason [reason #f]) (escape (init-fail #:reason reason)))
+    (define sc
+      (type->static-contract ty fail
+                             #:typed-side typed-side
+                             #:cache sc-cache))
     (instantiate/optimize
      (type->static-contract ty #:typed-side typed-side fail)
      fail
@@ -315,7 +306,7 @@
      #:trusted-positive typed-side
      #:trusted-negative (not typed-side))))
 
-#|bg|# (define any-wrap/sc (chaperone/sc #'any-wrap/c #:tag #'any/c))
+(define any-wrap/sc (chaperone/sc #'any-wrap/c #:tag #'any/c))
 
 (define (no-duplicates l)
   (= (length l) (length (remove-duplicates l))))
@@ -562,8 +553,8 @@
                (fail #:reason "contract generation not supported for Self")]
        ;; TODO
        [(F: v)
-#|bg|#        (if (equal? contract-depth 0) ;; bg do we really need this?
-#|bg|#          any/sc
+        (if (locally-defensive?)
+          any/sc ;; bg do we really need this?
           (triple-lookup
            (hash-ref recursive-values v
                      (λ () (error 'type->static-contract
