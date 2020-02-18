@@ -263,25 +263,19 @@
 (define (from-typed? side)
   (case side
    [(typed both) #t]
-   [(untyped tagged) #f]
+   [(untyped) #f]
    [else (raise-argument-error 'from-typed? "side?" side)]))
 
 (define (from-untyped? side)
   (case side
    [(untyped both) #t]
-   [(typed tagged) (not (eq? side (current-typed-side)))]
+   [(typed) #f]
    [else (raise-argument-error 'from-untyped? "side?" side)]))
-
-(define (from-tagged? side)
-  (case side
-   [(tagged) #t]
-   [(untyped both typed) #f]
-   [else (raise-argument-error 'from-tagged? "side?" side)]))
 
 (define (flip-side side)
   (case side
-   [(typed tagged) 'untyped]
-   [(untyped) (current-typed-side)]
+   [(typed) 'untyped]
+   [(untyped) 'typed]
    [(both) 'both]
    [else (raise-argument-error 'flip-side "side?" side)]))
 
@@ -320,7 +314,7 @@
 (define (triple-lookup trip side)
   (case side
     ((untyped) (triple-untyped trip))
-    ((typed tagged) (triple-typed trip))
+    ((typed) (triple-typed trip))
     ((both) (triple-both trip))
     (else (raise-argument-error 'triple-lookup "side?" 1 trip side))))
 (define (same sc)
@@ -330,7 +324,7 @@
                                #:typed-side [typed-side #t])
   (let/ec return
     (define (fail #:reason reason) (return (init-fail #:reason reason)))
-    (let loop ([type type] [typed-side (if typed-side (current-typed-side) 'untyped)] [recursive-values (hash)])
+    (let loop ([type type] [typed-side (if typed-side 'typed 'untyped)] [recursive-values (hash)])
       (define (t->sc t #:recursive-values (recursive-values recursive-values))
         (loop t typed-side recursive-values))
       (define (t->sc/neg t #:recursive-values (recursive-values recursive-values))
@@ -374,8 +368,7 @@
                           (for/hash ([(obj coeff) (in-terms terms)])
                             (values (obj->sc obj) coeff)))]))
       (define (only-untyped sc)
-        (if (and (from-typed? typed-side)
-                 (not (locally-defensive?)))
+        (if (from-typed? typed-side)
             (and/sc sc any-wrap/sc)
             sc))
       (match type
@@ -409,7 +402,7 @@
                (define resolved-name (resolve-once type))
                (register-name-sc type
                                  (λ () (reduce-sc (loop resolved-name 'untyped rv)))
-                                 (λ () (reduce-sc (loop resolved-name (current-typed-side) rv)))
+                                 (λ () (reduce-sc (loop resolved-name 'typed rv)))
                                  (λ () (reduce-sc (loop resolved-name 'both rv))))
                (lookup-name-sc type typed-side)])]
        ;; Ordinary type applications or struct type names, just resolve
@@ -547,31 +540,30 @@
        [(Promise: t)
         (promise/sc (t->sc t))]
        [(Opaque: p?)
-#|bg|#        (flat/sc p?) ;; bg performance
-        #;(flat/sc #`(flat-named-contract (quote #,(syntax-e p?)) #,p?))]
+        ;; bg performance
+        (flat/sc p?)]
        [(Continuation-Mark-Keyof: t)
         (continuation-mark-key/sc (t->sc t))]
        ;; TODO: this is not quite right for case->
        [(Prompt-Tagof: s (Fun: (list (Arrow: ts _ _ _))))
         (prompt-tag/sc (map t->sc ts) (t->sc s))]
-       [(F: v) #:when (string-prefix? (symbol->string v) "self-")
-               (fail #:reason "contract generation not supported for Self")]
+       [(F: v)
+        #:when (string-prefix? (symbol->string v) "self-")
+        (fail #:reason "contract generation not supported for Self")]
        ;; TODO
        [(F: v)
-        (if (locally-defensive?)
-          any/sc ;; bg do we really need this?
-          (triple-lookup
-           (hash-ref recursive-values v
-                     (λ () (error 'type->static-contract
-                                  "Recursive value lookup failed. ~a ~a" recursive-values v)))
-           typed-side))]
+        (triple-lookup
+         (hash-ref recursive-values v
+                   (λ () (error 'type->static-contract
+                                "Recursive value lookup failed. ~a ~a" recursive-values v)))
+         typed-side)]
        [(VectorTop:) (only-untyped vector?/sc)]
        [(BoxTop:) (only-untyped box?/sc)]
        [(ChannelTop:) (only-untyped channel?/sc)]
        [(Async-ChannelTop:) (only-untyped async-channel?/sc)]
        [(MPairTop:) (only-untyped mpair?/sc)]
        [(ThreadCellTop:) (only-untyped thread-cell?/sc)]
-       [(ThreadCell: _) (when-tagged thread-cell?/sc)]
+       [(ThreadCell: _) (fail #:reason "contract generation not supported for this type")]
        [(Prompt-TagTop:) (only-untyped prompt-tag?/sc)]
        [(Continuation-Mark-KeyTop:) (only-untyped continuation-mark-key?/sc)]
        [(ClassTop:) (only-untyped class?/sc)]
@@ -600,12 +592,12 @@
                    (list both-n*)
                    (list (loop b 'both rv))
                    (recursive-sc-use both-n*))]
-          [(typed untyped tagged)
+          [(typed untyped)
            (define (rec b side rv)
              (loop b side rv))
            ;; TODO not fail in cases that don't get used
            (define untyped (rec b 'untyped rv))
-           (define typed (rec b (current-typed-side) rv))
+           (define typed (rec b 'typed rv))
            (define both (rec b 'both rv))
 
            (recursive-sc
@@ -624,7 +616,7 @@
                (define resolved (make-Instance (resolve-once t)))
                (register-name-sc type
                                  (λ () (reduce-sc (loop resolved 'untyped rv)))
-                                 (λ () (reduce-sc (loop resolved (current-typed-side) rv)))
+                                 (λ () (reduce-sc (loop resolved 'typed rv)))
                                  (λ () (reduce-sc (loop resolved 'both rv))))
                (lookup-name-sc type typed-side)])]
        [(Instance: (Class: _ _ fields methods _ _))
@@ -762,6 +754,292 @@
        [_
         (fail #:reason "contract generation not supported for this type")]))))
 
+(define (type->static-contract/transient type init-fail
+                                         #:typed-side [_typed-side #t]
+                                         #:cache [sc-cache (make-hash)])
+  ;; TODO delete fail? let/ec?
+  (define typed-side 'both)
+  (let/ec return
+    (define (fail #:reason reason) (return (init-fail #:reason reason)))
+    (let loop ([type type] [recursive-values (hash)])
+      (define (t->sc t #:recursive-values (recursive-values recursive-values))
+        (loop t recursive-values))
+      (define (prop->sc p)
+        ;; TODO need this?
+        ;;(match p [(TypeProp: o (app t->sc tc)) (cond [(not (equal? flat-sym (get-max-contract-kind tc))) (fail #:reason "proposition contract generation not supported for non-flat types")] [else (is-flat-type/sc (obj->sc o) tc)])] [(NotTypeProp: o (app t->sc tc)) (cond [(not (equal? flat-sym (get-max-contract-kind tc))) (fail #:reason "proposition contract generation not supported for non-flat types")] [else (not-flat-type/sc (obj->sc o) tc)])] [(LeqProp: (app obj->sc lhs) (app obj->sc rhs)) (leq/sc lhs rhs)] ;; TODO: check for (<= x y) and (<= y x) and generate and = instead of two <= [(AndProp: ps) (and-prop/sc (map prop->sc ps))] [(OrProp: ps) (or-prop/sc (map prop->sc ps))])
+        (raise-user-error 'transient:prop->sc "not implemented"))
+      (define (obj->sc o)
+        ;; TODO need this?
+        ;;(match o [(Path: pes (? identifier? x)) (for/fold ([obj (id/sc x)]) ([pe (in-list (reverse pes))]) (match pe [(CarPE:) (acc-obj/sc #'car obj)] [(CdrPE:) (acc-obj/sc #'cdr obj)] [(VecLenPE:) (acc-obj/sc #'vector-length obj)]))] [(LExp: const terms) (linear-exp/sc const (for/hash ([(obj coeff) (in-terms terms)]) (values (obj->sc obj) coeff)))])
+        (raise-user-error 'transient:obj->sc "not implemented"))
+      (cached-match
+       sc-cache type typed-side
+       ;; Applications of implicit recursive type aliases
+       ;;
+       ;; We special case this rather than just resorting to standard
+       ;; App resolution (see case below) because the resolution process
+       ;; will make type->static-contract infinite loop.
+       [(App: (Name: name _ #f) _)
+        ;; Key with (cons name 'app) instead of just name because the
+        ;; application of the Name is not necessarily the same as the
+        ;; Name type alone
+        (cond [(hash-ref recursive-values (cons name 'app) #f)]
+              [else
+               (define name* (generate-temporary name))
+               (recursive-sc (list name*)
+                             (list
+                              (t->sc (resolve-once type)
+                                     #:recursive-values
+                                     (hash-set recursive-values
+                                               (cons name 'app)
+                                               (recursive-sc-use name*))))
+                             (recursive-sc-use name*))])]
+       ;; Implicit recursive aliases
+       [(Name: name-id args #f)
+        (cond [;; recursive references are looked up in a special table
+               ;; that's handled differently by sc instantiation
+               (lookup-name-sc type typed-side)]
+              [else
+               (define rv recursive-values)
+               (define resolved-name (resolve-once type))
+               (register-name-sc type
+                                 (λ () any/sc)
+                                 (λ () any/sc)
+                                 (λ () (reduce-sc (t->sc resolved-name #:recursive-values rv))))
+               (lookup-name-sc type typed-side)])]
+       ;; Ordinary type applications or struct type names, just resolve
+       [(or (App: _ _) (Name/struct:)) (t->sc (resolve-once type))]
+       [(Univ:) any/sc]
+       [(Bottom:) (or/sc)]
+       [(Listof: _) list?/sc]
+       ;; This comes before Base-ctc to use the Value-style logic
+       ;; for the singleton base types (e.g. -Null, 1, etc)
+       [(Val-able: v)
+        (cond
+         [(eof-object? v)
+          (flat/sc #'eof-object?)]
+         [(void? v)
+          (flat/sc #'void?)]
+         [(or (symbol? v) (boolean? v) (keyword? v) (null? v))
+          (flat/sc #`(λ (x) (eq? '#,v x)))]
+         [else #;(or (number? v) (regexp? v) (string? v) (bytes? v) (char? v))
+          (flat/sc #`(λ (x) (equal? '#,v x)))])]
+       [(Base-name/contract: sym ctc) (flat/sc ctc)]
+       [(Distinction: _ _ t) ; from define-new-subtype
+        (t->sc t)]
+       [(Refinement: par p?)
+        (and/sc (t->sc par) (flat/sc p?))]
+       [(BaseUnion: bbits nbits)
+        (define numeric (make-BaseUnion #b0 nbits))
+        (define other-scs (map t->sc (bbits->base-types bbits)))
+        (define numeric-sc (numeric-type->static-contract numeric))
+        (if numeric-sc
+            (apply or/sc numeric-sc other-scs)
+            (apply or/sc (append other-scs (map t->sc (nbits->base-types nbits)))))]
+       [(? Union? t)
+        (match (normalize-type t)
+          [(Union-all-flat: elems)
+           (apply or/sc (map t->sc elems))]
+          [t (t->sc t)])]
+       [(Intersection: ts raw-prop)
+        (define scs (map t->sc ts))
+        (define prop/sc
+          (cond
+            [(TrueProp? raw-prop) #f]
+            [else (define x (genid))
+                  (define prop (Intersection-prop (-id-path x) type))
+                  (define name (format "~a" `(λ (,(syntax->datum x)) ,prop)))
+                  (flat-named-lambda/sc name
+                                        (id/sc x)
+                                        (prop->sc prop))]))
+        (apply and/sc (append scs (if prop/sc (list prop/sc) '())))]
+       [(or (? Fun? t)
+            (? DepFun? t))
+        (match t
+         [(Fun: arrows)
+          (apply or/sc (map arrow->sc/transient arrows))]
+         [(DepFun/ids: _ dom _ _)
+          (define num-mand-args (length dom))
+          (make-procedure-arity-flat/sc num-mand-args '() '())])]
+       [(Set: _) set?/sc]
+       [(Sequence: _) sequence?/sc]
+       [(SequenceTop:) sequence?/sc]
+       [(Immutable-HeterogeneousVector: ts)
+        (immutable-vector-length/sc (length ts))]
+       [(Immutable-Vector: _)
+        immutable-vector?/sc]
+       [(Mutable-HeterogeneousVector: ts)
+        (mutable-vector-length/sc (length ts))]
+       [(Mutable-Vector: _)
+        mutable-vector?/sc]
+       [(Mutable-VectorTop:)
+        mutable-vector?/sc]
+       [(Box: _)
+        box?/sc]
+       [(Pair: _ _)
+        cons?/sc]
+       [(Async-Channel: _)
+        async-channel?/sc]
+       [(Promise: _)
+        promise?/sc]
+       [(Opaque: p?)
+        (flat/sc p?)]
+       [(Continuation-Mark-Keyof: _)
+        continuation-mark-key?/sc]
+       [(Continuation-Mark-KeyTop:)
+        continuation-mark-key?/sc]
+       [(Prompt-Tagof: _ _)
+        prompt-tag?/sc]
+       [(Prompt-TagTop:)
+        prompt-tag?/sc]
+       [(F: v)
+        ;;bg TODO need to check anything???
+        ;(triple-lookup
+        ; (hash-ref recursive-values v
+        ;           (λ () (error 'type->static-contract
+        ;                        "Recursive value lookup failed. ~a ~a" recursive-values v)))
+        ; typed-side)
+        any/sc]
+       [(VectorTop:) vector?/sc]
+       [(BoxTop:) box?/sc]
+       [(ChannelTop:) channel?/sc]
+       [(Async-ChannelTop:) async-channel?/sc]
+       [(MPairTop:) mpair?/sc]
+       [(ThreadCellTop:) thread-cell?/sc]
+       [(ThreadCell: _) thread-cell?/sc]
+       [(ClassTop:) class?/sc]
+       [(UnitTop:) unit?/sc]
+       [(StructTypeTop:) struct-type?/sc]
+       [(StructTop: s) (flat/sc #'struct?)] ;;bg TODO test
+       [(? Poly?)
+        (t->sc/poly type fail typed-side recursive-values t->sc)]
+       [(? PolyDots?)
+        (t->sc/polydots type fail typed-side recursive-values t->sc)]
+       [(? PolyRow?)
+        (t->sc/polyrow type fail typed-side recursive-values t->sc)]
+       [(Mu: n b)
+        (match-define (and n*s (list untyped-n* typed-n* both-n*)) (generate-temporaries (list n n n)))
+        (define rv
+          (hash-set recursive-values n
+                    (triple (recursive-sc-use untyped-n*)
+                            (recursive-sc-use typed-n*)
+                            (recursive-sc-use both-n*))))
+        (recursive-sc
+                   (list both-n*)
+                   (list (loop b 'both rv))
+                   (recursive-sc-use both-n*))]
+       ;; Don't directly use the class static contract generated for Name,
+       ;; because that will get an #:opaque class contract. This will do the
+       ;; wrong thing for object types since it errors too eagerly.
+       [(Instance: (? Name? t))
+        #:when (Class? (resolve-once t))
+        (cond [(lookup-name-sc type typed-side)]
+              [else
+               (define rv recursive-values)
+               (define resolved (make-Instance (resolve-once t)))
+               (register-name-sc type
+                                 (λ () any/sc)
+                                 (λ () any/sc)
+                                 (λ () (reduce-sc (t->sc resolved #:recursive-values rv))))
+               (lookup-name-sc type typed-side)])]
+       [(Instance: (Class: _ _ fields methods _ _))
+        (define opaque? #false)
+        (object/sc
+          opaque?
+          (append
+            (for/list ((v (in-list methods)))
+              (member-spec 'method (car v) any/sc))
+            (for/list ((v (in-list fields)))
+              (member-spec 'field (car v) any/sc))))]
+       [(Class: row-var inits fields publics augments _)
+        (match-define (list (list init-names _ _) ...) inits)
+        (match-define (list (list field-names _) ...) fields)
+        (match-define (list (list public-names _) ...) publics)
+        (match-define (list (list augment-names _) ...) augments)
+        (define pubment-names
+          (for/list ([name (in-list public-names)]
+                     #:when (memq name augment-names))
+            name))
+        (define override-names
+          (for/list ([name (in-list public-names)]
+                     #:unless (memq name pubment-names))
+            name))
+        ;; we need to generate absent clauses for non-opaque class contracts
+        ;; that occur inside of a mixin type
+        (define absents
+          (cond [;; row constraints are only mapped when it's a row polymorphic
+                 ;; function in *positive* position (with no sealing)
+                 (and (F? row-var) (lookup-row-constraints (F-n row-var)))
+                 =>
+                 (λ (constraints)
+                   ;; the constraints with no corresponding type/contract need
+                   ;; to be absent
+                   (append (remove* field-names (cadr constraints))
+                           (remove* public-names (caddr constraints))))]
+                [else null]))
+        (define opaque? #false)
+        (class/sc opaque?
+         (append
+           (for/list ((name (in-list override-names)))
+             (member-spec 'override name any/sc))
+           (for/list ((name (in-list pubment-names)))
+             (member-spec 'pubment name any/sc))
+           (for/list ((name (in-list augment-names)))
+             (member-spec 'inner name any/sc))
+           (for/list ((name (in-list init-names)))
+             (member-spec 'init name any/sc))
+           (for/list ((name (in-list field-names)))
+             (member-spec 'field name any/sc)))
+         absents)]
+       [(Unit: imports exports init-depends results)
+        (raise-user-error 'type->static-contract/transient "unit")]
+       [(Struct: _ _ _ _ _ pred? _)
+        ;; (flat-named-contract '#,(syntax-e pred?) (lambda (x) (#,pred? x)))
+        (flat/sc #`#,pred?)]
+       [(StructType: s)
+        (flat/sc #'struct-type?)]
+       [(Struct-Property: s)
+        (flat/sc #'struct-type-property?)]
+       [(or (Prefab: key _) (PrefabTop: key))
+        (flat/sc #`(struct-type-make-predicate
+                    (prefab-key->struct-type (quote #,(abbreviate-prefab-key key))
+                                             #,(prefab-key->field-count key))))]
+       [(Syntax: (? Base:Symbol?)) identifier?/sc]
+       [(Syntax: t)
+        syntax?/sc]
+       [(Param: in out)
+        parameter?/sc]
+       [(or (Mutable-HashTable: _ _)
+            (Mutable-HashTableTop:))
+        mutable-hash?/sc]
+       [(Immutable-HashTable: _ _)
+        immutable-hash?/sc]
+       [(or (Weak-HashTable: _ _)
+            (Weak-HashTableTop:))
+        weak-hash?/sc]
+       [(Channel: t)
+        channel?/sc]
+       [(Evt: t)
+        evt?/sc]
+       [(Rest: (list _))
+        list?/sc]
+       [(? Rest? rst) (t->sc (Rest->Type rst))]
+       [(? Prop? rep) (prop->sc rep)]
+       [_
+        (fail #:reason "contract generation not supported for this type")]))))
+
+(define (partition-kws kws)
+  (partition (match-lambda [(Keyword: _ _ mand?) mand?]) kws))
+
+(define arrow->sc/transient
+  (let ((conv (match-lambda [(Keyword: kw _ _) kw])))
+    (match-lambda
+      [(Arrow: dom _ kws _)
+       (define num-mand-args (length dom))
+       (define-values (mand-kws opt-kws)
+         (let*-values ([(mand-kws opt-kws) (partition-kws kws)])
+           (values (map conv mand-kws) (map conv opt-kws))))
+       (make-procedure-arity-flat/sc num-mand-args mand-kws opt-kws)])))
 
 (define (t->sc/function f fail typed-side recursive-values loop method?)
   (define (t->sc t #:recursive-values (recursive-values recursive-values))
@@ -789,7 +1067,7 @@
        (proceed)]
       ;; functions with props or objects
       [(Values: (list (Result: rngs _ _) ...))
-       (if (and (from-untyped? typed-side) (not (locally-defensive?)))
+       (if (from-untyped? typed-side)
            (fail #:reason (~a "cannot generate contract for function type"
                               " with props or objects."))
            (proceed))]
@@ -870,7 +1148,7 @@
          (handle-arrow-range a (λ () (convert-arr a))))
        (define arities
          (for/list ([t (in-list arrows)]) (length (Arrow-dom t))))
-       (define maybe-dup (and (not (locally-defensive?)) (check-duplicates arities)))
+       (define maybe-dup (check-duplicates arities))
        (when maybe-dup
          (fail #:reason (~a "function type has two cases of arity " maybe-dup)))
        (if (= (length arrows) 1)
