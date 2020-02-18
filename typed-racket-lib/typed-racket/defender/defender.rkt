@@ -6,6 +6,9 @@
 ;;  - [ ] build erasure-racket
 ;;  - [X] work out 3-sound theory
 ;;  - [ ] finally, build)
+;;
+;; TODO
+;; - need with-new-name-tables here?
 
 (require
   (only-in racket/format ~a)

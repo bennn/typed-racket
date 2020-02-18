@@ -24,8 +24,7 @@
 (provide with-new-name-tables
          name/sc:
          lookup-name-defined
-         set-name-defined
-         reduce-name-defs!)
+         set-name-defined)
 
 (provide/cond-contract
  [get-all-name-defs
@@ -67,12 +66,6 @@
     (define scs (hash-ref name-scs type))
     (define gen-names (map name-combinator-gen-name scs))
     (cons gen-names defs)))
-
-(define (reduce-name-defs! recur)
-  ;; TODO use `get-all-name-defs` ?
-  (let ([tbl (name-defs-table)])
-    (for ([(k v*) (in-hash tbl)])
-      (hash-set! tbl k (map recur v*)))))
 
 (define (lookup-name-sc type typed-side)
   (define result (hash-ref (name-sc-table) type #f))
