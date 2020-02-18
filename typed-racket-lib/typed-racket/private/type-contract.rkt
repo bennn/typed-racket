@@ -285,6 +285,11 @@
    [(both) 'both]
    [else (raise-argument-error 'flip-side "side?" side)]))
 
+(define (reduce-sc sc)
+  (if (locally-defensive?)
+    (static-contract->tag/sc sc)
+    sc))
+
 ;; type->contract : Type Procedure
 ;;                  #:typed-side Boolean #:kind Symbol #:cache Hash
 ;;                  -> (U Any (List (Listof Syntax) Syntax))
@@ -403,9 +408,9 @@
                (define rv recursive-values)
                (define resolved-name (resolve-once type))
                (register-name-sc type
-                                 (λ () (loop resolved-name 'untyped rv))
-                                 (λ () (loop resolved-name (current-typed-side) rv))
-                                 (λ () (loop resolved-name 'both rv)))
+                                 (λ () (reduce-sc (loop resolved-name 'untyped rv)))
+                                 (λ () (reduce-sc (loop resolved-name (current-typed-side) rv)))
+                                 (λ () (reduce-sc (loop resolved-name 'both rv))))
                (lookup-name-sc type typed-side)])]
        ;; Ordinary type applications or struct type names, just resolve
        [(or (App: _ _) (Name/struct:)) (t->sc (resolve-once type))]
@@ -618,9 +623,9 @@
                (define rv recursive-values)
                (define resolved (make-Instance (resolve-once t)))
                (register-name-sc type
-                                 (λ () (loop resolved 'untyped rv))
-                                 (λ () (loop resolved (current-typed-side) rv))
-                                 (λ () (loop resolved 'both rv)))
+                                 (λ () (reduce-sc (loop resolved 'untyped rv)))
+                                 (λ () (reduce-sc (loop resolved (current-typed-side) rv)))
+                                 (λ () (reduce-sc (loop resolved 'both rv))))
                (lookup-name-sc type typed-side)])]
        [(Instance: (Class: _ _ fields methods _ _))
         (match-define (list (list field-names field-types) ...) fields)
