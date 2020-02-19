@@ -12,6 +12,6 @@
   (namespace-require 'racket/base)
   (eval '(begin
            (require (for-syntax typed-racket/utils/tc-utils racket/base))
-           (begin-for-syntax (set-box! typed-context? #true)))
+           (begin-for-syntax (set-box! typed-context? #t)))
         (current-namespace))
   (current-readtable (readtable)))
