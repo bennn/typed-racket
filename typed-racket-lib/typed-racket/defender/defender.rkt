@@ -684,7 +684,7 @@
                   [err err-msg]
                   [dom dom-stx])
       (syntax/loc dom-stx
-        (unless (#%plain-app contract-first-order-passes? ctc dom)
+        (unless (#%plain-app ctc dom)
           (#%plain-app error 'dynamic-typecheck (#%plain-app format #;'"die" '"got ~s in ~a" dom 'err)))))]))
 
 ;; protect-codomain : (U #f Tc-Results) (Syntaxof List) Hash Hash (Boxof Syntax) -> (Syntaxof List)
@@ -722,7 +722,7 @@
                 cod-tc-res
                 (syntax/loc app-stx
                   (let-values ([(v) app])
-                    (if (#%plain-app contract-first-order-passes? ctc v)
+                    (if (#%plain-app ctc v)
                       v
                       (#%plain-app error 'dynamic-typecheck (#%plain-app format #;'"die" '"got ~s in ~a" v 'err)))))))
             (define if-stx (caddr (syntax-e new-stx)))
@@ -752,7 +752,7 @@
                                    (register-ignored! ctc-stx)
                                    (test-position-add-true ctc-stx)
                                    (test-position-add-false ctc-stx)
-                                   (quasisyntax/loc app-stx (#%plain-app contract-first-order-passes? #,ctc-stx #,v))))
+                                   (quasisyntax/loc app-stx (#%plain-app #,ctc-stx #,v))))
                       (values . v*)
                       (#%plain-app error 'dynamic-typecheck 'err))))))
             (register-ignored! (caddr (syntax-e new-stx)))
