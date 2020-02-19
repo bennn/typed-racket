@@ -328,6 +328,7 @@
         (loop t 'both recursive-values))
       (define (t->sc/fun t) (t->sc/function t fail typed-side recursive-values loop #f))
       (define (t->sc/meth t) (t->sc/method t fail typed-side recursive-values loop))
+
       (define (prop->sc p)
         (match p
           [(TypeProp: o (app t->sc tc))
@@ -348,20 +349,6 @@
            (and-prop/sc (map prop->sc ps))]
           [(OrProp: ps)
            (or-prop/sc (map prop->sc ps))]))
-
-      (define (obj->sc o)
-        (match o
-          [(Path: pes (? identifier? x))
-           (for/fold ([obj (id/sc x)])
-                     ([pe (in-list (reverse pes))])
-             (match pe
-               [(CarPE:) (acc-obj/sc #'car obj)]
-               [(CdrPE:) (acc-obj/sc #'cdr obj)]
-               [(VecLenPE:) (acc-obj/sc #'vector-length obj)]))]
-          [(LExp: const terms)
-           (linear-exp/sc const
-                          (for/hash ([(obj coeff) (in-terms terms)])
-                            (values (obj->sc obj) coeff)))]))
       (define (only-untyped sc)
         (if (from-typed? typed-side)
             (and/sc sc any-wrap/sc)
@@ -760,13 +747,25 @@
       (define (t->sc t #:recursive-values (recursive-values recursive-values))
         (loop t recursive-values))
       (define (prop->sc p)
-        ;; TODO need this?
-        ;;(match p [(TypeProp: o (app t->sc tc)) (cond [(not (equal? flat-sym (get-max-contract-kind tc))) (fail #:reason "proposition contract generation not supported for non-flat types")] [else (is-flat-type/sc (obj->sc o) tc)])] [(NotTypeProp: o (app t->sc tc)) (cond [(not (equal? flat-sym (get-max-contract-kind tc))) (fail #:reason "proposition contract generation not supported for non-flat types")] [else (not-flat-type/sc (obj->sc o) tc)])] [(LeqProp: (app obj->sc lhs) (app obj->sc rhs)) (leq/sc lhs rhs)] ;; TODO: check for (<= x y) and (<= y x) and generate and = instead of two <= [(AndProp: ps) (and-prop/sc (map prop->sc ps))] [(OrProp: ps) (or-prop/sc (map prop->sc ps))])
-        (raise-user-error 'transient:prop->sc "not implemented"))
-      (define (obj->sc o)
-        ;; TODO need this?
-        ;;(match o [(Path: pes (? identifier? x)) (for/fold ([obj (id/sc x)]) ([pe (in-list (reverse pes))]) (match pe [(CarPE:) (acc-obj/sc #'car obj)] [(CdrPE:) (acc-obj/sc #'cdr obj)] [(VecLenPE:) (acc-obj/sc #'vector-length obj)]))] [(LExp: const terms) (linear-exp/sc const (for/hash ([(obj coeff) (in-terms terms)]) (values (obj->sc obj) coeff)))])
-        (raise-user-error 'transient:obj->sc "not implemented"))
+        ;;bg copied from above, but uses different t->sc
+        (match p
+          [(TypeProp: o (app t->sc tc))
+           (cond
+             [(not (equal? flat-sym (get-max-contract-kind tc)))
+              (fail #:reason "proposition contract generation not supported for non-flat types")]
+             [else (is-flat-type/sc (obj->sc o) tc)])]
+          [(NotTypeProp: o (app t->sc tc))
+           (cond
+             [(not (equal? flat-sym (get-max-contract-kind tc)))
+              (fail #:reason "proposition contract generation not supported for non-flat types")]
+             [else (not-flat-type/sc (obj->sc o) tc)])]
+          [(LeqProp: (app obj->sc lhs) (app obj->sc rhs))
+           (leq/sc lhs rhs)]
+          [(AndProp: ps)
+           (and-prop/sc (map prop->sc ps))]
+          [(OrProp: ps)
+           (or-prop/sc (map prop->sc ps))]))
+      #;(define (prop->sc p) #|bg TODO is this correct? look for errors|# (match p [(TypeProp: o (app t->sc tc)) (and/sc tc (obj->sc o))] [(NotTypeProp: o (app t->sc tc)) (and/sc (flat/sc #`(lambda (x) (not (#,tc x)))) (obj->sc o))] [(LeqProp: (app obj->sc lhs) (app obj->sc rhs)) (flat/sc #`(<= #,lhs #,rhs))] [(AndProp: ps) (apply and/sc (map prop->sc ps))] [(OrProp: ps) (apply or/sc (map prop->sc ps))] [else (raise-argument-error 'prop->sc "Prop?" p)]))
       (cached-match
        sc-cache type typed-side
        ;; Applications of implicit recursive type aliases
@@ -1022,6 +1021,22 @@
        [(? Prop? rep) (prop->sc rep)]
        [_
         (fail #:reason "contract generation not supported for this type")]))))
+
+(define (obj->sc o)
+  (match o
+    [(Path: pes (? identifier? x))
+     (for/fold ([obj (id/sc x)])
+               ([pe (in-list (reverse pes))])
+       (match pe
+         [(CarPE:) (acc-obj/sc #'car obj)]
+         [(CdrPE:) (acc-obj/sc #'cdr obj)]
+         [(VecLenPE:) (acc-obj/sc #'vector-length obj)]))]
+    [(LExp: const terms)
+     (linear-exp/sc const
+                    (for/hash ([(obj coeff) (in-terms terms)])
+                      (values (obj->sc obj) coeff)))]
+    [else
+      (raise-argument-error 'obj->sc "Object?" o)]))
 
 (define (partition-kws kws)
   (partition (match-lambda [(Keyword: _ _ mand?) mand?]) kws))
