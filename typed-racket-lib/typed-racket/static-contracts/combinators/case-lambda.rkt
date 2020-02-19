@@ -6,9 +6,6 @@
 (require "../../utils/utils.rkt"
          "../structures.rkt"
          "../constraints.rkt"
-         "any.rkt"
-         (only-in "structural.rkt" and/sc or/sc)
-         (only-in "derived.rkt" procedure?/sc procedure-arity-includes/sc)
          racket/list racket/match
          (contract-req)
          (for-template racket/base racket/contract/base)

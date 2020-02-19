@@ -4,15 +4,7 @@
 ;; Supports the whole range of possible options that -> does.
 
 (require "../../utils/utils.rkt"
-         "../structures.rkt" "../constraints.rkt" "../utils.rkt"
-         (only-in "structural.rkt"
-           and/sc)
-         (only-in "derived.rkt"
-           procedure?/sc
-           procedure-arity-includes/sc
-           procedure-mandatory-keywords/sc
-           procedure-optional-keywords/sc
-           make-procedure-arity-flat/sc)
+         "../structures.rkt" "../constraints.rkt"
          racket/list racket/match
          (contract-req)
          (for-template racket/base racket/contract/base "../../utils/simple-result-arrow.rkt")
@@ -89,6 +81,7 @@
        (#,@opt-ctcs #,@opt-kws-stx)
        #,@rest-ctc-stx
        . ->* . #,range-ctc)]))
+
 
 (define (function/sc typed-side? mand-args opt-args mand-kw-args opt-kw-args rest range)
   (define mand-args-end (length mand-args))

@@ -4,7 +4,7 @@
 ;; These are used during optimizations as simplifications.
 ;; Ex: (listof/sc any/sc) => list?/sc
 
-(require "simple.rkt" "any.rkt"
+(require "simple.rkt" "structural.rkt" "any.rkt"
          (for-template racket/base racket/list racket/set racket/promise
                        racket/class racket/unit racket/async-channel))
 (provide (all-defined-out))
@@ -20,9 +20,21 @@
 (define mpair?/sc (flat/sc #'mpair?))
 
 (define set?/sc (flat/sc #'set?))
+(define empty-set/sc (and/sc set?/sc (flat/sc #'set-empty?)))
+
 (define vector?/sc (flat/sc #'vector?))
+(define immutable-vector?/sc (and/sc vector?/sc
+                                     (flat/sc #'immutable?)))
+(define mutable-vector?/sc (and/sc vector?/sc
+                                   (flat/sc #'(λ (v) (not (immutable? v))))))
 
 (define hash?/sc (flat/sc #'hash?))
+(define immutable-hash?/sc (and/sc hash?/sc (flat/sc #'immutable?)))
+(define mutable-hash?/sc (and/sc hash?/sc
+                                 (flat/sc #'(λ (h) (not (immutable? h))))
+                                 (flat/sc #'(λ (h) (not (hash-weak? h))))))
+(define weak-hash?/sc (and/sc hash?/sc (flat/sc #'hash-weak?)))
+(define empty-hash/sc (and/sc hash?/sc (flat/sc #'(λ (h) (zero? (hash-count h))))))
 
 (define sequence?/sc (flat/sc #'sequence?))
 

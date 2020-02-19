@@ -6,7 +6,6 @@
   "../../utils/utils.rkt"
   "../structures.rkt"
   "../constraints.rkt"
-  "../utils.rkt"
   "../terminal.rkt"
   racket/match
   (contract-req)

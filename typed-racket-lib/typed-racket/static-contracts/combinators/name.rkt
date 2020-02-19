@@ -12,7 +12,6 @@
 (require "../../utils/utils.rkt"
          "../structures.rkt"
          "../constraints.rkt"
-         "../utils.rkt"
          "../../rep/type-rep.rkt" ; only for contract
          (contract-req)
          racket/match

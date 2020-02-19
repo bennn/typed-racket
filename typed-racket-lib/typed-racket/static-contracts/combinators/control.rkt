@@ -5,7 +5,6 @@
 
 (require "../../utils/utils.rkt"
          "../structures.rkt" "../constraints.rkt"
-         (only-in "derived.rkt" prompt-tag?/sc)
          racket/list racket/match
          (contract-req)
          (for-template racket/base racket/contract/base)
