@@ -34,9 +34,6 @@
        (void))
      (define (sc->contract v f)
        (object/sc->contract v f))
-     (define (sc->tag/sc v f)
-       (with-syntax ([stx (object/sc->contract v f-any)])
-         (flat/sc #'(contract-first-order stx))))
      (define (sc->constraints v f)
        (merge-restricts* 'impersonator (map f (member-seq->list (combinator-args v)))))])
 
@@ -55,9 +52,6 @@
           (void)]))
      (define (sc->contract v f)
        (class/sc->contract v f))
-     (define (sc->tag/sc v f)
-       (with-syntax ([stx (class/sc->contract v f-any)])
-         (flat/sc #'(contract-first-order stx))))
      (define (sc->constraints v f)
        (merge-restricts* 'impersonator (map f (member-seq->list (combinator-args v)))))])
 
@@ -76,10 +70,6 @@
           (void)]))
      (define (sc->contract v f)
        (instance/sc->contract v f))
-     (define (sc->tag/sc v f)
-       ;; use `f` to get `(instanceof/c (f-any (class/c ....)))`
-       (with-syntax ([stx (instance/sc->contract v f)])
-         (flat/sc #'(contract-first-order stx))))
      (define (sc->constraints v f)
        (match v
          [(instanceof-combinator (list class))

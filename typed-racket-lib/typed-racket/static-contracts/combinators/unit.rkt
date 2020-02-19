@@ -27,8 +27,6 @@
               (void)]))
          (define (sc->contract v f)
            (unit/sc->contract v f))
-         (define (sc->tag/sc v f)
-           (raise-user-error 'sc->tag/sc "not implemented for units ~a" v))
          (define (sc->constraints v f)
            (merge-restricts* 'chaperone (map f (unit-spec->list (combinator-args v)))))])
 

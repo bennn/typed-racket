@@ -72,7 +72,7 @@
   (and result
        (case typed-side
          [(both)    (car result)]
-         [(typed tagged)   (cadr result)]
+         [(typed)   (cadr result)]
          [(untyped) (caddr result)]
          [else (raise-argument-error 'lookup-name-sc "side?" typed-side)])))
 
@@ -102,8 +102,6 @@
      (void))
    (define (sc->contract v f)
      (name-combinator-gen-name v))
-   (define (sc->tag/sc v f)
-     v)
    (define (sc->constraints v f)
      (variable-contract-restrict (name-combinator-gen-name v)))])
 

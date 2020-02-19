@@ -18,7 +18,7 @@
  racket/string
  syntax/flatten-begin
  (only-in (types abbrev) -Bottom -Boolean VectorTop:)
- (static-contracts instantiate structures combinators constraints utils tag-reduce) ;;bg
+ (static-contracts instantiate structures combinators constraints utils) ;;bg
  (only-in (submod typed-racket/static-contracts/instantiate internals) compute-constraints)
  ;; TODO make this from contract-req
  (prefix-in c: racket/contract)
@@ -279,11 +279,6 @@
    [(both) 'both]
    [else (raise-argument-error 'flip-side "side?" side)]))
 
-(define (reduce-sc sc)
-  (if (locally-defensive?)
-    (static-contract->tag/sc sc)
-    sc))
-
 ;; type->contract : Type Procedure
 ;;                  #:typed-side Boolean #:kind Symbol #:cache Hash
 ;;                  -> (U Any (List (Listof Syntax) Syntax))
@@ -305,7 +300,7 @@
      #:trusted-positive typed-side
      #:trusted-negative (not typed-side))))
 
-(define any-wrap/sc (chaperone/sc #'any-wrap/c #:tag #'any/c))
+(define any-wrap/sc (chaperone/sc #'any-wrap/c))
 
 (define (no-duplicates l)
   (= (length l) (length (remove-duplicates l))))
@@ -401,9 +396,9 @@
                (define rv recursive-values)
                (define resolved-name (resolve-once type))
                (register-name-sc type
-                                 (λ () (reduce-sc (loop resolved-name 'untyped rv)))
-                                 (λ () (reduce-sc (loop resolved-name 'typed rv)))
-                                 (λ () (reduce-sc (loop resolved-name 'both rv))))
+                                 (λ () (loop resolved-name 'untyped rv))
+                                 (λ () (loop resolved-name 'typed rv))
+                                 (λ () (loop resolved-name 'both rv)))
                (lookup-name-sc type typed-side)])]
        ;; Ordinary type applications or struct type names, just resolve
        [(or (App: _ _) (Name/struct:)) (t->sc (resolve-once type))]
@@ -615,9 +610,9 @@
                (define rv recursive-values)
                (define resolved (make-Instance (resolve-once t)))
                (register-name-sc type
-                                 (λ () (reduce-sc (loop resolved 'untyped rv)))
-                                 (λ () (reduce-sc (loop resolved 'typed rv)))
-                                 (λ () (reduce-sc (loop resolved 'both rv))))
+                                 (λ () (loop resolved 'untyped rv))
+                                 (λ () (loop resolved 'typed rv))
+                                 (λ () (loop resolved 'both rv)))
                (lookup-name-sc type typed-side)])]
        [(Instance: (Class: _ _ fields methods _ _))
         (match-define (list (list field-names field-types) ...) fields)
@@ -805,7 +800,7 @@
                (register-name-sc type
                                  (λ () any/sc)
                                  (λ () any/sc)
-                                 (λ () (reduce-sc (t->sc resolved-name #:recursive-values rv))))
+                                 (λ () (t->sc resolved-name #:recursive-values rv)))
                (lookup-name-sc type typed-side)])]
        ;; Ordinary type applications or struct type names, just resolve
        [(or (App: _ _) (Name/struct:)) (t->sc (resolve-once type))]
@@ -940,7 +935,7 @@
                (register-name-sc type
                                  (λ () any/sc)
                                  (λ () any/sc)
-                                 (λ () (reduce-sc (t->sc resolved #:recursive-values rv))))
+                                 (λ () (t->sc resolved #:recursive-values rv)))
                (lookup-name-sc type typed-side)])]
        [(Instance: (Class: _ _ fields methods _ _))
         (define opaque? #false)
