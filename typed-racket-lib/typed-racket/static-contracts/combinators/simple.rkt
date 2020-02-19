@@ -18,7 +18,7 @@
  [impersonator/sc ((syntax?) ((or/c #f any/c)) . ->* . static-contract?)])
 
 (define (simple-contract-write-proc v port mode)
-  (match-define (simple-contract syntax kind name _) v)
+  (match-define (simple-contract syntax kind name) v)
   (define-values (open close)
     (if (equal? mode 0)
         (values "(" ")")
@@ -42,7 +42,7 @@
              (equal?/recur (syntax-e s1) (syntax-e s2) stx-equal?)
              (equal?/recur s1 s2 stx-equal?))]))
 
-(struct simple-contract static-contract (syntax kind name maybe-tag-syntax)
+(struct simple-contract static-contract (syntax kind name)
         #:transparent
         #:methods gen:equal+hash
          [(define (equal-proc s1 s2 recur)
@@ -66,27 +66,13 @@
          [(define (sc-map v f) v)
           (define (sc-traverse v f) (void))
           (define (sc->contract v f) (simple-contract-syntax v))
-          (define (sc->tag/sc v f)
-            (case (simple-contract-kind v)
-             [(flat)
-              (let ([constr-stx (simple-contract-maybe-tag-syntax v)])
-                (if constr-stx
-                  (simple-contract constr-stx 'flat (simple-contract-name v) #f)
-                  v))]
-             [(chaperone)
-              (let ([constr-stx (simple-contract-maybe-tag-syntax v)])
-                (if constr-stx
-                  (simple-contract constr-stx 'flat (simple-contract-name v) #f)
-                  (raise-user-error 'sc->tag/sc "chaperone simple contract with no constr-stx ~a" v)))]
-             [(impersonator)
-              (raise-user-error 'sc->tag/sc "impersonator simple contract ~a" v)]))
           (define (sc->constraints v f) (simple-contract-restrict (simple-contract-kind v)))
           (define (sc-terminal-kind v) (simple-contract-kind v))]
         #:methods gen:custom-write [(define write-proc simple-contract-write-proc)])
 
-(define (flat/sc ctc [name #f] #:tag [tag-stx #f])
-  (simple-contract ctc 'flat name tag-stx))
-(define (chaperone/sc ctc [name #f] #:tag [tag-stx #f])
-  (simple-contract ctc 'chaperone name tag-stx))
+(define (flat/sc ctc [name #f])
+  (simple-contract ctc 'flat name))
+(define (chaperone/sc ctc [name #f])
+  (simple-contract ctc 'chaperone name))
 (define (impersonator/sc ctc [name #f])
   (simple-contract ctc 'impersonator name #f))

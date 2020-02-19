@@ -32,9 +32,6 @@
   [(define (sc-map v f) v)
    (define (sc-traverse v f) (void))
    (define (sc->contract v f) (id/sc-syntax v))
-   (define (sc->tag/sc v f)
-     (log-static-contract-warning "id/sc ~a" v)
-     v)
    (define (sc->constraints v f) (simple-contract-restrict 'flat))])
 
 ;; a path element access into a symbolic object e.g. (car o)
@@ -57,8 +54,6 @@
    (define (sc-traverse v f) (f (acc-obj/sc-obj v) 'covariant))
    (define/generic sc->c sc->contract)
    (define (sc->contract v f) #`(#,(acc-obj/sc-acc-stx v) #,(sc->c (acc-obj/sc-obj v) f)))
-   (define (sc->tag/sc v f)
-     (raise-user-error 'sc->tag/sc "not implemented ~a" v))
    (define (sc->constraints v f) (f (acc-obj/sc-obj v)))])
 
 

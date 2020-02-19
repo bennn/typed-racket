@@ -41,5 +41,4 @@ directly deals with the recursive casses.
 
 sc->contract: Turns a static contract into syntax
 sc->constraints: Turns a static contract into constraints about the contract kind
-sc->tag/sc: Reduces a full static contract to a "constant-time" tag check
 

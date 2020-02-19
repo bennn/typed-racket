@@ -135,10 +135,6 @@
               (apply
                (sc.combinator2 (lambda (args) #`(c #,@args)))
                (map recur (combinator-args v))))
-            (define (sc->tag/sc v recur)
-              (apply constr-sc
-                     (for/list ([arg (in-list (combinator-args v))])
-                       (recur arg))))
             (define (sc->constraints v recur)
               (merge-restricts* 'kind.category-stx (sc.->restricts v recur)))]
            #:methods gen:equal+hash

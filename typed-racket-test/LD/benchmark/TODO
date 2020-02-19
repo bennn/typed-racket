@@ -28,8 +28,19 @@
          doesn't need to use a typed macro
 - [X] simplify tag-reduce for no fuel? (does that help much?)
       2020-02-18 ok now, no depth argument, all decided by LD parameter
+- [X] fixup name-table code? make a tag-table on the side?
+      yeah if we make tags from the start, no need! the table contains tags and doesn't need to be cut later
+- [X] can we have type->contract unit & avoid building full sc's ahead of time?
+      lets try 3 functions for the first
+      ... at least T vs S and we will see if there are code savings
+      LOOKS GOOD
 
-- [ ] fixup name-table code? make a tag-table on the side?
+- [ ] remove sc->tag
+
+- [ ] check diff, anything else to remove?
+
+- [ ] remove contract-first-order for classes .... when?
+      maybe should wait, until we can measure the difference of building or not ... no thats silly just make it easy to go back
 
 - [ ] morsecode/sieve/snake/tetris, very slow runtime (require-typed-check bug?)
       ... better now after checking "blessed" but heres now fully-typed vs ICPF worst-case
@@ -40,7 +51,7 @@
       zombie : 24x vs 20x
       ICFP should always be slower, but its not ... WTF snake & tetris!!!!!
 
-- [ ] investigate contract generation
+- [ ] investigate contract generation, where do names go what gets reused?
 - [ ] optimizer
 
 - [ ] unhygienic S require T identifier

@@ -43,11 +43,6 @@
        (match v
         [(struct-combinator args name _)
          #`(struct/c #,name #,@(map f args))]))
-     (define (sc->tag/sc v _f)
-       (match-define (struct-combinator _ name _) v)
-       (define pred-id
-         (caddr (extract-struct-info (syntax-local-value name))))
-       (flat/sc pred-id))
      (define (sc->constraints v f)
        (match v
         [(struct-combinator args _ mut?)
@@ -82,8 +77,6 @@
        (match v
          [(struct-type/sc args)
           #`(struct-type/c #f)]))
-     (define (sc->tag/sc _v f)
-       (f struct-type?/sc))
      (define (sc->constraints v f)
        (match v
          [(struct-type/sc args) (simple-contract-restrict 'chaperone)]))])
