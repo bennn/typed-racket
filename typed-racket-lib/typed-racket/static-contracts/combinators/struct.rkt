@@ -4,11 +4,7 @@
 
 (require "../../utils/utils.rkt"
          "../structures.rkt" "../constraints.rkt"
-         (only-in "derived.rkt" struct-type?/sc)
-         (only-in "simple.rkt" flat/sc)
-          racket/match
-         (only-in racket/syntax format-id)
-         (only-in racket/struct-info extract-struct-info)
+         racket/match
          (contract-req)
          (for-template racket/base racket/contract/base "../../utils/struct-type-c.rkt")
          (for-syntax racket/base syntax/parse))

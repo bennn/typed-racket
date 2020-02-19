@@ -5,7 +5,6 @@
 (require
   "../../utils/utils.rkt"
   "../structures.rkt"
-  "../utils.rkt"
   "../constraints.rkt"
   racket/match
   racket/generic

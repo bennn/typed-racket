@@ -42,3 +42,4 @@ directly deals with the recursive casses.
 sc->contract: Turns a static contract into syntax
 sc->constraints: Turns a static contract into constraints about the contract kind
 
+

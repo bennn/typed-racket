@@ -5,7 +5,7 @@
 (require "../utils/utils.rkt"
          (contract-req)
          racket/match racket/list racket/generic 
-         "kinds.rkt" "constraints.rkt" "utils.rkt")
+         "kinds.rkt" "constraints.rkt")
 
 (provide prop:combinator-name gen:sc)
 

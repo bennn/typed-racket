@@ -75,4 +75,4 @@
 (define (chaperone/sc ctc [name #f])
   (simple-contract ctc 'chaperone name))
 (define (impersonator/sc ctc [name #f])
-  (simple-contract ctc 'impersonator name #f))
+  (simple-contract ctc 'impersonator name))
