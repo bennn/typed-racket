@@ -937,54 +937,9 @@
                                  (λ () (t->sc resolved #:recursive-values rv)))
                (lookup-name-sc type typed-side)])]
        [(Instance: (Class: _ _ fields methods _ _))
-        (define opaque? #false)
-        (object/sc
-          opaque?
-          (append
-            (for/list ((v (in-list methods)))
-              (member-spec 'method (car v) any/sc))
-            (for/list ((v (in-list fields)))
-              (member-spec 'field (car v) any/sc))))]
+        (make-object-shape/sc (map car fields) (map car methods))]
        [(Class: row-var inits fields publics augments _)
-        (match-define (list (list init-names _ _) ...) inits)
-        (match-define (list (list field-names _) ...) fields)
-        (match-define (list (list public-names _) ...) publics)
-        (match-define (list (list augment-names _) ...) augments)
-        (define pubment-names
-          (for/list ([name (in-list public-names)]
-                     #:when (memq name augment-names))
-            name))
-        (define override-names
-          (for/list ([name (in-list public-names)]
-                     #:unless (memq name pubment-names))
-            name))
-        ;; we need to generate absent clauses for non-opaque class contracts
-        ;; that occur inside of a mixin type
-        (define absents
-          (cond [;; row constraints are only mapped when it's a row polymorphic
-                 ;; function in *positive* position (with no sealing)
-                 (and (F? row-var) (lookup-row-constraints (F-n row-var)))
-                 =>
-                 (λ (constraints)
-                   ;; the constraints with no corresponding type/contract need
-                   ;; to be absent
-                   (append (remove* field-names (cadr constraints))
-                           (remove* public-names (caddr constraints))))]
-                [else null]))
-        (define opaque? #false)
-        (class/sc opaque?
-         (append
-           (for/list ((name (in-list override-names)))
-             (member-spec 'override name any/sc))
-           (for/list ((name (in-list pubment-names)))
-             (member-spec 'pubment name any/sc))
-           (for/list ((name (in-list augment-names)))
-             (member-spec 'inner name any/sc))
-           (for/list ((name (in-list init-names)))
-             (member-spec 'init name any/sc))
-           (for/list ((name (in-list field-names)))
-             (member-spec 'field name any/sc)))
-         absents)]
+        (make-class-shape/sc inits fields publics augments)]
        [(Unit: imports exports init-depends results)
         (raise-user-error 'type->static-contract/transient "unit")]
        [(Struct: _ _ _ _ _ pred? _)

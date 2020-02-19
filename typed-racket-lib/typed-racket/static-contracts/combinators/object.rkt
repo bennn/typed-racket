@@ -167,8 +167,45 @@
    [(instanceof-combinator (list class))
     #`(instanceof/c #,(f class))]))
 
+(define (make-class-shape/sc inits fields publics augments)
+  (define init* (map car inits))
+  (define field* (map car fields))
+  (define public* (map car publics))
+  (define augment* (map car augments))
+  (define pubment*
+    (for/list ([name (in-list public*)]
+               #:when (memq name augment*))
+      name))
+  (define override*
+    (for/list ([name (in-list public*)]
+               #:unless (memq name pubment*))
+      name))
+  (with-syntax ((ctc-stx
+                  #'(class/c
+                      (init . #,init*)
+                      (field . #,field*)
+                      (override . #,override*)
+                      (augment . #,augment*)
+                      . #,pubment*)))
+    (flat/sc
+      #'(let ((check-cls-shape (contract-first-order ctc-stx)))
+          (λ (cls)
+            (and (class? cls) (check-cls-shape cls)))))))
+
+(define (make-object-shape/sc field-name* method-name*)
+  (with-syntax ((ctc-stx #`(object/c (field . #,field-name*) . #,method-name*)))
+    (flat/sc
+      #'(let ((check-obj-shape (contract-first-order ctc-stx)))
+          (λ (this)
+            (and (object? this) (check-obj-shape this)))))))
+
+(provide
+  make-class-shape/sc
+  make-object-shape/sc)
+
 (provide/cond-contract
  [struct member-spec ([modifier symbol?] [id symbol?] [sc static-contract?])]
  [object/sc (boolean? (listof object-member-spec?) . -> . static-contract?)]
  [class/sc (boolean? (listof member-spec?) (listof symbol?) . -> . static-contract?)]
  [instanceof/sc (static-contract? . -> . static-contract?)])
+
