@@ -765,7 +765,6 @@
            (and-prop/sc (map prop->sc ps))]
           [(OrProp: ps)
            (or-prop/sc (map prop->sc ps))]))
-      #;(define (prop->sc p) #|bg TODO is this correct? look for errors|# (match p [(TypeProp: o (app t->sc tc)) (and/sc tc (obj->sc o))] [(NotTypeProp: o (app t->sc tc)) (and/sc (flat/sc #`(lambda (x) (not (#,tc x)))) (obj->sc o))] [(LeqProp: (app obj->sc lhs) (app obj->sc rhs)) (flat/sc #`(<= #,lhs #,rhs))] [(AndProp: ps) (apply and/sc (map prop->sc ps))] [(OrProp: ps) (apply or/sc (map prop->sc ps))] [else (raise-argument-error 'prop->sc "Prop?" p)]))
       (cached-match
        sc-cache type typed-side
        ;; Applications of implicit recursive type aliases
@@ -796,10 +795,11 @@
               [else
                (define rv recursive-values)
                (define resolved-name (resolve-once type))
+               (define resolved-sc (t->sc resolved-name #:recursive-values rv))
                (register-name-sc type
-                                 (λ () any/sc)
-                                 (λ () any/sc)
-                                 (λ () (t->sc resolved-name #:recursive-values rv)))
+                                 (λ () resolved-sc)
+                                 (λ () resolved-sc)
+                                 (λ () resolved-sc))
                (lookup-name-sc type typed-side)])]
        ;; Ordinary type applications or struct type names, just resolve
        [(or (App: _ _) (Name/struct:)) (t->sc (resolve-once type))]
@@ -905,23 +905,24 @@
        [(UnitTop:) unit?/sc]
        [(StructTypeTop:) struct-type?/sc]
        [(StructTop: s) (flat/sc #'struct?)] ;;bg TODO test
-       [(? Poly?)
-        (t->sc/poly type fail typed-side recursive-values t->sc)]
-       [(? PolyDots?)
-        (t->sc/polydots type fail typed-side recursive-values t->sc)]
-       [(? PolyRow?)
-        (t->sc/polyrow type fail typed-side recursive-values t->sc)]
+       [(Poly: vs b)
+        ;;bg: for tag checks, poly-vars don't matter ... types inside better have a shape
+        (let ((recursive-values (for/fold ([rv recursive-values]) ([v vs])
+                                  (hash-set rv v (same any/sc)))))
+          (t->sc b #:recursive-values recursive-values))]
+       [(PolyDots: (list vs ... dotted-v) b)
+        (let ((recursive-values (for/fold ([rv recursive-values]) ([v vs])
+                                  (hash-set rv v (same any/sc)))))
+          (t->sc b #:recursive-values recursive-values))]
+       [(PolyRow: vs constraints body)
+        (let ((recursive-values (for/fold ([rv recursive-values]) ([v vs])
+                                  (hash-set rv v (same any/sc)))))
+          (extend-row-constraints vs (list constraints)
+            (t->sc body #:recursive-values recursive-values)))]
        [(Mu: n b)
-        (match-define (and n*s (list untyped-n* typed-n* both-n*)) (generate-temporaries (list n n n)))
-        (define rv
-          (hash-set recursive-values n
-                    (triple (recursive-sc-use untyped-n*)
-                            (recursive-sc-use typed-n*)
-                            (recursive-sc-use both-n*))))
-        (recursive-sc
-                   (list both-n*)
-                   (list (loop b 'both rv))
-                   (recursive-sc-use both-n*))]
+        ;;bg: should not hit the name, but leave it at any/sc
+        (define rv (hash-set recursive-values n (same any/sc)))
+        (t->sc b #:recursive-values rv)]
        ;; Don't directly use the class static contract generated for Name,
        ;; because that will get an #:opaque class contract. This will do the
        ;; wrong thing for object types since it errors too eagerly.
@@ -931,10 +932,11 @@
               [else
                (define rv recursive-values)
                (define resolved (make-Instance (resolve-once t)))
+               (define resolved-sc (t->sc resolved #:recursive-values rv))
                (register-name-sc type
-                                 (λ () any/sc)
-                                 (λ () any/sc)
-                                 (λ () (t->sc resolved #:recursive-values rv)))
+                                 (λ () resolved-sc)
+                                 (λ () resolved-sc)
+                                 (λ () resolved-sc))
                (lookup-name-sc type typed-side)])]
        [(Instance: (Class: _ _ fields methods _ _))
         (make-object-shape/sc (map car fields) (map car methods))]
@@ -944,7 +946,7 @@
         (raise-user-error 'type->static-contract/transient "unit")]
        [(Struct: _ _ _ _ _ pred? _)
         ;; (flat-named-contract '#,(syntax-e pred?) (lambda (x) (#,pred? x)))
-        (flat/sc #`#,pred?)]
+        (flat/sc #`(lambda (x) (#,pred? x)))]
        [(StructType: s)
         (flat/sc #'struct-type?)]
        [(Struct-Property: s)
