@@ -34,13 +34,21 @@
       lets try 3 functions for the first
       ... at least T vs S and we will see if there are code savings
       LOOKS GOOD
-
-- [ ] remove sc->tag
-
-- [ ] check diff, anything else to remove?
-
-- [ ] remove contract-first-order for classes .... when?
+- [X] remove sc->tag
+- [X] check diff, anything else to remove?
+- [X] remove contract-first-order for classes .... when?
       maybe should wait, until we can measure the difference of building or not ... no thats silly just make it easy to go back
+      HALF-way removed, it's there but lifted to toplevel; could not check
+       field + method membership otherwise (need to use class internals)
+- [X] jpeg, jfif.rkt component? use-before-def error
+      dammit, struct contract
+      cannot do contract = foo?
+      need contract = (lambda (x) (foo? x))
+      because foo? might not be defined yet, and these are lifted to the toplevel
+- [X] lnm missing type for plot-pict
+      its a define-typed/untyped-id ... need require/typed on the client side
+- [ ] suffixtree 4s typed 40s tagged???
+      that's not too far off from ICFP after all ... 10s slower
 
 - [ ] morsecode/sieve/snake/tetris, very slow runtime (require-typed-check bug?)
       ... better now after checking "blessed" but heres now fully-typed vs ICPF worst-case
