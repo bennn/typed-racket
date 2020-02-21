@@ -19,10 +19,19 @@
   require-typed-check
   "pict-adapted.rkt"
   "summary-adapted.rkt"
-  plot/typed/pict
+  (except-in plot/typed/pict plot-pict)
+  (rename-in (only-in plot/private/no-gui/evil-types Pict) [Pict plot:Pict])
   (only-in racket/math exact-floor)
   (only-in plot/typed/utils linear-seq)
   (only-in racket/math exact-floor exact-ceiling)
+)
+(require/typed plot/typed/pict
+  (plot-pict (->* [(Listof renderer2d)]
+                  [#:x-min (U #f Real) #:x-max (U #f Real)
+                   #:y-min (U #f Real) #:y-max (U #f Real)
+                   #:x-label (U #f String) #:y-label (U #f String)
+                   #:width Real #:height Real]
+                  plot:Pict))
 )
 (require/typed racket/stream
   [stream-length (-> (Sequenceof String) Index)]
