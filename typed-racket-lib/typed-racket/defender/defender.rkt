@@ -90,16 +90,16 @@
      [(op:lambda-identifier formals . body)
       (define dom-map (type->domain-map (stx->arrow-type stx) #f))
       (define body+ (loop #'body))
-      (void
-        (maybe-add-typeof-expr body+ #'body))
+      (void (maybe-add-typeof-expr body+ #'body))
+      (define formals+ (protect-formals dom-map #'formals ctc-cache sc-cache extra-defs*))
       (define stx+
-        (with-syntax ([body+ body+]
-                      [formals+ (protect-formals dom-map #'formals ctc-cache sc-cache extra-defs*)])
-          (quasisyntax/loc stx
-            (op formals (#%plain-app void . formals+) . body+))))
-      (register-ignored! (caddr (syntax-e stx+)))
-      (void
-        (maybe-add-typeof-expr stx+ stx))
+        (with-syntax ([body+ body+])
+          (if (null? formals+)
+            (syntax/loc stx (op formals . body+))
+            (let ((stx (quasisyntax/loc stx (op formals (#%plain-app void . #,formals+) . body+))))
+              (register-ignored! (caddr (syntax-e stx)))
+              stx))))
+      (void (maybe-add-typeof-expr stx+ stx))
       stx+]
      [(x* ...)
       #:when (is-application? stx)
@@ -675,7 +675,7 @@
     (and dom-type (type->flat-contract dom-type ctc-cache sc-cache extra-defs*)))
   (cond
    [(not ctc-stx)
-    dom-stx]
+    #f]
    [else
     (define err-msg
       (parameterize ([error-print-width 20])
@@ -765,7 +765,7 @@
 
 ;; protect-formals : TypeMap (Syntaxof List) Hash Hash (Boxof Syntax) -> (Syntaxof List)
 (define (protect-formals dom-map formals ctc-cache sc-cache extra-defs*)
-  (define xs
+  (filter values
     (let loop ([dom* formals] [position 0])
       ;;  wow this is off the hook  ... sometimes called with (a b (c . d))
       (cond
@@ -790,8 +790,7 @@
         (define var (formal->var (car dom*)))
         (define t (type-map-ref dom-map position))
         (cons (protect-domain t var ctc-cache sc-cache extra-defs*)
-              (loop (cdr dom*) (+ position 1)))])))
-  (datum->syntax formals xs))
+              (loop (cdr dom*) (+ position 1)))]))))
 
 (define (formal->var stx)
   (syntax-parse stx
