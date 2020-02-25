@@ -42,7 +42,9 @@ don't depend on any other portion of the system
          id-from?
          id-from
 
-         locally-defensive? ;; parameter to toggle "transient" runtime type checking
+         current-type-enforcement-mode
+         type-enforcement-mode?
+         guarded transient erasure
          current-typed-side
 
          (all-from-out "disappeared-use.rkt"))
@@ -285,6 +287,20 @@ don't depend on any other portion of the system
 ;; are we currently expanding in a typed module (or top-level form)?
 (define typed-context? (box #f))
 
+(define guarded 'guarded)
+(define transient 'transient)
+(define erasure 'erasure)
+
+(define (type-enforcement-mode? x)
+  (and (symbol? x)
+       (or (eq? x guarded)
+           (eq? x transient)
+           (eq? x erasure))))
+
+;; if we are in a typed module, how do we enforce types?
+;; (or/c #f type-enforcement-mode?)
+(define current-type-enforcement-mode (make-parameter guarded))
+
 ;; environment constructor
 (define-syntax (make-env stx)
   (define-syntax-class spec
@@ -313,10 +329,8 @@ don't depend on any other portion of the system
   (pattern i:id
            #:fail-unless (id-from? #'i sym mod) #f))
 
-(define locally-defensive? (make-parameter #f))
-
 (define (current-typed-side)
   (if (unbox typed-context?)
-    (if (locally-defensive?) 'tagged 'typed)
+    (current-type-enforcement-mode)
     'untyped))
 

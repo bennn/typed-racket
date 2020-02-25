@@ -25,7 +25,9 @@
               (~optional
                (~and #:with-refinements refinement-reasoning?))
               (~optional
-               (~and #:locally-defensive ld?)))
+               (~or (~and #:guarded   (~bind [te-strat #'guarded]))
+                    (~and #:transient (~bind [te-strat #'transient]))
+                    (~and #:erasure   (~bind [te-strat #'erasure])))))
          ...
          forms ...)
      (let ([pmb-form (syntax/loc stx (#%plain-module-begin forms ...))])
@@ -33,7 +35,7 @@
                                      (and (attribute opt?) (syntax-e (attribute opt?))))]
                       [with-refinements? (or (attribute refinement-reasoning?)
                                              (with-refinements?))]
-                      [locally-defensive? (if (attribute ld?) #true #false)])
+                      [current-type-enforcement-mode (if (attribute te-strat) (syntax-e #'te-strat) 'guarded)])
          (tc-module/full stx pmb-form
           (λ (new-mod pre-before-code pre-after-code)
 #|bg|# (define ctc-cache (make-hash))
