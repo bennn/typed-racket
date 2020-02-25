@@ -32,7 +32,7 @@
   ;; current code inspector has sufficient privileges
   (if (and (optimize?)
            (not (getenv "PLT_TR_NO_OPTIMIZE"))
-           (not (locally-defensive?)) ;; TODO (bg) locally-defensive _should_ be compatible with the optimizer
+           (eq? guarded (current-type-enforcement-mode)) ;; TODO (bg) transient _should_ be compatible with the optimizer
            (authorized-code-inspector?))
       (begin
         (do-time "Starting optimizer")
@@ -43,7 +43,7 @@
 (define (maybe-defend body ctc-cache sc-cache)
   ;; TODO maybe check (authorized-code-inspector?)
   (cond
-    [(locally-defensive?)
+    [(eq? transient (current-type-enforcement-mode))
      (do-time "Starting defender")
      (define extra-def* (box '()))
      (define body+
