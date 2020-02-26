@@ -130,30 +130,30 @@
     #:literal-sets (kernel-literals)
     [(define-values (ctc-id) _)
      ;; no need for ignore, the optimizer doesn't run on this code
-#|bg|#     (cond [failure-reason
-#|bg|#            #`(define-syntax (#,untyped-id stx)
-#|bg|#                (tc-error/fields #:stx stx
-#|bg|#                                 "could not convert type to a contract"
-#|bg|#                                 #:more #,failure-reason
-#|bg|#                                 "identifier" #,(symbol->string (syntax-e orig-id))
-#|bg|#                                 "type" #,(pretty-format-rep type #:indent 8)))]
-#|bg|#           [else
-#|bg|#            (match-define (list defs ctc) result)
-#|bg|#            (define maybe-inline-val
-#|bg|#              (should-inline-contract?/cache ctc cache))
-#|bg|#            #`(begin #,@defs
-#|bg|#                     #,@(if maybe-inline-val
-#|bg|#                            null
-#|bg|#                            (list #`(define-values (ctc-id) #,ctc)))
-#|bg|#                     (define-module-boundary-contract #,untyped-id
-#|bg|#                       #,orig-id
-#|bg|#                       #,(or maybe-inline-val #'ctc-id)
-#|bg|#                       #:pos-source #,blame-id
-#|bg|#                       #:srcloc (vector (quote #,(syntax-source orig-id))
-#|bg|#                                        #,(syntax-line orig-id)
-#|bg|#                                        #,(syntax-column orig-id)
-#|bg|#                                        #,(syntax-position orig-id)
-#|bg|#                                        #,(syntax-span orig-id))))])]))
+     (cond [failure-reason
+            #`(define-syntax (#,untyped-id stx)
+                (tc-error/fields #:stx stx
+                                 "could not convert type to a contract"
+                                 #:more #,failure-reason
+                                 "identifier" #,(symbol->string (syntax-e orig-id))
+                                 "type" #,(pretty-format-rep type #:indent 8)))]
+           [else
+            (match-define (list defs ctc) result)
+            (define maybe-inline-val
+              (should-inline-contract?/cache ctc cache))
+            #`(begin #,@defs
+                     #,@(if maybe-inline-val
+                            null
+                            (list #`(define-values (ctc-id) #,ctc)))
+                     (define-module-boundary-contract #,untyped-id
+                       #,orig-id
+                       #,(or maybe-inline-val #'ctc-id)
+                       #:pos-source #,blame-id
+                       #:srcloc (vector (quote #,(syntax-source orig-id))
+                                        #,(syntax-line orig-id)
+                                        #,(syntax-column orig-id)
+                                        #,(syntax-position orig-id)
+                                        #,(syntax-span orig-id))))])]))
 
 ;; Syntax (Dict Static-Contract (Cons Id Syntax)) -> (Option Syntax)
 ;; A helper for generate-contract-def/provide that helps inline contract
@@ -1358,7 +1358,7 @@
        [_ #false]))))
 
 (module predicates racket/base
-#|bg|#  (require racket/extflonum #;(only-in racket/contract/base >=/c <=/c)) ;; performance
+  (require racket/extflonum #;(only-in racket/contract/base >=/c <=/c)) ;;bg performance, I think
   (provide nonnegative? nonpositive?
            extflonum? extflzero? extflnonnegative? extflnonpositive?)
   (define nonnegative? (lambda (x) (and (real? x) (>= x 0))) #;(>=/c 0))
@@ -1423,14 +1423,10 @@
   (define exact-number/sc (numeric/sc Exact-Number (and/c number? exact?)))
   (define inexact-complex/sc
     (numeric/sc Inexact-Complex
-#|bg|#                 (lambda (x)
-#|bg|#                   (and (number? x)
-#|bg|#                        (inexact-real? (imag-part x))
-#|bg|#                        (inexact-real? (real-part x))))
-                 #;(and/c number?
-                   (lambda (x)
-                     (and (inexact-real? (imag-part x))
-                          (inexact-real? (real-part x)))))))
+                (lambda (x)
+                  (and (number? x)
+                       (inexact-real? (imag-part x))
+                       (inexact-real? (real-part x))))))
   (define number/sc (numeric/sc Number number?))
 
   (define extflonum-zero/sc (numeric/sc ExtFlonum-Zero (and/c extflonum? extflzero?)))
