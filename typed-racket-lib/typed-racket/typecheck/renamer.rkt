@@ -6,14 +6,14 @@
 
 ;; a constructor for typed renamings that attach the required
 ;; 'not-free-identifier properties
-(define (make-typed-renaming target alternate side)
+(define (make-typed-renaming target alternate enforcement-mode)
   (typed-renaming (syntax-property target 'not-free-identifier=? #t)
                   (syntax-property alternate 'not-free-identifier=? #t)
-                  side))
+                  enforcement-mode))
 
 ;; target : identifier
 ;; alternate : identifier
-(struct typed-renaming (target alternate side)
+(struct typed-renaming (target alternate enforcement-mode)
   ;; prevent the rename transformer from expanding in
   ;; module-begin context because the typed context flag
   ;; will not be set until the module-begin
@@ -23,7 +23,7 @@
   ;; expansion time when the typed context flag is set correctly
   #:property prop:rename-transformer
   (λ (obj)
-    (if (eq? (current-typed-side) (typed-renaming-side obj))
+    (if (eq? (current-type-enforcement-mode) (typed-renaming-enforcement-mode obj))
         (typed-renaming-target obj)
         (typed-renaming-alternate obj))))
 

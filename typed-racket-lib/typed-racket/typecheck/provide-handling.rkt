@@ -165,9 +165,10 @@
        ;; has no dependencies.
        #`(begin 
            (define-syntax (untyped-id stx)
+             ;;bg TODO can transient macro appear in untyped?
              (tc-error/stx stx "Macro ~a from typed module used in untyped code" 'untyped-id))
            (define-syntax export-id
-             (make-typed-renaming #'id #'untyped-id '#,(current-typed-side))))
+             (make-typed-renaming #'id #'untyped-id '#,(current-type-enforcement-mode))))
        new-id
        (list (list #'export-id #'id))
        null)))
@@ -190,7 +191,7 @@
        ;; For the main module
        #`(begin (define-syntax local-untyped-id (#,mk-redirect-id (quote-syntax untyped-id)))
                 (define-syntax export-id
-                  (make-typed-renaming #'id #'local-untyped-id '#,(current-typed-side))))
+                  (make-typed-renaming #'id #'local-untyped-id '#,(current-type-enforcement-mode))))
        new-id
        null
        (list (list new-id ty))
