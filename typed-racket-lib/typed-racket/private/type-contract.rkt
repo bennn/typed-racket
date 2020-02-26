@@ -50,6 +50,10 @@
           #t)]
     [_ #f]))
 
+;; type : (syntaxof Type?)
+;; flat? : boolean?
+;; maker? : boolean?
+;; typed-side : (or/c 'untyped type-enforcement-mode)
 (struct contract-def (type flat? maker? typed-side) #:prefab)
 
 ;; get-contract-def-property : Syntax -> (U False Contract-Def)
@@ -84,6 +88,8 @@
 (define (generate-contract-def stx cache)
   (define prop (get-contract-def-property stx))
   (match-define (contract-def type-stx flat? maker? typed-side) prop)
+  (when (and (type-enforcement-mode? typed-side) (not (eq? typed-side (current-type-enforcement-mode))))
+    (raise-arguments-error 'generate-contract-def "current TE mode does not match contract def side" "typed-side" typed-side "(current-type-enforcement-mode)" (current-type-enforcement-mode)))
   (define *typ (if type-stx (parse-type type-stx) t:-Dead-Code))
   (define kind (if (and type-stx flat?) 'flat 'impersonator))
   (syntax-parse stx #:literals (define-values)
