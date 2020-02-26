@@ -84,8 +84,7 @@
                  [disappeared-bindings-todo null]
                  ;; for error reporting
                  [orig-module-stx stx]
-                 [expanded-module-stx expanded-body]
-                 [current-type-enforcement-mode 'guarded])
+                 [expanded-module-stx expanded-body])
     ;; we can treat the lifted definitions as top-level forms because they
     ;; are only definitions and not forms that have special top-level meaning
     ;; to TR
@@ -184,7 +183,9 @@
     [pattern (~seq #:result ty:expr)])
   (syntax-parse stx
     [(_ :typed-ids fv:free-vars . body)
-     (with-type-helper stx #'body #'(fv.id ...) #'(fv.ty ...) #'(id ...) #'(ty ...) #f #f (syntax-local-context))]
+     (parameterize ([current-type-enforcement-mode 'guarded])
+       (with-type-helper stx #'body #'(fv.id ...) #'(fv.ty ...) #'(id ...) #'(ty ...) #f #f (syntax-local-context)))]
     [(_ :result-ty fv:free-vars . body)
-     (with-type-helper stx #'body #'(fv.id ...) #'(fv.ty ...) #'() #'() #'ty #t (syntax-local-context))]))
+     (parameterize ([current-type-enforcement-mode 'guarded])
+       (with-type-helper stx #'body #'(fv.id ...) #'(fv.ty ...) #'() #'() #'ty #t (syntax-local-context)))]))
 
