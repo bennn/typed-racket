@@ -34,11 +34,11 @@
     #:when expected
     #:when (not (andmap type-annotation (syntax->list #'(lp args ...))))
     #:when (free-identifier=? #'lp #'lp*)
-#|bg|#    (let ([r (let-loop-check #'lam #'lp #'actuals #'(args ...) #'body expected)])
-#|bg|#      (define univ* (for/list ([_arg (in-list (syntax-e #'(args ...)))]) Univ))
-#|bg|#      (add-typeof-expr #'loop (ret (->* univ* Univ)))
-#|bg|#      r)
-    #;(let-loop-check #'lam #'lp #'actuals #'(args ...) #'body expected))
+    (let ([r (let-loop-check #'lam #'lp #'actuals #'(args ...) #'body expected)])
+      ;;bg TODO needed?
+      (define univ* (for/list ([_arg (in-list (syntax-e #'(args ...)))]) Univ))
+      (add-typeof-expr #'loop (ret (->* univ* Univ)))
+      r))
   ;; inference for ((lambda
   (pattern ((~and lam (#%plain-lambda (x ...) . body)) args ...)
    #:fail-when (plambda-property #'lam) #f

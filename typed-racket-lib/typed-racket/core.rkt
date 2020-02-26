@@ -54,18 +54,16 @@
               [transformed-body (begin0 (remove-provides #'body2) (do-time "Removed provides"))]
               ;; add the real definitions of contracts on requires
               [transformed-body
-               (begin0 #;(change-contract-fixups (syntax->list #'transformed-body))
-#|bg|#                       (change-contract-fixups/cache (syntax->list #'transformed-body)) ;; bg
-                       (do-time "Fixed contract ids"))]
+               (begin0
+                 (change-contract-fixups/cache (syntax->list #'transformed-body))
+                 (do-time "Fixed contract ids"))]
               ;; add the real definitions of contracts on the before- and after-code
-              #;[(before-code ...) (change-provide-fixups (flatten-all-begins pre-before-code))]
-              #;[(after-code ...) (begin0 (change-provide-fixups (flatten-all-begins pre-after-code))
-                                          (do-time "Generated contracts"))]
-#|bg|#             [(before-code ...) (change-provide-fixups/cache (flatten-all-begins pre-before-code))]
-#|bg|#             [(after-code ...) (begin0 (change-provide-fixups/cache (flatten-all-begins pre-after-code))
-#|bg|#                                 (do-time "Generated contracts"))]
+              [(before-code ...) (change-provide-fixups/cache (flatten-all-begins pre-before-code))]
+              [(after-code ...) (begin0
+                                  (change-provide-fixups/cache (flatten-all-begins pre-after-code))
+                                  (do-time "Generated contracts"))]
               ;; potentially optimize the code based on the type information
-#|bg|#              [(optimized-body ...) (maybe-optimize (defend/cache #'transformed-body))]
+              [(optimized-body ...) (maybe-optimize (defend/cache #'transformed-body))]
               ;; add in syntax property on useless expression to draw check-syntax arrows
               [check-syntax-help (syntax-property
                                   (syntax-property
