@@ -44,8 +44,9 @@ don't depend on any other portion of the system
 
          current-type-enforcement-mode
          type-enforcement-mode?
-         guarded transient erasure
-         current-typed-side
+         guarded
+         transient
+         erasure
 
          (all-from-out "disappeared-use.rkt"))
 
@@ -299,7 +300,7 @@ don't depend on any other portion of the system
 
 ;; if we are in a typed module, how do we enforce types?
 ;; (or/c #f type-enforcement-mode?)
-(define current-type-enforcement-mode (make-parameter guarded))
+(define current-type-enforcement-mode (make-parameter #f))
 
 ;; environment constructor
 (define-syntax (make-env stx)
@@ -328,9 +329,4 @@ don't depend on any other portion of the system
 (define-syntax-class (id-from sym mod)
   (pattern i:id
            #:fail-unless (id-from? #'i sym mod) #f))
-
-(define (current-typed-side)
-  (if (unbox typed-context?)
-    (current-type-enforcement-mode)
-    'untyped))
 

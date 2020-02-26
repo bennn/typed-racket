@@ -1,11 +1,9 @@
 #lang racket/base
 
-;; TODO straighten out tagged-world vs. typed-world !!!!!
-;; (remember we are a LONG WAY from actually combining typed & tagged, need to
+;; TODO
 ;;  - [ ] build + test occurrence-type optimizer
-;;  - [ ] build erasure-racket
+;;  - [ ] build/test erasure-racket
 ;;  - [X] work out 3-sound theory
-;;  - [ ] finally, build)
 ;;
 ;; TODO
 ;; - [ ] need with-new-name-tables here?

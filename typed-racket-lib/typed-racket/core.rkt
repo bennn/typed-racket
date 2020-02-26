@@ -38,15 +38,15 @@
                       [current-type-enforcement-mode (if (attribute te-strat) (syntax-e #'te-strat) 'guarded)])
          (tc-module/full stx pmb-form
           (λ (new-mod pre-before-code pre-after-code)
-#|bg|# (define ctc-cache (make-hash))
-#|bg|# (define sc-cache (make-hash))
-#|bg|# (define (change-contract-fixups/cache forms)
-#|bg|#   (change-contract-fixups forms ctc-cache sc-cache))
-#|bg|# (define (change-provide-fixups/cache forms)
-#|bg|#   (change-provide-fixups forms ctc-cache sc-cache))
-#|bg|# (define (defend/cache forms)
-#|bg|#   ;;bg; TODO cannot re-use other caches because `define`s will be out of order
-#|bg|#   (maybe-defend forms (make-hash) (make-hash)))
+            (define ctc-cache (make-hash))
+            (define sc-cache (make-hash))
+            (define (change-contract-fixups/cache forms)
+              (change-contract-fixups forms ctc-cache sc-cache))
+            (define (change-provide-fixups/cache forms)
+              (change-provide-fixups forms ctc-cache sc-cache))
+            (define (defend/cache forms)
+              ;;bg; TODO cannot re-use other caches because `define`s will be out of order
+              (maybe-defend forms (make-hash) (make-hash)))
             (with-syntax*
              (;; pmb = #%plain-module-begin
               [(pmb . body2) new-mod]
@@ -79,6 +79,7 @@
                      before-code ... optimized-body ... after-code ... check-syntax-help)))))))]))
 
 (define (ti-core stx )
+  ;(current-type-enforcement-mode guarded)
   (current-type-names (init-current-type-names))
   (syntax-parse stx
     #:literal-sets (kernel-literals)
