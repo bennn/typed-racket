@@ -79,7 +79,7 @@
                      before-code ... optimized-body ... after-code ... check-syntax-help)))))))]))
 
 (define (ti-core stx )
-  ;(current-type-enforcement-mode guarded)
+  (current-type-enforcement-mode guarded)
   (current-type-names (init-current-type-names))
   (syntax-parse stx
     #:literal-sets (kernel-literals)
