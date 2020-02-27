@@ -153,25 +153,30 @@
         (cons (list new-id constr-type)
               (apply append constr-rts rtss)))))
 
-
   ;; mk-syntax-quad : identifier? identifier? -> quad/c
   (define (mk-syntax-quad internal-id new-id)
-    (with-syntax* ([id internal-id]
-                   [export-id new-id]
-                   [untyped-id (freshen-id #'id)])
-      (values
-       #`(begin)
-       ;; There's no need to put this macro in the submodule since it
-       ;; has no dependencies.
-       #`(begin 
-           (define-syntax (untyped-id stx)
-             ;;bg TODO can transient macro appear in untyped?
-             (tc-error/stx stx "Macro ~a from typed module used in untyped code" 'untyped-id))
-           (define-syntax export-id
-             (make-typed-renaming #'id #'untyped-id '#,(current-type-enforcement-mode))))
-       new-id
-       (list (list #'export-id #'id))
-       null)))
+    (case (current-type-enforcement-mode)
+      [(guarded)
+       (with-syntax* ([id internal-id]
+                      [export-id new-id]
+                      [untyped-id (freshen-id #'id)])
+         (values
+          #`(begin)
+          ;; There's no need to put this macro in the submodule since it
+          ;; has no dependencies.
+          #`(begin
+              (define-syntax (untyped-id stx)
+                (tc-error/stx stx "Macro ~a from typed module used in untyped code" 'untyped-id))
+              (define-syntax export-id
+                (make-typed-renaming #'id #'untyped-id '#,(current-type-enforcement-mode))))
+          new-id
+          (list (list #'export-id #'id))
+          null))]
+      [(transient erasure)
+       ;; export the syntax
+       (mk-ignored-quad internal-id)]
+      [else
+       (raise-arguments-error 'mk-syntax-quad "bad mode" "(current-type-enforcement-mode)" (current-type-enforcement-mode))]))
 
   ;; mk-value-quad : identifier? identifier? (or/c Type #f) -> quad/c
   (define (mk-value-quad internal-id new-id ty)
