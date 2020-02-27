@@ -169,6 +169,7 @@
   build-vector
 ))))
 
+;;bg TODO can this info go in the base env? ... base transient env?
 (define BLESSED-CODOMAIN (immutable-free-id-set (map (lambda (sym) (format-id #'#f "~a" sym)) '(
   ;; --- 4.1
   boolean? not equal? eqv? eq? equal?/recur immutable? symbol=? boolean=?
@@ -378,7 +379,64 @@
   variable-reference->module-source variable-reference->phase variable-reference->module-base-phase
   variable-reference->module-declaration-inspector variable-reference-from-unsafe?
 
-
+  ;; --- 15.1.1
+  path? path-string? path-for-some-system? string->path bytes->path path->string
+  path->bytes string->path-element bytes->path-element path-element->string
+  path-element->bytes path<? path-convention-type system-path-convention-type
+  build-path build-path/convention-type absolute-path? relative-path? complete-path?
+  path->complete-path path->directory-path resolve-path cleanse-path expand-user-path
+  simplify-path normal-case-path split-path explode-path path-replace-extension
+  path-add-extension path-replace-suffix path-add-suffix reroot-path
+  ;; --- 15.1.2
+  file-name-from-path path-get-extension path-has-extension? filename-extension
+  find-relative-path normalize-path path-element? path-only simple-form-path
+  some-system-path->string string->some-system-path strink-path-wrt
+  ;; --- 15.2.1
+  find-system-path path-list-string->path-list find-executable-path file-exists?
+  link-exists? delete-file rename-file-or-directory file-or-directory-modify-seconds
+  file-or-directory-permissions file-or-directory-identity file-size copy-file
+  make-file-or-directory-link current-force-delete-positions
+  ;; --- 15.2.3
+  current-directory current-directory-for-user current-drive directory-exists?
+  make-directory delete-directory directory-list filesystem-root-list
+  ;; --- 15.2.4
+  filesystem-change-evt? filesystem-change-evt filesystem-change-evt-cancel
+  ;; --- 15.2.5
+  ;; --- 15.2.6
+  file->string file->bytes file->value file->list file->lines file->bytes-lines
+  display-to-file write-to-file display-lines-to-file copy-directory/files
+  delete-directory/files find-files pathlist-closure fold-files make-directory*
+  make-parent-directory* make-temporary-file call-with-atomic-output-file
+  get-preference put-preferences preferences-lock-file-mode make-handle-get-preference-lock
+  make-handle-get-preference-locked call-with-file-lock/timeout make-lock-file-name
+  ;; --- 15.3.1
+  tcp-listen tcp-connect tcp-connect/enable-break tcp-accept tcp-accept/enable-break
+  tcp-accept-ready? tcp-close tcp-listener? tcp-accept-evt tcp-abandon-port
+  tcp-addresses tcp-port?
+  ;; --- 15.3.2
+  udp-open-socket udp-bind! udp-connect! udp-send-to udp-send udp-send-to*
+  udp-send* udp-send-to/enable-break udp-send/enable-break udp-receive!
+  udp-receive!* udp-receive!/enable-break udp-set-receive-buffer-size!
+  udp-close udp? udp-bound? udp-connected? udp-send-ready-evt udp-receive-ready-evt
+  udp-send-to-evt udp-send-evt udp-receive!-evt udp-addresses udp-set-ttl! udp-ttl
+  udp-multicast-join-group! udp-multicast-leave-group! udp-multicast-interface
+  udp-multicast-set-interface! udp-multicast-set-loopback! udp-multicast-loopback?
+  udp-multicast-set-ttl! udp-multicast-ttl
+  ;; --- 15.4
+  subprocess subprocess-wait subprocess-status subprocess-kill subprocess-pid
+  subprocess? current-subprocess-custodian-mode subprocess-group-enabled
+  shell-execute 
+  ;; --- 15.4.1
+  system system* system/exit-code system*/exit-code process process* process/ports
+  process*/ports string-no-nuls? bytes-no-nuls?
+  ;; --- 15.5.1
+  logger? make-logger logger-name current-logger
+  ;; --- 15.5.2
+  log-message log-level? log-max-level log-all-levels log-level-evt
+  ;; --- 15.5.3
+  log-receiver? make-log-receiver
+  ;; --- 15.5.4
+  log-level/c with-intercepted-logging with-logging-to-port 
   ;; --- 15.6
   current-seconds current-inexact-milliseconds seconds->date date-second
   date-minute date-hour date-day date-month date-year date-week-day date-year-day
@@ -388,6 +446,22 @@
   ;; --- 15.6.1
   current-date date->string date-display-format date->seconds date*->seconds
   find-seconds date->julian/scalinger julian/scalinger->string
+  ;; --- 15.7
+  environment-variables? current-environment-variables bytes-environment-variable-name?
+  make-environment-variables environment-variables-ref environment-variables-set!
+  environment-variables-names environment-variables-copy getenv putenv
+  string-environment-variable-name
+  ;; --- 15.8
+  system-type system-language+country system-library-subpath version banner
+  current-command-line-arguments current-thread-initial-stack-size
+  vector-set-performance-stats!
+  ;; --- 15.9
+  parse-command-line
+  ;; --- 15.10
+  gethostname getpid
+
+  ;; --- 16.1
+
 
   ;; --- 17
   unsafe-fx+ unsafe-fx- unsafe-fx* unsafe-fxquotient unsafe-fxremainder unsafe-fxmodulo
