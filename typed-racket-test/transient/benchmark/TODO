@@ -48,12 +48,43 @@
 - [X] lnm missing type for plot-pict
       its a define-typed/untyped-id ... need require/typed on the client side
 - [X] runtime perf: sieve
+- [X] 'typed-world ? it's a blame label for `cast` ... we could rename depending
+      on the mode for the current types, but I don't think it matters
+- [X] remove `typed ? at least clearly distinguish a mode from a side
+- [X] remove current-typed-side ?
+- [X] what goes wrong in type->contract doesn't set parameter?
+      nothing yet, so change to an assert for now
 
-- [ ] remove current-typed-side ?
-- [ ] remove `typed ? at least clearly distinguish a mode from a side
-- [ ] 'typed-world ?
-- [ ] what goes wrong in type->contract doesn't set parameter?
+- [ ] remove dom check from ...
+      for-loop lambda ... all these ifs might be killing loops idk
 
+- [ ] bless string->path
+      ??? variable-reference-constant? #%variable-reference --- probably TR internal
+      ??? for/list etc, its always a list or void or sum
+      bless check-list ... and anything that returns void?
+      ... anything returns Nothing (none/c/proc) ... well doesn't change error, but generates a lot of code
+      ??? make-sequence
+         (let-values (((pos->vals pos-pre-inc pos-next init pos-cont?  val-cont?  all-cont?)
+                       (let-values (((dyn-cod22 dyn-cod23 dyn-cod24 dyn-cod25 dyn-cod26 dyn-cod27 dyn-cod28)
+                                     (#%app make-sequence '(word+freq) words+freqs)))
+                         (if (if (#%plain-app g11 dyn-cod22) (if (#%plain-app g14 dyn-cod23) (if (#%plain-app g11 dyn-cod24) (if (#%plain-app g14 dyn-cod26) (if (#%plain-app g14 dyn-cod27) (#%plain-app g21 dyn-cod28)
+                                       '#f) '#f) '#f) '#f) '#f)
+                           (#%app
+                            values
+                            dyn-cod22
+                            dyn-cod23
+                            dyn-cod24
+                            dyn-cod25
+                            dyn-cod26
+                            dyn-cod27
+                            dyn-cod28)
+                           (#%plain-app
+                            error
+                            'dynamic-typecheck
+                            '"'(#%app make-sequ... : ((-> Any (List String Integer)) (U (-> Any Any) False) (-> Any Any) Any (U (-> Any Any) False) (U (-> (List String Integer) Any) False) (U (-> Any (List String Integer) Any) False))")))))
+
+- [ ] define-predicate really flat?
+- [ ] can transient macro appear in untyped?
 - [ ] suffixtree 4s typed 40s tagged???
       that's not too far off from ICFP after all ... 10s slower
 
