@@ -5,6 +5,7 @@
 (require "../utils/utils.rkt"
          (utils tc-utils)
          "global-env.rkt"
+         "transient-env.rkt"
          "type-name-env.rkt"
          "type-alias-env.rkt"
          "mvar-env.rkt"
@@ -32,9 +33,9 @@
 
 (define-syntax (define-initial-env stx)
   (syntax-parse stx
-    [(_ initialize-env [id-expr ty] ...)
+    [(_ initialize-env [id-expr ty (~optional trusted-positive? #:defaults ([trusted-positive? #'#t]))] ...)
      #`(begin
-         (define initial-env (make-env [id-expr (λ () ty)] ... ))
+         (define initial-env (make-env [id-expr (λ () ty) trusted-positive?] ... ))
          (define (initialize-env) (initialize-type-env initial-env))
          (provide initialize-env))]))
 
@@ -42,7 +43,12 @@
   (for-each (lambda (nm/ty) (register-resolved-type-alias (car nm/ty) (cadr nm/ty))) initial-type-names))
 
 (define (initialize-type-env initial-env)
-  (for-each (lambda (nm/ty) (register-type-if-undefined (car nm/ty) (cadr nm/ty))) initial-env))
+  (define (init nm/ty/sh)
+    (define id (car nm/ty/sh))
+    (when (caddr nm/ty/sh)
+      (register-transient-trusted-positive! id))
+    (register-type-if-undefined id (cadr nm/ty/sh)))
+  (for-each init initial-env))
 
 ;; stores definition syntaxes for lifting out common expressions
 (define type-definitions (make-queue))

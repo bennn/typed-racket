@@ -18,6 +18,8 @@
   typed-racket/rep/values-rep
   typed-racket/static-contracts/utils
   typed-racket/types/match-expanders
+  (only-in typed-racket/env/transient-env
+    transient-trusted-positive?)
   (only-in typed-racket/typecheck/internal-forms
     typed-struct
     typed-struct/exec)
@@ -86,7 +88,7 @@
       stx
       #;(syntax/loc stx (let-values ([(f) fun]) body))]
      [(op:lambda-identifier formals . body)
-      (define dom-map (type->domain-map (stx->arrow-type stx) #f))
+      (define dom-map (type->domain-map (stx->arrow-type stx)))
       (define body+ (loop #'body))
       (void (maybe-add-typeof-expr body+ #'body))
       (define formals+ (protect-formals dom-map #'formals ctc-cache sc-cache extra-defs*))
@@ -161,335 +163,6 @@
   (let ((old-type (maybe-type-of old-stx)))
     (when old-type
       (add-typeof-expr new-stx old-type))))
-
-;; -----------------------------------------------------------------------------
-
-;; Higher-order functions that respect their function arguments.
-(define BLESSED-DOMAIN (immutable-free-id-set (map (lambda (sym) (format-id #'#f "~a" sym)) '(
-  build-vector
-))))
-
-;;bg TODO can this info go in the base env? ... base transient env?
-(define BLESSED-CODOMAIN (immutable-free-id-set (map (lambda (sym) (format-id #'#f "~a" sym)) '(
-  ;; --- 4.1
-  boolean? not equal? eqv? eq? equal?/recur immutable? symbol=? boolean=?
-  false? nand nor implies xor
-  ;; --- 4.2.1
-  number? complex? real? rational? integer? exact-integer? exact-nonnegative-integer?
-  exact-positive-integer? inexact-real? fixnum? flonum? double-flonum? single-flonum?
-  zero? positive? negative? even? odd? exact? inexact? inexact->exact exact->inexact
-  real->single-flonum real->double-flonum
-  ;; --- 4.2.2
-  + - * / quotient remainder quotient/remainder
-  modulo add1 sub1 abs max min gcd lcm round floor ceiling truncate numerator
-  denominator rationalize = < <= > >= sqrt integer-sqrt integer-sqrt/remainder
-  expt exp log sin cos tan asin acos atan make-rectangular make-polar real-part
-  imag-part magnitude angle bitwise-ior bitwise-and bitwise-xor bitwise-not
-  bitwise-bit-set? bitwise-bit-field arithmetic-shift integer-length random
-  random-seed make-pseudo-random-generator pseudo-random-generator? current-pseudo-random-generator
-  pseudo-random-generator->vector vector->pseudo-random-generator! pseudo-random-generator-vector?
-  crypto-random-bytes random-sample number->string string->number real->decimal-string
-  integer-bytes->integer integer->integer-bytes floating-point-bytes->real
-  real->floating-point-bytes system-big-endian? degrees->radians radians->degrees
-  sqr sgn conjugate sinh cosh tanh exact-round exact-floor exact-ceiling exact-truncate
-  order-of-magnitude nan? infinite? positive-integer? negative-integer? nonpositive-integer?
-  nonnegative-integer? natural?
-  ;; --- 4.2.3
-  fl+ fl- fl* fl/ flabs fl= fl< fl> fl<= fl>= flmin flmax flround flfloor
-  flceiling fltruncate flsin flcos fltan flasin flacos flatan fllog flexp flsqrt
-  flexpt -->fl fl->exact-integer make-flrectangular flreal-part flimag-part
-  flrandom flvector? flvector make-flvector flvector-length flvector-ref
-  flvector-set! flvector-copy in-flvector shared-flvector make-shared-flvector
-  ;; --- 4.2.4
-  fx+ fx- fx* fxquotient fxremainder fxmodulo fxabs fxand fxior fxxor fxnot
-  fxlshift fxrshift fx- fx< fx> fx<= fx>= fxmin fxmax fx->fl fl->fx fxvector?
-  fxvector make-fxvector fxvector-length fxvector-ref fxvector-set! fxvector-copy
-  in-fxvector shared-fxvector make-shared-fxvector
-  ;; --- 4.2.5
-  extflonum? extflonum-available? extfl+ extfl- extfl* extfl/ extflabs extfl=
-  extfl< extfl> extfl<= extfl>= extflmin extflmax extflround extflfloor extflceiling
-  extfltruncate extflsin extflcos extfltan extflasin extflacos extflatan extfllog
-  extflexp extflsqrt extflexpr ->extfl extfl->exact-integer real->extfl extfl->exact
-  extfl->inexact extflvector? extflvector make-extflvector extflvector-length
-  extflvector-ref extflvector-set! extflvector-copy in-extflvector make-shared-extflvector
-  floating-point-bytes->extfl extfl->floating-point-bytes
-  ;; --- 4.3
-  string? make-string string string->immutable-string string-length string-ref
-  string-set! substring string-copy string-copy! string-fill! string-append
-  string->list list->string build-string string=? string<? string<=? string>?
-  string>=? string-ci=? string-ci<? string-ci<=? string-ci>? string-ci>=?
-  string-upcase string-downcase string-titlecase string-foldcase string-normalize-nfd
-  string-normalize-nfkd string-normalize-nfc string-normalize-nfkc string-locale=?
-  string-locale<? string-locale>? string-locale-ci=? string-locale-ci<? string-locale-ci>?
-  string-locale-upcase string-locale-downcase string-append* string-join string-normalize-spaces
-  string-replace string-split string-trim non-empty-string? string-contains?
-  string-prefix? string-suffix? ~a ~v ~s ~e ~r ~.a ~.v ~.s
-  ;; --- 4.4
-  bytes? make-bytes bytes bytes->immutable-bytes byte? bytes-length bytes-ref
-  bytes-set! subbytes bytes-copy bytes-copy! bytes-fill! bytes-append
-  bytes->list list->bytes make-shared-bytes shared-bytes bytes=? bytes<?
-  bytes>? bytes->string/utf-8 bytes->string/locale bytes->string/latin-1
-  string->bytes/utf-8 string->bytes/locale string->bytes/latin-1 string-utf-8-length
-  bytes-utf-8-length bytes-utf-8-ref bytes-utf-8-index bytes-open-converter
-  bytes-close-converter bytes-convert bytes-convert-end bytes-converter?
-  locale-string-encoding bytes-append* bytes-join
-  ;; --- 4.5
-  char? char->integer integer->char char-utf-8-length char=? char<? char<=?
-  char>? char>=? char-ci=? char-ci<? char-ci<=? char-ci>? char-ci>=? char-alphabetic?
-  char-lower-case? char-upper-case? char-title-case? char-numeric? char-symbolic?
-  char-punctuation? char-graphic? char-whitespace? char-iso-control? char-general-category
-  make-known-char-range-list char-upcase char-downcase char-titlecase char-foldcase
-  ;; --- 4.6
-  symbol? symbol-interned? symbol-unreadable? symbol->string string->symbol
-  string->uninterned-symbol string->unreadable-symbol gensym symbol<?
-  ;; --- 4.7
-  regexp? pregexp? byte-regexp? byte-pregexp? regexp pregexp byte-regexp
-  byte-pregexp regexp-quote regexp-max-lookbehind regexp-match regexp-match*
-  regexp-try-match regexp-match-positions regexp-match-positions* regexp-match?
-  regexp-match-exact? regexp-match-peek regexp-match-peek-positions
-  regexp-match-peek-immediate regexp-match-peek-positions-immediate
-  regexp-match-peek-positions* regexp-match/end regexp-match-positions/end
-  regexp-match-peek-positions/end regexp-match-peek-positions-immediate/end
-  regexp-split regexp-replace regexp-replace* regexp-replaces regexp-replace-quote
-  ;; --- 4.8
-  keyword? keyword->string string->keyword keyword<?
-  ;; --- 4.9
-  pair? null? cons list? list list* build-list length list-tail append reverse
-  map andmap ormap for-each filter remove remq remv remove* remq* remv* sort
-  member memv memq memf findf assoc assv assq assf cons? empty? rest make-list
-  list-update list-set index-of index-where indexes-of indexes-where take takef
-  drop-right takef-right list-prefix? take-common-prefix add-between append*
-  flatten check-duplicates remove-duplicates filter-map count range append-map
-  filter-not shuffle combinations in-combinations permutations in-permutations
-  group-by cartesian-product remf remf* make-reader-graph placeholder?
-  make-placeholder placeholder-set! hash-placeholder? make-hash-placeholder
-  make-hasheq-placeholder make-hasheqv-placeholder
-  ;; --- 4.10
-  mpair? mcons set-mcar! set-mcdr!
-  ;; --- 4.11
-  vector? make-vector vector vector-immutable vector-length vector-set!
-  vector->list list->vector vector->immutable-vector vector-fill! vector-copy!
-  build-vector vector-set*! vector-map vector-map! vector-append vector-take
-  vector-take-right vector-drop vector-drop-right vector-split-at
-  vector-split-at-right vector-copy vector-filter vector-filter-not
-  vector-count vector-member vector-memv vector-memq vector-sort vector-sort!
-  ;; --- 4.12
-  box? box box-immutable set-box! box-cas!
-  ;; --- 4.13
-  hash? hash-equal? hash-eqv? hash-eq? hash-weak? hash hasheq hasheqv make-hash
-  make-hasheqv make-hasheq make-weak-hash make-weak-hasheqv make-weak-hasheq
-  make-immutable-hash make-immutable-hasheqv make-immutable-hasheq
-  hash-set! hash-set*! hash-set hash-set* hash-has-key? hash-update! hash-update
-  hash-remove! hash-remove hash-clear! hash-clear hash-copy-clear hash-map
-  hash-keys hash-values hash->list hash-keys-subset? hash-for-each hash-count
-  hash-empty? hash-iterate-first hash-iterate-next hash-copy eq-hash-code
-  eqv-hash-code equal-hash-code equal-secondary-hash-code hash-union hash-union!
-  ;; --- 4.14.1.1
-  sequence? in-range in-naturals in-list in-mlist in-vector in-string in-bytes
-  in-port in-input-port-bytes in-input-port-chars in-lines in-bytes-lines
-  in-hash in-hash-keys in-hash-values in-hash-pairs
-  in-mutable-hash in-mutable-hash-keys in-mutable-hash-values in-mutable-hash-pairs
-  in-immutable-hash in-immutable-hash-keys in-immutable-hash-values in-immutable-hash-pairs
-  in-weak-hash in-weak-hash-keys in-weak-hash-values in-weak-hash-pairs
-  in-directory in-producer in-value in-indexed in-sequences in-cycle in-parallel
-  in-values-sequence in-values*-sequence stop-before stop-after make-do-sequence
-  ;; --- 4.14.1.2
-  sequence->stream sequence-generate sequence-generate*
-  ;; --- 4.14.1.3
-  sequence->list sequence-length sequence-ref sequence-tail sequence-append
-  sequence-map sequence-andmap sequence-ormap sequence-for-each sequence-fold
-  sequence-count sequence-filter sequence-add-between sequence/c
-  ;; --- 4.14.1.3.1
-  in-syntax in-slice
-  ;; --- 4.14.2
-  stream? stream-empty? stream-first stream-rest stream-cons stream stream*
-  in-stream stream->list stream-length stream-tail stream-append stream-map
-  stream-andmap stream-ormap stream-for-each stream-fold stream-count stream-filter
-  stream-add-between stream/c
-  ;; --- 4.14.3
-  generator? generator yield infinite-generator in-generator generator-state
-  sequence->generator sequence->repeated-generator
-  ;; --- 4.15
-  dict? dict-implements? dict-implements/c dict-mutable? dict-can-remove-keys?
-  dict-can-functional-set? dict-set! dict-set dict-remove! dict-remove dict-iterate-first
-  dict-iterate-next dict-iterate-key dict-iterate-value dict-has-key? dict-set*!
-  dict-set* dict-update! dict-update dict-map dict-for-each dict-empty?
-  dict-count dict-copy dict-clear dict-clear! dict-keys dict-values dict->list
-  in-dict in-dict-keys in-dict-values in-dict-pairs dict-key-contract dict-value-contract
-  dict-iter-contract define-custom-hash-types make-custom-hash-types make-custom-hash
-  make-weak-custom-hash make-immutable-custom-hash
-  ;; --- 4.16.1
-  set-equal? set-eqv? set-eq? set? set-mutable? set-weak? set seteqv seteq mutable-seteqv
-  mutable-seteq weak-set weak-seteqv weak-seteq list->set list->seteqv list->seteq
-  list->mutable-set list->mutable-seteqv list->mutable-seteq list->weak-set list->weak-seteqv
-  list->weak-seteq for/set for/seteq for/seteqv for*/set for*/seteq for*/seteqv
-  for/mutable-set for/mutable-seteq for/mutable-seteqv for*/mutable-set for*/mutable-seteq
-  for*/mutable-seteqv for/weak-set for/weak-seteq for/weak-seteqv for*/weak-set
-  for*/weak-seteq for*/weak-seteqv in-immutable-set in-mutable-set in-weak-set
-  generic-set? set-implements? set-implements/c set/c set-member? set-add set-add!
-  set-remove set-remove! set-empty? set-count set->stream set-copy set-copy-clear
-  set-clear set-clear! set-union set-union! set-intersect set-intersect! set-subtract
-  set-subtract! set-symmetric-difference set-symmetric-difference! set=? subset?
-  proper-subset? set->list set-map set-for-each in-set impersonate-hash-set impersonate-hash-set
-  chaperone-hash-set define-custom-set make-custom-set-types
-  ;; --- 4.17
-  procedure? apply compose compose1 procedure-rename procedure->method procedure-closure-contents-eq?
-  keyword-apply procedure-arity procedure-arity? procedure-arity-includes? procedure-reduce-arity
-  procedure-keywords procedure-result-arity make-keyword-procedure procedure-reduce-keyword-arity
-  procedure-struct-type? procedure-extract-target checked-procedure-check-and-extract
-  procedure-specialize primitive? primitive-closure? primitive-result-arity identity
-  const thunk thunk* negate conjoin disjoin curry curryr normalized-arity? normalize-arity
-  arity=? arity-includes?
-  ;; --- 4.18
-  void? void
-  ;; --- 4.19
-  ;; --- 5.2
-  make-struct-type make-struct-field-accessor make-struct-field-mutator make-struct-type-property
-  struct-type-property? struct-type-property-accessor-procedure?
-  ;; --- 5.5
-
-  ;; --- 10.1
-  values
-  ;; --- 10.2
-  raise error raise-user-error raise-argument-error raise-arguments-error
-  raise-result-error raise-range-error raise-type-error raise-mismatch-error
-  raise-arity-error raise-syntax-error unquoted-printing-string? unquoted-printing-string
-  unquoted-printing-string-value uncaught-exception-handler error-escape-handler
-  error-display-handler error-print-width error-print-context-length error-value->string-handler
-  error-print-source-location exn->string
-
-  ;; --- 13.5
-  write display print writeln displayln println fprintf printf eprintf format
-  print-pair-curly-braces print-mpair-curly-braces print-unreadable print-graph
-  print-struct print-box print-vector-length print-hash-table print-boolean-long-form
-  print-reader-abbreviations print-as-expression print-syntax-width current-write-relative-directory
-  port-write-handler port-display-handler port-print-handler global-port-print-handler
-
-  ;; --- 14.1
-  namespace? make-empty-namespace make-base-empty-namespace namespace-anchor?
-  namespace-anchor->empty-namespace namespace-anchor->namespace current-namespace
-  namespace-symbol->identifier namespace-base-phase namespace-module-identifier
-  namespace-module-identifier namespace-set-variable-value! namespace-undefine-variable!
-  namespace-mapped-symbols namespace-require namespace-require/copy namespace-require/constant
-  namespace-require/expansion-time namespace-attach-module namespace-attach-module-declaration
-  namespace-unprotect-module namespace-module-registry module->namespace
-  namespace-syntax-introduce module-provide-protected? variable-reference?
-  variable-reference-constant? variable-reference->empty-namespace variable-reference->namespace
-  variable-reference->resolved-module-path variable-reference->module-path-index
-  variable-reference->module-source variable-reference->phase variable-reference->module-base-phase
-  variable-reference->module-declaration-inspector variable-reference-from-unsafe?
-
-  ;; --- 15.1.1
-  path? path-string? path-for-some-system? string->path bytes->path path->string
-  path->bytes string->path-element bytes->path-element path-element->string
-  path-element->bytes path<? path-convention-type system-path-convention-type
-  build-path build-path/convention-type absolute-path? relative-path? complete-path?
-  path->complete-path path->directory-path resolve-path cleanse-path expand-user-path
-  simplify-path normal-case-path split-path explode-path path-replace-extension
-  path-add-extension path-replace-suffix path-add-suffix reroot-path
-  ;; --- 15.1.2
-  file-name-from-path path-get-extension path-has-extension? filename-extension
-  find-relative-path normalize-path path-element? path-only simple-form-path
-  some-system-path->string string->some-system-path strink-path-wrt
-  ;; --- 15.2.1
-  find-system-path path-list-string->path-list find-executable-path file-exists?
-  link-exists? delete-file rename-file-or-directory file-or-directory-modify-seconds
-  file-or-directory-permissions file-or-directory-identity file-size copy-file
-  make-file-or-directory-link current-force-delete-positions
-  ;; --- 15.2.3
-  current-directory current-directory-for-user current-drive directory-exists?
-  make-directory delete-directory directory-list filesystem-root-list
-  ;; --- 15.2.4
-  filesystem-change-evt? filesystem-change-evt filesystem-change-evt-cancel
-  ;; --- 15.2.5
-  ;; --- 15.2.6
-  file->string file->bytes file->value file->list file->lines file->bytes-lines
-  display-to-file write-to-file display-lines-to-file copy-directory/files
-  delete-directory/files find-files pathlist-closure fold-files make-directory*
-  make-parent-directory* make-temporary-file call-with-atomic-output-file
-  get-preference put-preferences preferences-lock-file-mode make-handle-get-preference-lock
-  make-handle-get-preference-locked call-with-file-lock/timeout make-lock-file-name
-  ;; --- 15.3.1
-  tcp-listen tcp-connect tcp-connect/enable-break tcp-accept tcp-accept/enable-break
-  tcp-accept-ready? tcp-close tcp-listener? tcp-accept-evt tcp-abandon-port
-  tcp-addresses tcp-port?
-  ;; --- 15.3.2
-  udp-open-socket udp-bind! udp-connect! udp-send-to udp-send udp-send-to*
-  udp-send* udp-send-to/enable-break udp-send/enable-break udp-receive!
-  udp-receive!* udp-receive!/enable-break udp-set-receive-buffer-size!
-  udp-close udp? udp-bound? udp-connected? udp-send-ready-evt udp-receive-ready-evt
-  udp-send-to-evt udp-send-evt udp-receive!-evt udp-addresses udp-set-ttl! udp-ttl
-  udp-multicast-join-group! udp-multicast-leave-group! udp-multicast-interface
-  udp-multicast-set-interface! udp-multicast-set-loopback! udp-multicast-loopback?
-  udp-multicast-set-ttl! udp-multicast-ttl
-  ;; --- 15.4
-  subprocess subprocess-wait subprocess-status subprocess-kill subprocess-pid
-  subprocess? current-subprocess-custodian-mode subprocess-group-enabled
-  shell-execute 
-  ;; --- 15.4.1
-  system system* system/exit-code system*/exit-code process process* process/ports
-  process*/ports string-no-nuls? bytes-no-nuls?
-  ;; --- 15.5.1
-  logger? make-logger logger-name current-logger
-  ;; --- 15.5.2
-  log-message log-level? log-max-level log-all-levels log-level-evt
-  ;; --- 15.5.3
-  log-receiver? make-log-receiver
-  ;; --- 15.5.4
-  log-level/c with-intercepted-logging with-logging-to-port 
-  ;; --- 15.6
-  current-seconds current-inexact-milliseconds seconds->date date-second
-  date-minute date-hour date-day date-month date-year date-week-day date-year-day
-  date-dst? date-time-zone-offset date*-nanosecond date*-time-zone-name
-  current-milliseconds current-process-milliseconds current-gc-milliseconds
-  time-apply time
-  ;; --- 15.6.1
-  current-date date->string date-display-format date->seconds date*->seconds
-  find-seconds date->julian/scalinger julian/scalinger->string
-  ;; --- 15.7
-  environment-variables? current-environment-variables bytes-environment-variable-name?
-  make-environment-variables environment-variables-ref environment-variables-set!
-  environment-variables-names environment-variables-copy getenv putenv
-  string-environment-variable-name
-  ;; --- 15.8
-  system-type system-language+country system-library-subpath version banner
-  current-command-line-arguments current-thread-initial-stack-size
-  vector-set-performance-stats!
-  ;; --- 15.9
-  parse-command-line
-  ;; --- 15.10
-  gethostname getpid
-
-  ;; --- 16.1
-
-
-  ;; --- 17
-  unsafe-fx+ unsafe-fx- unsafe-fx* unsafe-fxquotient unsafe-fxremainder unsafe-fxmodulo
-  unsafe-fxabs unsafe-fxand unsafe-fxior unsafe-fxxor unsafe-fxnot unsafe-fxlshift
-  unsafe-fxrshift unsafe-fx= unsafe-fx< unsafe-fx> unsafe-fx<= unsafe-fx>=
-  unsafe-fxmin unsafe-fxmax unsafe-fl+ unsafe-fl- unsafe-fl* unsafe-fl/ unsafe-flabs
-  unsafe-fl= unsafe-fl< unsafe-fl> unsafe-fl<= unsafe-fl>= unsafe-flmin unsafe-flmax
-  unsafe-flround unsafe-flfloor unsafe-flceiling unsafe-fltruncate unsafe-flsin
-  unsafe-flcos unsafe-fltan unsafe-flasin unsafe-flacos unsafe-flatan unsafe-fllog
-  unsafe-flexp unsafe-flsqrt unsafe-flexpt unsafe-make-flrectangular unsafe-flreal-part
-  unsafe-flimag-part unsafe-fx->fl unsafe-fl->fx unsafe-flrandom unsafe-car
-  unsafe-cdr unsafe-mcar unsafe-mcdr unsafe-set-mcar! unsafe-set-mcdr! unsafe-cons-list
-  unsafe-list-ref unsafe-list-tail unsafe-unbox unsafe-set-box! unsafe-unbox*
-  unsafe-set-box*! unsafe-box*-cas! unsafe-vector-length unsafe-vector-set!
-  unsafe-vector*-length unsafe-vector*-set! unsafe-string-length unsafe-string-set!
-  unsafe-bytes-length unsafe-bytes-set! unsafe-fxvector-length unsafe-fxvector-set!
-  unsafe-flvector-length unsafe-flvector-set! unsafe-f64vector-set! unsafe-s16vector-set!
-  unsafe-u16-vector-set! unsafe-struct-set! unsafe-struct*-set! unsafe-extfl+
-  unsafe-extfl- unsafe-extfl* unsafe-extfl/ unsafe-extflabs unsafe-extfl= unsafe-extfl<
-  unsafe-extfl> unsafe-extfl<= unsafe-extfl>= unsafe-extflmin unsafe-extflmax
-  unsafe-extflround unsafe-extflfloor unsafe-extflceiling unsafe-extfltruncate
-  unsafe-extflsin unsafe-extflcos unsafe-extfltan unsafe-extflasin unsafe-extflacos
-  unsafe-extflatan unsafe-extfllog unsafe-extflexp unsafe-extflsqrt unsafe-extflexpt
-  unsafe-fx->extfl unsafe-extfl->fx unsafe-extflvector-length unsafe-extflvector-set!
-
-  ;; --- Typed Racket
-  index? exact-rational?
-))))
 
 ;; -----------------------------------------------------------------------------
 
@@ -612,52 +285,43 @@
 
 (define REST-KEY 'rest)
 
-;; type->domain-map : Type Syntax -> TypeMap
+;; type->domain-map : Type -> TypeMap
 ;;   where TypeMap = (HashTable (U Fixnum 'rest Keyword) (U #f Type))
 ;; Build a TypeMap from the domain of an arrow type.
-;; Use `stx` to decide whether to remove some types.
-;;   2019-08-19 : where does stx come from?
-(define (type->domain-map t stx)
+(define (type->domain-map t)
   (match t
    [(or (Fun: (list (Arrow: mand rst kws _)))
         (Arrow: mand rst kws _))
-    (define trusted?
-      (blessed-domain? stx))
-    (define mand-hash
-      ;; Map positional arguments
-      (for/fold ([acc (make-immutable-hash)])
-                ([d (in-list mand)]
-                 [i (in-naturals)])
-        (hash-set acc i (if trusted? #f d))))
-    (define rst-hash
-      (cond
-       [(Type? rst)
-        (hash-set mand-hash REST-KEY (if trusted? #f (make-Listof rst)))]
-       [(Rest? rst)
-        (hash-set mand-hash REST-KEY
-          (if trusted?
-            #f
-            (let ([tys (Rest-tys rst)])
-              (if (and (not (null? tys)) (null? (cdr tys)))
-                (make-Listof (car tys))
-                #;(make-CyclicListof (Rest-tys rst))
-                (raise-arguments-error 'type->domain-map "cannot handle rest type yet" "rest" tys "orig type" t "stx" stx)))))]
-       [(RestDots? rst)
-        (raise-arguments-error 'type->domain-map "type without rest-dots"
-          "type" t
-          "stx" stx)]
-       [else
-        mand-hash]))
-    (define kwd-hash
-      ;; Map keyword args
-      (for/fold ([acc rst-hash])
-                ([k (in-list kws)])
-        (match k
-         [(Keyword: kw ty _)
-          (hash-set acc kw (if trusted? #f kw))]
-         [_
-          (raise-arguments-error 'type->domain-map "arrow type (with good keywords)" "type" t "stx" stx)])))
-    kwd-hash]
+    (let* ([t# (make-immutable-hash)]
+           [t# ;; positional arguments
+            (for/fold ([acc t#])
+                      ([d (in-list mand)]
+                       [i (in-naturals)])
+              (hash-set acc i d))]
+           [t# ;; rest args
+            (cond
+             [(Type? rst)
+              (hash-set t# REST-KEY (make-Listof rst))]
+             [(Rest? rst)
+              (hash-set t# REST-KEY
+                (let ([tys (Rest-tys rst)])
+                  (if (and (not (null? tys)) (null? (cdr tys)))
+                    (make-Listof (car tys))
+                    (raise-arguments-error 'type->domain-map "cannot handle rest type yet" "rest" tys "orig type" t))))]
+             [(RestDots? rst)
+              (raise-arguments-error 'type->domain-map "type without rest-dots"
+                "type" t)]
+             [else
+              t#])]
+           [t# ;; kwd args
+            (for/fold ([acc t#])
+                      ([k (in-list kws)])
+              (match k
+               [(Keyword: kw ty _)
+                (hash-set acc kw ty)]
+               [_
+                (raise-arguments-error 'type->domain-map "arrow type (with good keywords)" "type" t)]))])
+      t#)]
    [_
     (raise-argument-error 'type->domain-map "arrow type" t)]))
 
@@ -686,18 +350,11 @@
    [_
     (raise-argument-error 'type->cod-type "arrow type" t)]))
 
-(define (blessed-domain? stx)
-  (and stx #t) ;; TRUST EVERYTHING, typed functions are fully defensive
-  #;(if (identifier? stx)
-    (or (free-id-set-member? BLESSED-DOMAIN stx)
-        (typed-racket-identifier? stx))
-    #f))
-
 (define (blessed-codomain? stx)
   (if (identifier? stx)
     (or (syntax-property stx 'constructor-for)
-        ;; too hard to find `struct-predicate-procedure?`s
-        (free-id-set-member? BLESSED-CODOMAIN stx)
+        ;; `struct-predicate-procedure?` are safe, but hard to identify
+        (transient-trusted-positive? stx)
         (and (typed-racket-identifier? stx)
              (not (struct-accessor? stx))
              (not (from-require/typed? stx))))

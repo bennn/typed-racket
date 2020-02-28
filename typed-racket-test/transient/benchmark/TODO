@@ -54,16 +54,23 @@
 - [X] remove current-typed-side ?
 - [X] what goes wrong in type->contract doesn't set parameter?
       nothing yet, so change to an assert for now
+- [X] bless string->path
+- [X] can transient macro appear in untyped?
+  well the macro code CANNOT be type checked and IS NOT defended
+  ... unclear what defense to add to (f x) --> (car (car x))
+  ... if unoptimized then could be fine right?
+  ... yeah I think this is fine, ESCAPE is a problem,
+      but not really right now because all functions are defended no worries about escape
+  OK allowed now
+- [X] bless check-list
+  ... and anything that returns void? NO contexts can distinguish void (void? X) (if X ....)
 
-- [ ] remove dom check from ...
-      for-loop lambda ... all these ifs might be killing loops idk
+- [ ] for-loop lambda ... all these ifs might be killing loops idk
 
-- [ ] bless string->path
-      ??? variable-reference-constant? #%variable-reference --- probably TR internal
-      ??? for/list etc, its always a list or void or sum
-      bless check-list ... and anything that returns void?
-      ... anything returns Nothing (none/c/proc) ... well doesn't change error, but generates a lot of code
-      ??? make-sequence
+- [ ] ??? variable-reference-constant? #%variable-reference --- probably TR internal
+- [ ] ??? for/list etc, its always a list or void or sum
+- [ ] ... anything returns Nothing (none/c/proc) ... well doesn't change error, but generates a lot of code
+- [ ] ??? make-sequence
          (let-values (((pos->vals pos-pre-inc pos-next init pos-cont?  val-cont?  all-cont?)
                        (let-values (((dyn-cod22 dyn-cod23 dyn-cod24 dyn-cod25 dyn-cod26 dyn-cod27 dyn-cod28)
                                      (#%app make-sequence '(word+freq) words+freqs)))
@@ -84,9 +91,12 @@
                             '"'(#%app make-sequ... : ((-> Any (List String Integer)) (U (-> Any Any) False) (-> Any Any) Any (U (-> Any Any) False) (U (-> (List String Integer) Any) False) (U (-> Any (List String Integer) Any) False))")))))
 
 - [ ] define-predicate really flat?
-- [ ] can transient macro appear in untyped?
 - [ ] suffixtree 4s typed 40s tagged???
       that's not too far off from ICFP after all ... 10s slower
+- [ ] fill = lambda ... escape analysis?
+      ditto for loops (again they can escape)
+- [ ] can vec? check be simpler, instead of union ivec mvec?
+      ditto for hash
 
 - [ ] morsecode/sieve/snake/tetris, very slow runtime (require-typed-check bug?)
       ... better now after checking "blessed" but heres now fully-typed vs ICPF worst-case
@@ -97,8 +107,13 @@
       zombie : 24x vs 20x
       ICFP should always be slower, but its not ... WTF snake & tetris!!!!!
 
+- [ ] tc-app-lambda todo items (PR to TR?)
 - [ ] investigate contract generation, where do names go what gets reused?
 - [ ] optimizer
+  leave S,E macros un-optimized (should be no problem ... but lets see)
+  yes they are skipped optimizer/optimizer L67
 
 - [ ] unhygienic S require T identifier
       use contract-def/provide-property ?
+
+- [ ] does extra-env lang need changes for transient?
