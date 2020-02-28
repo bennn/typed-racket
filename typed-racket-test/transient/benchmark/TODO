@@ -64,12 +64,16 @@
   OK allowed now
 - [X] bless check-list
   ... and anything that returns void? NO contexts can distinguish void (void? X) (if X ....)
+- [X] ??? variable-reference-constant? #%variable-reference --- probably TR internal
+      yeah looks like TR internals
+
+- [ ] ??? for/list etc, its always a list or void or sum
+  (2020-02-28 still a problem)
 
 - [ ] for-loop lambda ... all these ifs might be killing loops idk
 
-- [ ] ??? variable-reference-constant? #%variable-reference --- probably TR internal
-- [ ] ??? for/list etc, its always a list or void or sum
 - [ ] ... anything returns Nothing (none/c/proc) ... well doesn't change error, but generates a lot of code
+
 - [ ] ??? make-sequence
          (let-values (((pos->vals pos-pre-inc pos-next init pos-cont?  val-cont?  all-cont?)
                        (let-values (((dyn-cod22 dyn-cod23 dyn-cod24 dyn-cod25 dyn-cod26 dyn-cod27 dyn-cod28)
