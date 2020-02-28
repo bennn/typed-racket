@@ -306,16 +306,16 @@ don't depend on any other portion of the system
 (define-syntax (make-env stx)
   (define-syntax-class spec
     #:transparent
-    #:attributes (ty id)
-    (pattern [nm:identifier ~! ty]
+    #:attributes (ty id trusted-pos)
+    (pattern [nm:identifier ~! ty trusted-pos]
              #:fail-when (and (not (list? (identifier-template-binding #'nm))) #'nm)
              "not a bound identifier"
              #:with id #'(quote-syntax nm))
-    (pattern [e:expr ty]
+    (pattern [e:expr ty trusted-pos]
              #:with id #'e))
   (syntax-parse stx
     [(_ e:spec ...)
-     #'(list (list e.id e.ty) ...)]))
+     #'(list (list e.id e.ty e.trusted-pos) ...)]))
 
 ;; id: identifier
 ;; sym: a symbol

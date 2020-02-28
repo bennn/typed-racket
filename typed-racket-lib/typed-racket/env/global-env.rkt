@@ -52,7 +52,7 @@
            (define t* (if (box? t) (unbox t) t))
            (unless (equal? type t*)
              (tc-error/delayed #:stx id "Duplicate type annotation of ~a for ~a, previous was ~a" type (syntax-e id) t*)))]
-        [else (free-id-table-set! the-mapping id (box type))]))
+        [else (register-type id (box type))]))
 
 ;; add a bunch of types to the mapping
 ;; listof[id] listof[type] -> void
@@ -126,3 +126,4 @@
 
 (define (type-env-for-each f)
   (sorted-free-id-table-map the-mapping f))
+
