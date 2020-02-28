@@ -29,6 +29,10 @@
                   ([(i:id) e-rhs:opt-expr]) e-body:expr ...))
            #:with opt (quasisyntax/loc/origin this-syntax #'op
                         (op ([(i) e-rhs.opt]) e-body ...)))
+  (pattern (~and ((~or #%provide #%require begin-for-syntax define-syntaxes module module*)
+                  . _)
+                 opt))
+  (pattern (~and (~or (quote _) (quote-syntax . _) (#%top . _) :id) opt))
 
   ;; interesting cases, where something is optimized
   (pattern :dead-code-opt-expr)
@@ -63,11 +67,7 @@
                           #%variable-reference with-continuation-mark))
             e:opt-expr ...)
            #:with opt (quasisyntax/loc/origin this-syntax #'kw
-                        (kw e.opt ...)))
-  (pattern (~and ((~or #%provide #%require begin-for-syntax define-syntaxes module module*)
-                  . _)
-                 opt))
-  (pattern (~and (~or (quote _) (quote-syntax . _) (#%top . _) :id) opt)))
+                        (kw e.opt ...))))
 
 (define (optimize-top stx)
   (parameterize ([optimize (syntax-parser [e:opt-expr* #'e.opt])])
