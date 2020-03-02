@@ -338,17 +338,18 @@
    [else
     (raise-argument-error 'type-map-ref "(or/c fixnum? 'rest keyword?)" 1 map key)]))
 
-;; type->codomain-type : Type Syntax -> (U #f SomeValues)
-;; Get the codomain from an arrow type,
-;;  use `stx` to decide whether we can skip the codomain check.
-(define (type->codomain-type t stx)
-  (match t
-   [(Fun: (list (Arrow: _ _ _ cod)))
-    (if (blessed-codomain? stx)
-      #f
-      cod)]
-   [_
-    (raise-argument-error 'type->cod-type "arrow type" t)]))
+;;; type->codomain-type : Type Syntax -> (U #f SomeValues)
+;;; Get the codomain from an arrow type,
+;;;  use `stx` to decide whether we can skip the codomain check.
+;;; 2020-03 : unused!
+;(define (type->codomain-type t stx)
+;  (match t
+;   [(Fun: (list (Arrow: _ _ _ cod)))
+;    (if (blessed-codomain? stx)
+;      #f
+;      cod)]
+;   [_
+;    (raise-argument-error 'type->cod-type "arrow type" t)]))
 
 (define (blessed-codomain? stx)
   (if (identifier? stx)
@@ -587,4 +588,7 @@
       #:sc-cache sc-cache))
   (for-each register-ignored! defs)
   (set-box! extra-defs* (append (reverse defs) (unbox extra-defs*)))
-  (if (free-identifier=? ctc #'any/c) #f ctc))
+  (if (or (free-identifier=? ctc #'any/c)
+          (free-identifier=? ctc #'none/c))
+    #f
+    ctc))
