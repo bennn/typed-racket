@@ -66,6 +66,7 @@
   ... and anything that returns void? NO contexts can distinguish void (void? X) (if X ....)
 - [X] ??? variable-reference-constant? #%variable-reference --- probably TR internal
       yeah looks like TR internals
+- [X] register-type, look over
 
 - [ ] ??? for/list etc, its always a list or void or sum
   (2020-02-28 still a problem)
@@ -121,3 +122,9 @@
       use contract-def/provide-property ?
 
 - [ ] does extra-env lang need changes for transient?
+  - [ ] rackunit env broke
+
+- [ ] transient breaks tail calls? or does typed-id? check make it okay?
+- [ ] low priority: change extra-env-lang to accept transient blessing,
+      plot-lib is the only user I know of
+- [ ] bless require/typed struct predicates
