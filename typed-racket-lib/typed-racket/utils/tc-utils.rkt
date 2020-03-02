@@ -307,11 +307,11 @@ don't depend on any other portion of the system
   (define-syntax-class spec
     #:transparent
     #:attributes (ty id trusted-pos)
-    (pattern [nm:identifier ~! ty trusted-pos]
+    (pattern [nm:identifier ~! ty (~optional trusted-pos #:defaults ([trusted-pos #'#f]))]
              #:fail-when (and (not (list? (identifier-template-binding #'nm))) #'nm)
              "not a bound identifier"
              #:with id #'(quote-syntax nm))
-    (pattern [e:expr ty trusted-pos]
+    (pattern [e:expr ty (~optional trusted-pos #:defaults ([trusted-pos #'#f]))]
              #:with id #'e))
   (syntax-parse stx
     [(_ e:spec ...)
