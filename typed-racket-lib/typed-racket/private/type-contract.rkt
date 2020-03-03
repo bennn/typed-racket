@@ -834,8 +834,17 @@
             (apply or/sc (append other-scs (map t->sc (nbits->base-types nbits)))))]
        [(? Union? t)
         (match (normalize-type t)
+          [(HashTableTop:)
+           ;;bg TODO needed?
+           hash?/sc]
           [(Union-all-flat: elems)
-           (apply or/sc (map t->sc elems))]
+           (let* ([sc* (map t->sc elems)]
+                  [sc* (remove-duplicates sc*)]
+                  [sc* (remove-overlap sc*
+                         (list
+                           (cons vector?/sc (list mutable-vector?/sc immutable-vector?/sc))
+                           (cons hash?/sc (list mutable-hash?/sc weak-hash?/sc immutable-hash?/sc))))])
+             (apply or/sc sc*))]
           [t (t->sc t)])]
        [(Intersection: ts raw-prop)
         (define scs (map t->sc ts))
@@ -986,6 +995,24 @@
        [(? Prop? rep) (prop->sc rep)]
        [_
         (fail #:reason "contract generation not supported for this type")]))))
+
+(define (remove-overlap sc* pattern*)
+  (for/fold ((acc sc*))
+            ((kv* (in-list pattern*)))
+    (define replacement (car kv*))
+    (define tgt* (cdr kv*))
+    (define-values [success? acc+] (remove** tgt* acc))
+    (if success?
+      (cons replacement acc+)
+      acc)))
+
+(define (remove** target* sc*)
+  (for/fold ((success? #t)
+             (sc* sc*))
+            ((t (in-list target*)))
+    (values (and success?
+                 (member t sc*))
+            (filter (lambda (x) (not (equal? x t))) sc*))))
 
 (define (obj->sc o)
   (match o

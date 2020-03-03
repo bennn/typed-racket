@@ -97,13 +97,13 @@
    later use list? knowledge for cdr
    (important for for-loops list sequence iteration)
   2020-03-03 done see PR #911
+- [X] can vec? check be simpler, instead of union ivec mvec?
+      ditto for hash ... this is not a pretty solution though
+
 
 - [ ] cdr does not need check if applied to a Listof type
   2020-03-03 List -> cons?, so its not safe ... hard to tell Cons vs List in
    type->contract
-
-- [ ] can vec? check be simpler, instead of union ivec mvec?
-      ditto for hash
 
 - [ ] morsecode/sieve/snake/tetris, very slow runtime (require-typed-check bug?)
       ... better now after checking "blessed" but heres now fully-typed vs ICPF worst-case
