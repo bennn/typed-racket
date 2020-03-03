@@ -4,6 +4,7 @@
 ;;  - [ ] build + test occurrence-type optimizer
 ;;  - [ ] build/test erasure-racket
 ;;  - [X] work out 3-sound theory
+;;  - [ ] cdr / unsafe-cdr is safe on a list-type input
 ;;
 ;; TODO
 ;; - [ ] need with-new-name-tables here?
@@ -65,9 +66,9 @@
 ;; =============================================================================
 
 (define (defend-top stx ctc-cache sc-cache extra-defs*)
-  (let loop ([stx stx])
+  (let loop ([stx stx] [skip-dom? #f])
     (syntax-parse stx
-     #:literals (values define-values #%plain-app begin define-syntaxes)
+     #:literals (values define-values #%plain-app begin define-syntaxes letrec-values)
      [_
       #:when (is-ignored? stx) ;; lookup in type-table's "ignored table"
       stx]
@@ -89,9 +90,10 @@
       #;(syntax/loc stx (let-values ([(f) fun]) body))]
      [(op:lambda-identifier formals . body)
       (define dom-map (type->domain-map (stx->arrow-type stx)))
-      (define body+ (loop #'body))
+      (define body+ (loop #'body #f))
       (void (maybe-add-typeof-expr body+ #'body))
-      (define formals+ (protect-formals dom-map #'formals ctc-cache sc-cache extra-defs*))
+      (define formals+
+        (if skip-dom? '() (protect-formals dom-map #'formals ctc-cache sc-cache extra-defs*)))
       (define stx+
         (with-syntax ([body+ body+])
           (if (null? formals+)
@@ -101,13 +103,25 @@
               stx))))
       (void (maybe-add-typeof-expr stx+ stx))
       stx+]
+     [(#%plain-app (letrec-values (((a:id) e0)) b:id) e1* ...)
+      #:when (free-identifier=? #'a #'b)
+      ;; (for ....) combinators expand to a recursive function that does not escape,
+      ;;  no need to check the domain --- use (loop e #true) to skip
+      ;; TODO can the optimizer remove these checks instead?
+      ;; TODO don't specialize to for loops, work for any letrec-values
+      (define skip? (eq? 'for-loop (syntax-e #'a)))
+      (with-syntax ((e0+ (loop #'e0 skip?))
+                   ((e1*+ ...) (for/list ((e1 (in-list (syntax-e #'(e1* ...)))))
+                                 (loop e1 #f))))
+        (syntax/loc stx
+          (#%plain-app (letrec-values (((a) e0+)) b) e1*+ ...)))]
      [(x* ...)
       #:when (is-application? stx)
       (define stx+
         (datum->syntax
           stx
           (for/list ([x (in-list (syntax-e #'(x* ...)))])
-            (define x+ (loop x))
+            (define x+ (loop x #f))
             (maybe-add-typeof-expr x+ x)
             x+)))
       (void
@@ -133,7 +147,7 @@
       stx]
      [((~literal #%expression) e)
       #:when (type-ascription-property stx)
-      (define e+ (loop #'e))
+      (define e+ (loop #'e #f))
       (void (maybe-add-typeof-expr e+ #'e))
       (define e++
         (with-syntax ([e+ e+])
@@ -147,7 +161,7 @@
       (define stx+
         (datum->syntax stx
           (for/list ((x (in-list (syntax-e #'(x* ...)))))
-            (define x+ (loop x))
+            (define x+ (loop x #f))
             (maybe-add-typeof-expr x+ x)
             x+)))
       (maybe-add-typeof-expr stx+ stx)
