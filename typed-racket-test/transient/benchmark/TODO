@@ -68,31 +68,21 @@
       yeah looks like TR internals
 - [X] register-type, look over
 - [X] ... anything returns Nothing (none/c/proc) ... well doesn't change error, but generates a lot of code
-
-- [ ] ??? for/list etc, its always a list or void or sum
-  (2020-02-28 still a problem)
-
-- [ ] for-loop lambda ... all these ifs might be killing loops idk
-
-- [ ] ??? make-sequence
+- [X] ??? make-sequence
          (let-values (((pos->vals pos-pre-inc pos-next init pos-cont?  val-cont?  all-cont?)
                        (let-values (((dyn-cod22 dyn-cod23 dyn-cod24 dyn-cod25 dyn-cod26 dyn-cod27 dyn-cod28)
                                      (#%app make-sequence '(word+freq) words+freqs)))
                          (if (if (#%plain-app g11 dyn-cod22) (if (#%plain-app g14 dyn-cod23) (if (#%plain-app g11 dyn-cod24) (if (#%plain-app g14 dyn-cod26) (if (#%plain-app g14 dyn-cod27) (#%plain-app g21 dyn-cod28)
                                        '#f) '#f) '#f) '#f) '#f)
-                           (#%app
-                            values
-                            dyn-cod22
-                            dyn-cod23
-                            dyn-cod24
-                            dyn-cod25
-                            dyn-cod26
-                            dyn-cod27
-                            dyn-cod28)
-                           (#%plain-app
-                            error
-                            'dynamic-typecheck
-                            '"'(#%app make-sequ... : ((-> Any (List String Integer)) (U (-> Any Any) False) (-> Any Any) Any (U (-> Any Any) False) (U (-> (List String Integer) Any) False) (U (-> Any (List String Integer) Any) False))")))))
+                           (#%app values dyn-cod22 dyn-cod23 dyn-cod24 dyn-cod25 dyn-cod26 dyn-cod27 dyn-cod28)
+                           (#%plain-app error 'dynamic-typecheck '"'(#%app make-sequ... : ((-> Any (List String Integer)) (U (-> Any Any) False) (-> Any Any) Any (U (-> Any Any) False) (U (-> (List String Integer) Any) False) (U (-> Any (List String Integer) Any) False))")))))
+  2020-03-03 pretty sure fixed by changing the base environment
+
+- [ ] ??? for/list etc, its always a list or void or sum
+  (2020-02-28 still a problem, (check (#%app for-loop  ....)))
+
+- [ ] for-loop lambda ... all these ifs might be killing loops idk
+  2020-03-03 saves ~1/2 second in morsecode
 
 - [ ] define-predicate really flat?
 - [ ] suffixtree 4s typed 40s tagged???
