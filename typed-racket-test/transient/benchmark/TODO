@@ -91,6 +91,16 @@
 - [X] suffixtree 4s typed 40s tagged???
       that's not too far off from ICFP after all ... 10s slower
       2020-03-03 down to 30s
+- [X] TR master, need pattern-match to create list/sc
+  2020-03-03 looks like its never created, gee!
+  if we had this on master, LD can use to check list? and
+   later use list? knowledge for cdr
+   (important for for-loops list sequence iteration)
+  2020-03-03 done see PR #911
+
+- [ ] cdr does not need check if applied to a Listof type
+  2020-03-03 List -> cons?, so its not safe ... hard to tell Cons vs List in
+   type->contract
 
 - [ ] can vec? check be simpler, instead of union ivec mvec?
       ditto for hash
@@ -117,10 +127,6 @@
 - [ ] low priority: change extra-env-lang to accept transient blessing,
       plot-lib is the only user I know of
 - [ ] bless require/typed struct predicates
-- [ ] cdr does not need check if applied to a Listof type
-  2020-03-03 List -> cons?, so its not safe ... hard to tell Cons vs List in
-   type->contract
-  
 
 - [ ] cod check for/list etc, its always a list or void or sum
   (2020-02-28 still a problem, (check (#%app for-loop  ....)))

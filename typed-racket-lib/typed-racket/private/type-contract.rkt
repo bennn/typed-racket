@@ -523,8 +523,16 @@
        [(Mutable-VectorTop:)
         (only-untyped mutable-vector?/sc)]
        [(Box: t) (box/sc (t->sc/both t))]
-       [(Pair: t1 t2)
-        (cons/sc (t->sc t1) (t->sc t2))]
+       [(Pair: _ _)
+        (match type
+         [(List: elem-t*)
+          (apply list/sc (map t->sc elem-t*))]
+         [(List: elem-t* #:tail rest-t*)
+          (for/fold ((acc (t->sc rest-t*)))
+                    ((t (in-list (reverse elem-t*))))
+            (cons/sc (t->sc t) acc))]
+         [_
+          (error 'type->static-contract "Pair-type match failed for type ~a" type)])]
        [(Async-Channel: t) (async-channel/sc (t->sc t))]
        [(Promise: t)
         (promise/sc (t->sc t))]
@@ -878,7 +886,13 @@
        [(Box: _)
         box?/sc]
        [(Pair: _ _)
-        cons?/sc]
+        (match type
+         [(List: elem-t*)
+          list?/sc]
+         [(List: elem-t* #:tail rest-t*)
+          cons?/sc]
+         [_
+          (error 'type->static-contract "Pair-type match failed for type ~a" type)])]
        [(Async-Channel: _)
         async-channel?/sc]
        [(Promise: _)
