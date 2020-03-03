@@ -88,9 +88,9 @@
   plot is the only user, seems fine
 - [X] define-predicate really flat?
   2020-03-03 yes, makes a shallow contract
-
-- [ ] suffixtree 4s typed 40s tagged???
+- [X] suffixtree 4s typed 40s tagged???
       that's not too far off from ICFP after all ... 10s slower
+      2020-03-03 down to 30s
 
 - [ ] can vec? check be simpler, instead of union ivec mvec?
       ditto for hash
