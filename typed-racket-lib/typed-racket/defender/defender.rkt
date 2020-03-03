@@ -19,6 +19,8 @@
   typed-racket/rep/values-rep
   typed-racket/static-contracts/utils
   typed-racket/types/match-expanders
+  (only-in typed-racket/optimizer/unboxed-let
+    escapes?)
   (only-in typed-racket/env/transient-env
     transient-trusted-positive?)
   (only-in typed-racket/typecheck/internal-forms
@@ -108,8 +110,7 @@
       ;; (for ....) combinators expand to a recursive function that does not escape,
       ;;  no need to check the domain --- use (loop e #true) to skip
       ;; TODO can the optimizer remove these checks instead?
-      ;; TODO don't specialize to for loops, work for any letrec-values
-      (define skip? (eq? 'for-loop (syntax-e #'a)))
+      (define skip? (not (escapes? #'a #'e0 #false)))
       (with-syntax ((e0+ (loop #'e0 skip?))
                    ((e1*+ ...) (for/list ((e1 (in-list (syntax-e #'(e1* ...)))))
                                  (loop e1 #f))))
