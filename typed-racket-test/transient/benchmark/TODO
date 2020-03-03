@@ -77,18 +77,21 @@
                            (#%app values dyn-cod22 dyn-cod23 dyn-cod24 dyn-cod25 dyn-cod26 dyn-cod27 dyn-cod28)
                            (#%plain-app error 'dynamic-typecheck '"'(#%app make-sequ... : ((-> Any (List String Integer)) (U (-> Any Any) False) (-> Any Any) Any (U (-> Any Any) False) (U (-> (List String Integer) Any) False) (U (-> Any (List String Integer) Any) False))")))))
   2020-03-03 pretty sure fixed by changing the base environment
-
-- [ ] ??? for/list etc, its always a list or void or sum
-  (2020-02-28 still a problem, (check (#%app for-loop  ....)))
-
-- [ ] for-loop lambda ... all these ifs might be killing loops idk
+- [X] for-loop lambda ... all these ifs might be killing loops idk
   2020-03-03 saves ~1/2 second in morsecode
+  fixed with pattern-match + optimizer escape analysis
+- [X] fill = lambda ... escape analysis?
+      ditto for loops (again they can escape)
+- [X] rackunit env broke
+  fixed rackunit by reverting make-env
+- [X] does extra-env lang need changes for transient?
+  plot is the only user, seems fine
+- [X] define-predicate really flat?
+  2020-03-03 yes, makes a shallow contract
 
-- [ ] define-predicate really flat?
 - [ ] suffixtree 4s typed 40s tagged???
       that's not too far off from ICFP after all ... 10s slower
-- [ ] fill = lambda ... escape analysis?
-      ditto for loops (again they can escape)
+
 - [ ] can vec? check be simpler, instead of union ivec mvec?
       ditto for hash
 
@@ -110,10 +113,23 @@
 - [ ] unhygienic S require T identifier
       use contract-def/provide-property ?
 
-- [ ] does extra-env lang need changes for transient?
-  - [ ] rackunit env broke
-
 - [ ] transient breaks tail calls? or does typed-id? check make it okay?
 - [ ] low priority: change extra-env-lang to accept transient blessing,
       plot-lib is the only user I know of
 - [ ] bless require/typed struct predicates
+- [ ] cdr does not need check if applied to a Listof type
+  2020-03-03 List -> cons?, so its not safe ... hard to tell Cons vs List in
+   type->contract
+  
+
+- [ ] cod check for/list etc, its always a list or void or sum
+  (2020-02-28 still a problem, (check (#%app for-loop  ....)))
+
+- [ ] pos->vals appears in for loop expansion, gets a cod check, but doesn't need one why
+  "pos->vals" is only a variable name, used to describe the first result of `make-sequence`, great
+  one fix: give `make-sequence` a deeper type and in the defender check for "deeper"
+   ... so pos->vals gets a blessed type
+   ... and this means, I guess, that transient-env is the wrong choice; instead
+    should key on types rather than identifiers
+  
+
