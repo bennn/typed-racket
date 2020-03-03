@@ -10,7 +10,7 @@
          (rep type-rep) (env mvar-env)
          (optimizer utils logging float-complex unboxed-tables))
 
-(provide unboxed-let-opt-expr)
+(provide unboxed-let-opt-expr escapes?)
 
 ;; possibly replace bindings of complex numbers by bindings of their 2
 ;; components useful for intermediate results used more than once and for
