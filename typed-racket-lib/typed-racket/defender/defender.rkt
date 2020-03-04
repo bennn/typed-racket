@@ -227,7 +227,7 @@
       (define arr (combine-arrs arrs))
       (if arr
         (loop (make-Fun (list arr)))
-        (raise-arguments-error 'dynamic-typecheck "failed to parse arrow from case->"
+        (raise-arguments-error 'stx->arrow-type "failed to parse arrow from case->"
           "type" ty
           "e" (syntax->datum stx)
           "stx" stx
@@ -237,7 +237,7 @@
       ;;  example type: (U (-> (Array Integer) (values (Indexes : (Top | Bot) : (struct-ref (0 0) 0)) (Index : (Top | Bot) : (struct-ref (0 0) 1)) (Index : (Top | Bot) : (vector-length (struct-ref (0 0) 0))) (Indexes : (Top | Bot)) ((-> Indexes Integer) : (Top | Bot) : (struct-ref (0 0) 4)))) (All (A) (-> (Array A) (values (Indexes : (Top | Bot) : (Array-shape (0 0))) (Index : (Top | Bot) : (Array-size (0 0))) (Index : (Top | Bot) : (vector-length (Array-shape (0 0)))) (Indexes : (Top | Bot)) ((-> Indexes A) : (Top | Bot) : (Array-unsafe-proc (0 0)))))))
       (loop (car ts))]
      [_
-      (raise-arguments-error 'dynamic-typecheck "failed to parse arrow from type of syntax object"
+      (raise-arguments-error 'stx->arrow-type "failed to parse arrow from type of syntax object"
         "e" (syntax->datum stx)
         "stx" stx
         "type" ty)])))
@@ -447,7 +447,7 @@
                   [dom dom-stx])
       (syntax/loc dom-stx
         (unless (#%plain-app ctc dom)
-          (#%plain-app error 'dynamic-typecheck (#%plain-app format #;'"die" '"got ~s in ~a" dom 'err)))))]))
+          (#%plain-app error 'transient-assert (#%plain-app format #;'"die" '"got ~s in ~a" dom 'err)))))]))
 
 ;; protect-codomain : (U #f Tc-Results) (Syntaxof List) Hash Hash (Boxof Syntax) -> (Syntaxof List)
 (define (protect-codomain cod-tc-res app-stx ctc-cache sc-cache extra-defs*)
@@ -486,7 +486,7 @@
                   (let-values ([(v) app])
                     (if (#%plain-app ctc v)
                       v
-                      (#%plain-app error 'dynamic-typecheck (#%plain-app format #;'"die" '"got ~s in ~a" v 'err)))))))
+                      (#%plain-app error 'transient-assert (#%plain-app format #;'"die" '"got ~s in ~a" v 'err)))))))
             (define if-stx (caddr (syntax-e new-stx)))
             (register-ignored! if-stx)
             (define chk-stx (syntax-e (cadr (syntax-e if-stx))))
@@ -516,7 +516,7 @@
                                    (test-position-add-false ctc-stx)
                                    (quasisyntax/loc app-stx (#%plain-app #,ctc-stx #,v))))
                       (values . v*)
-                      (#%plain-app error 'dynamic-typecheck 'err))))))
+                      (#%plain-app error 'transient-assert 'err))))))
             (register-ignored! (caddr (syntax-e new-stx)))
             new-stx))))]))
 
@@ -569,9 +569,9 @@
    [(Values: r*)
     (map Result-t r*)]
    [(AnyValues: _)
-    (raise-user-error 'dynamic-typecheck "cannot generate contract for AnyValues type '~a'" sv)]
+    (raise-user-error 'some-values->type* "cannot generate contract for AnyValues type '~a'" sv)]
    [(ValuesDots: _ _ _)
-    (raise-user-error 'dynamic-typecheck "cannot generate contract for ValuesDots type '~a'" sv)]))
+    (raise-user-error 'some-values->type* "cannot generate contract for ValuesDots type '~a'" sv)]))
 
 (define (is-lambda? x)
   (syntax-parse x
@@ -612,7 +612,7 @@
 
 (define (type->flat-contract t ctc-cache sc-cache extra-defs*)
   (define (fail #:reason r)
-    (raise-user-error 'dynamic-typecheck "failed to convert type ~a to flat contract because ~a" t r))
+    (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" t r))
   (match-define (list defs ctc)
     (type->contract t fail
       #:typed-side #f

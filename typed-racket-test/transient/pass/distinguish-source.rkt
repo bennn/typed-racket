@@ -25,5 +25,5 @@
 (require 't rackunit)
 
 (check-exn (λ (e) (or (regexp-match? #rx"expected: Natural" (exn-message e))
-                      (regexp-match? #rx"dynamic-typecheck" (exn-message e))))
+                      (regexp-match? #rx"transient-assert" (exn-message e))))
   test)

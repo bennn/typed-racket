@@ -16,7 +16,7 @@
 (check-pred values (foo 1))
 (check-pred values (foo 'a))
 
-(check-exn #rx"dynamic-typecheck"
+(check-exn #rx"transient-assert"
   (λ () (wepa (foo 'a))))
 
 (check-equal?

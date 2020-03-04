@@ -8,5 +8,5 @@
           (unbox x)))
 
 (require 'a rackunit)
-(check-exn #rx"dynamic-typecheck"
+(check-exn #rx"transient-assert"
   (lambda () (f 0)))

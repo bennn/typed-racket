@@ -26,8 +26,8 @@
     (f b)))
 (require 't)
 
-(check-exn #rx"dynamic-typecheck"
+(check-exn #rx"transient-assert"
   test0)
 
-(check-exn #rx"dynamic-typecheck"
+(check-exn #rx"transient-assert"
   test1)
