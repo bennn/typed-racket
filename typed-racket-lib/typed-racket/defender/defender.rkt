@@ -129,7 +129,8 @@
         (maybe-add-typeof-expr stx+ stx))
       (define-values [pre* f post*] (split-application stx+))
       (if (or (is-ignored? f)
-              (blessed-codomain? f))
+              (blessed-codomain? f)
+              (cdr-list? f post*))
         stx+
         (let ()
           (define cod-tc-res (maybe-type-of stx))
@@ -375,6 +376,22 @@
              (not (struct-accessor? stx))
              (not (from-require/typed? stx))))
     (is-lambda? stx)))
+
+(define (cdr-list? f post*)
+  ;; TODO put this in optimizer?
+  (and
+    (identifier? f)
+    (or (free-identifier=? f #'cdr)
+        (free-identifier=? f #'unsafe-cdr))
+    (let* ((e (syntax-e post*))
+           (t (and (pair? e) (tc-results->type1 (maybe-type-of (car e))))))
+      (match t
+       [(or (Listof: _)
+            (Pair: _ (Listof: _))
+            (Pair: _ (Pair: _ _)))
+        #true]
+       [_
+        #false]))))
 
 ;; from-require/typed? : Identifier -> Boolean
 ;; Typed Racket adds this property to all require/typed identifiers,
