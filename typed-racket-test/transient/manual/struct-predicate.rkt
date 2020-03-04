@@ -3,7 +3,7 @@
 ;; Struct predicates don't need a typecheck
 ;;
 ;; Expand this file,
-;;  make sure there are no dynamic-typechecks
+;;  make sure there are no transient-assert s
 
 (module a racket/base
   (provide (struct-out a))

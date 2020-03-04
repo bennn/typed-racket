@@ -20,11 +20,11 @@
 
 (require 't racket/contract rackunit)
 
-(check-exn #rx"dynamic-typecheck"
+(check-exn #rx"transient-assert"
   (λ () (f (vector 4 'A 4 4))))
 
-(check-exn #rx"dynamic-typecheck"
+(check-exn #rx"transient-assert"
   (λ () (g (vector 3))))
 
-(check-exn #rx"dynamic-typecheck"
+(check-exn #rx"transient-assert"
   (λ () (h (vector 1 'two 3))))

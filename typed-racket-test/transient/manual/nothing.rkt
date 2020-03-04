@@ -2,7 +2,7 @@
 
 ;; type Nothing does not need a codomain check
 ;;
-;; Expand this file, look for absence of "dynamic-typecheck"
+;; Expand this file, look for absence of "transient-assert"
 
 (module a racket/base
   (provide f)
