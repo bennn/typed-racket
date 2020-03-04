@@ -6,6 +6,7 @@
 ;; Expand, look for:
 ;; - no "dynamic-typecheck" around the final result
 ;; - no domain "dynamic-typecheck" for any functions
+;; - no dynamic-typecheck around unsafe-cdr
 
 (void?
   (for ((x (in-list '(A B C))))
