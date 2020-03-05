@@ -379,6 +379,7 @@
 
 (define (cdr-list? f post*)
   ;; TODO put this in optimizer?
+  ;; TODO bless cddr ..., but check for N-level pair type too
   (and
     (identifier? f)
     (or (free-identifier=? f #'cdr)
@@ -442,12 +443,16 @@
     (define err-msg
       (parameterize ([error-print-width 20])
         (format "~e : ~a" (#%plain-app syntax->datum dom-stx) dom-type)))
+    ;; TODO register ignored
     (with-syntax ([ctc ctc-stx]
                   [err err-msg]
                   [dom dom-stx])
-      (syntax/loc dom-stx
-        (unless (#%plain-app ctc dom)
-          (#%plain-app error 'transient-assert (#%plain-app format #;'"die" '"got ~s in ~a" dom 'err)))))]))
+      (define new-stx
+        (syntax/loc dom-stx
+          (unless (#%plain-app ctc dom)
+            (#%plain-app error 'transient-assert (#%plain-app format #;'"die" '"got ~s in ~a" dom 'err)))))
+      (register-ignored! new-stx)
+      new-stx)]))
 
 ;; protect-codomain : (U #f Tc-Results) (Syntaxof List) Hash Hash (Boxof Syntax) -> (Syntaxof List)
 (define (protect-codomain cod-tc-res app-stx ctc-cache sc-cache extra-defs*)
