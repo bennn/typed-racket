@@ -21,12 +21,6 @@
   #:for-label
   (null? pair? null))
 
-(define (bg-parse-return r)
-  ;;bg TODO this is bad ... not sure what to do though, should it be AnyValues ???
-  (match r
-    [(tc-result1: t) t]
-    [_ Univ]))
-
 (define-tc/app-syntax-class (tc/app-lambda expected)
   #:literal-sets (kernel-literals)
   ;; let loop
