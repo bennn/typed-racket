@@ -5,8 +5,9 @@
          (for-template racket/base racket/unsafe/ops racket/list)
          (for-syntax racket/base syntax/parse racket/syntax)
          "../utils/utils.rkt"
+         (only-in "../utils/tc-utils.rkt" current-type-enforcement-mode)
          (rep type-rep)
-         (types type-table utils base-abbrev resolve subtype)
+         (types type-table utils base-abbrev resolve subtype match-expanders)
          (typecheck typechecker)
          (optimizer utils logging))
 
@@ -133,8 +134,7 @@
     ;; optimize alt inside-out, as long as it's safe to
     (let-values
         ([(t res)
-          (for/fold ([t   (match (type-of #'e.arg)
-                            [(tc-result1: t) t])]
+          (for/fold ([t (type-of%current-mode #'e.arg)]
                      [res #'e.arg])
               ([accessor (in-list (reverse (syntax->list #'e.alt)))])
             (cond
@@ -156,3 +156,23 @@
               (values t ; stays unsafe from now on
                       #`(#,accessor #,res))]))])
       res)))
+
+;; Get the type from `stx` but flatten based on the type soundness guarantee for
+;;  the current mode
+;; 2020-03-06 only works for pair types
+(define (type-of%current-mode stx)
+  (define orig-t (match (type-of stx) [(tc-result1: t) t]))
+  (case (current-type-enforcement-mode)
+    ((guarded)
+     orig-t)
+    ((transient)
+     (match orig-t
+      [(Listof: _)
+       (-lst Univ)]
+      [(Pair: _ _)
+       (-pair Univ Univ)]
+      [_
+       Univ]))
+    (else
+     (raise-arguments-error 'type-of%current-mode "cannot optimize in #:erasure mode"))))
+

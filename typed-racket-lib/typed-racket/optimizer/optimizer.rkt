@@ -2,6 +2,7 @@
 
 (require syntax/parse racket/pretty
          "../utils/utils.rkt"
+         (only-in "../utils/tc-utils.rkt" erasure current-type-enforcement-mode)
          (private syntax-properties)
          (types type-table)
          (optimizer utils
@@ -70,8 +71,13 @@
                         (kw e.opt ...))))
 
 (define (optimize-top stx)
+  (when (eq? erasure (current-type-enforcement-mode))
+    (raise-arguments-error 'optimize-top "cannot optimize in #:erasure mode" "stx" stx "(current-type-enforcement-mode)" (current-type-enforcement-mode)))
+  (if (eq? 'transient (current-type-enforcement-mode))
+    stx
   (parameterize ([optimize (syntax-parser [e:opt-expr* #'e.opt])])
     (let ((result ((optimize) stx)))
       (when *show-optimized-code*
         (pretty-print (syntax->datum result)))
       result)))
+  )
