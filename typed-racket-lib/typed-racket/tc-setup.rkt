@@ -32,7 +32,7 @@
   ;; current code inspector has sufficient privileges
   (if (and (optimize?)
            (not (getenv "PLT_TR_NO_OPTIMIZE"))
-           (eq? guarded (current-type-enforcement-mode)) ;; TODO (bg) transient _should_ be compatible with the optimizer
+           (memq (current-type-enforcement-mode) (list guarded transient))
            (authorized-code-inspector?))
       (begin
         (do-time "Starting optimizer")
