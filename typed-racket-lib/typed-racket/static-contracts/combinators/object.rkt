@@ -181,7 +181,7 @@
                #:unless (memq name pubment*))
       name))
   (with-syntax ((ctc-stx
-                  #'(class/c
+                  #`(class/c
                       (init . #,init*)
                       (field . #,field*)
                       (override . #,override*)
