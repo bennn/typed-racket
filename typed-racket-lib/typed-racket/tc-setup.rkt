@@ -41,18 +41,17 @@
       body))
 
 (define (maybe-defend body ctc-cache sc-cache)
-  ;; TODO maybe check (authorized-code-inspector?)
-  (cond
-    [(eq? transient (current-type-enforcement-mode))
+  (case (current-type-enforcement-mode)
+    [(transient)
      (do-time "Starting defender")
      (define extra-def* (box '()))
      (define body+
        (for/list ([b (in-list (syntax-e body))])
          (defend-top b ctc-cache sc-cache extra-def*)))
      (do-time "Defended")
-     (append (reverse (unbox extra-def*)) body+)]
+     (cons (reverse (unbox extra-def*)) body+)]
     [else
-     body]))
+     (cons '() body)]))
 
 ;; -> Promise<Dict<Name, Type>>
 ;; initialize the type names for printing
