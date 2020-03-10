@@ -9,6 +9,7 @@
 ;; TODO
 ;; - [ ] need with-new-name-tables here?
 ;; - [ ] remove `contract-first-order-passes?` ... make sure to generate predicates instead
+;; - [ ] syntax-track-origin ? syntax/loc/track-origin ?
 
 (require
   (only-in racket/format ~a)
@@ -93,7 +94,7 @@
      [(op:lambda-identifier formals . body)
       (define dom-map (type->domain-map (stx->arrow-type stx)))
       (define body+ (loop #'body #f))
-      (void (maybe-add-typeof-expr body+ #'body))
+      (void (readd-props! body+ #'body))
       (define formals+
         (if skip-dom? '() (protect-formals dom-map #'formals ctc-cache sc-cache extra-defs*)))
       (define stx+
@@ -103,7 +104,7 @@
             (let ((stx (quasisyntax/loc stx (op formals (#%plain-app void . #,formals+) . body+))))
               (register-ignored! (caddr (syntax-e stx)))
               stx))))
-      (void (maybe-add-typeof-expr stx+ stx))
+      (void (readd-props! stx+ stx))
       stx+]
      [(#%plain-app (letrec-values (((a:id) e0)) b:id) e1* ...)
       #:when (free-identifier=? #'a #'b)
@@ -123,10 +124,10 @@
           stx
           (for/list ([x (in-list (syntax-e #'(x* ...)))])
             (define x+ (loop x #f))
-            (maybe-add-typeof-expr x+ x)
+            (readd-props! x+ x)
             x+)))
       (void
-        (maybe-add-typeof-expr stx+ stx))
+        (readd-props! stx+ stx))
       (define-values [pre* f post*] (split-application stx+))
       (if (or (is-ignored? f)
               (blessed-codomain? f)
@@ -142,7 +143,7 @@
           (add-typeof-expr stx/dom (ret Univ)) ;; TODO we can do better!
           (define stx/cod
             (protect-codomain cod-tc-res stx/dom ctc-cache sc-cache extra-defs*))
-          (maybe-add-typeof-expr stx/cod stx)
+          (readd-props! stx/cod stx)
           stx/cod))]
      [((~and x (~literal #%expression)) _)
       #:when (type-inst-property #'x)
@@ -150,11 +151,11 @@
      [((~literal #%expression) e)
       #:when (type-ascription-property stx)
       (define e+ (loop #'e #f))
-      (void (maybe-add-typeof-expr e+ #'e))
+      (void (readd-props! e+ #'e))
       (define e++
         (with-syntax ([e+ e+])
           (syntax/loc stx (#%expression e+))))
-      (void (maybe-add-typeof-expr e++ stx))
+      (void (readd-props! e++ stx))
       e++]
      [_
       #:when (type-ascription-property stx)
@@ -164,9 +165,9 @@
         (datum->syntax stx
           (for/list ((x (in-list (syntax-e #'(x* ...)))))
             (define x+ (loop x #f))
-            (maybe-add-typeof-expr x+ x)
+            (readd-props! x+ x)
             x+)))
-      (maybe-add-typeof-expr stx+ stx)
+      (readd-props! stx+ stx)
       stx+]
      [_
       stx])))
@@ -175,10 +176,30 @@
   (pattern (~literal #%plain-lambda))
   (pattern (~literal lambda)))
 
+(define (readd-props! new-stx old-stx)
+  (maybe-add-typeof-expr new-stx old-stx)
+  (maybe-add-test-position new-stx old-stx)
+  (void))
+
 (define (maybe-add-typeof-expr new-stx old-stx)
   (let ((old-type (maybe-type-of old-stx)))
     (when old-type
       (add-typeof-expr new-stx old-type))))
+
+(define (maybe-add-test-position new-stx old-stx)
+  (maybe-add-test-true new-stx old-stx)
+  (maybe-add-test-false new-stx old-stx)
+  (void))
+
+(define (maybe-add-test-true new-stx old-stx)
+  (when (test-position-takes-true-branch old-stx)
+    (test-position-add-true new-stx))
+  (void))
+
+(define (maybe-add-test-false new-stx old-stx)
+  (when (test-position-takes-false-branch old-stx)
+    (test-position-add-false new-stx))
+  (void))
 
 ;; -----------------------------------------------------------------------------
 
@@ -449,7 +470,8 @@
                   [dom dom-stx])
       (define new-stx
         (syntax/loc dom-stx
-          (unless (#%plain-app ctc dom)
+          (if (#%plain-app ctc dom)
+            '#true
             (#%plain-app error 'transient-assert (#%plain-app format #;'"die" '"got ~s in ~a" dom 'err)))))
       (register-ignored! new-stx)
       new-stx)]))
@@ -513,17 +535,25 @@
                 cod-tc-res
                 (quasisyntax/loc app-stx
                   (let-values ([v* app])
-                    (if (and . #,(for/list ([ctc-stx (in-list ctc-stx*)]
-                                            [v (in-list (syntax-e #'v*))]
-                                            #:when ctc-stx)
-                                   (register-ignored! ctc-stx)
-                                   (test-position-add-true ctc-stx)
-                                   (test-position-add-false ctc-stx)
-                                   (quasisyntax/loc app-stx (#%plain-app #,ctc-stx #,v))))
+                    (if #,(make-and-stx
+                            app-stx
+                            (for/list ([ctc-stx (in-list ctc-stx*)]
+                                       [v (in-list (syntax-e #'v*))]
+                                       #:when ctc-stx)
+                                (register-ignored! ctc-stx)
+                                (test-position-add-true ctc-stx)
+                                (test-position-add-false ctc-stx)
+                                (quasisyntax/loc app-stx (#%plain-app #,ctc-stx #,v))))
                       (values . v*)
                       (#%plain-app error 'transient-assert 'err))))))
             (register-ignored! (caddr (syntax-e new-stx)))
             new-stx))))]))
+
+(define (make-and-stx loc stx*)
+  ;; TODO awkward, remove?
+  (for/fold ((acc (syntax/loc loc '#true)))
+            ((stx (in-list stx*)))
+    (quasisyntax/loc loc (if #,stx #,acc '#false))))
 
 (define-syntax-rule (with-type t e)
   (let ((v e))
