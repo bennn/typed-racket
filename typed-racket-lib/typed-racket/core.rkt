@@ -62,8 +62,9 @@
               [(after-code ...) (begin0
                                   (change-provide-fixups/cache (flatten-all-begins pre-after-code))
                                   (do-time "Generated contracts"))]
+              [((before-defend-code ...) . defended-body) (defend/cache #'transformed-body)]
               ;; potentially optimize the code based on the type information
-              [(optimized-body ...) (maybe-optimize (defend/cache #'transformed-body))]
+              [(optimized-body ...) (maybe-optimize #'defended-body)]
               ;; add in syntax property on useless expression to draw check-syntax arrows
               [check-syntax-help (syntax-property
                                   (syntax-property
@@ -74,7 +75,7 @@
              ;; use the regular %#module-begin from `racket/base' for top-level printing
              (arm #`(#%module-begin 
                      #,(if (unbox include-extra-requires?) extra-requires #'(begin))
-                     before-code ... optimized-body ... after-code ... check-syntax-help)))))))]))
+                     before-code ... before-defend-code ... optimized-body ... after-code ... check-syntax-help)))))))]))
 
 (define (ti-core stx )
   (current-type-enforcement-mode guarded)
