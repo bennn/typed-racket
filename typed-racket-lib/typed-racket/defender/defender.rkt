@@ -3,12 +3,9 @@
 ;; TODO
 ;;  - [ ] build + test occurrence-type optimizer
 ;;  - [ ] build/test erasure-racket
-;;  - [X] work out 3-sound theory
-;;  - [ ] cdr / unsafe-cdr is safe on a list-type input
 ;;
 ;; TODO
 ;; - [ ] need with-new-name-tables here?
-;; - [ ] remove `contract-first-order-passes?` ... make sure to generate predicates instead
 ;; - [ ] syntax-track-origin ? syntax/loc/track-origin ?
 
 (require
@@ -120,8 +117,7 @@
      [(x* ...)
       #:when (is-application? stx)
       (define stx+
-        (datum->syntax
-          stx
+        (syntax*->syntax stx
           (for/list ([x (in-list (syntax-e #'(x* ...)))])
             (define x+ (loop x #f))
             (readd-props! x+ x)
@@ -162,7 +158,7 @@
       (raise-user-error 'defend-top "strange type-ascription ~a" (syntax->datum stx))]
      [(x* ...)
       (define stx+
-        (datum->syntax stx
+        (syntax*->syntax stx
           (for/list ((x (in-list (syntax-e #'(x* ...)))))
             (define x+ (loop x #f))
             (readd-props! x+ x)
@@ -644,6 +640,12 @@
     #true]
    [_
     (raise-argument-error 'arr/non-empty-domain "Arrow?" arr)]))
+
+(define (syntax*->syntax ctx stx*)
+  (datum->syntax ctx
+    (if (null? stx*)
+      '()
+      (cons (car stx*) (syntax*->syntax ctx (cdr stx*))))))
 
 (define (type->flat-contract t ctc-cache sc-cache extra-defs*)
   (define (fail #:reason r)
