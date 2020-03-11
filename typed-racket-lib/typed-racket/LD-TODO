@@ -198,6 +198,8 @@
       syntax/loc: contract violation
         expected: syntax?
         given: '(#<syntax:/Users/ben/code/racket/fork/extra-pkgs/typed-racket/typed-racket-test/transient/pass/alias.rkt:8:1 +> #<syntax (quote 2)> #<syntax (quote 2)>)
+- [X] acquire dungeon forth fsm errors ....
+      got 'values' expected kernel-literal
 
 - [ ] optimizer
   leave S,E macros un-optimized (should be no problem ... but lets see)
@@ -236,7 +238,5 @@
   who knows if that will pay off
 
 - [ ] dungeon, cell.rkt, why 3 copies of same recursive-contract ?
-
-
 
 
