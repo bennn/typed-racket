@@ -540,7 +540,7 @@
                                 (test-position-add-true ctc-stx)
                                 (test-position-add-false ctc-stx)
                                 (quasisyntax/loc app-stx (#%plain-app #,ctc-stx #,v))))
-                      (values . v*)
+                      (#%plain-app values . v*)
                       (#%plain-app error 'transient-assert 'err))))))
             (register-ignored! (caddr (syntax-e new-stx)))
             new-stx))))]))
