@@ -200,16 +200,20 @@
         given: '(#<syntax:/Users/ben/code/racket/fork/extra-pkgs/typed-racket/typed-racket-test/transient/pass/alias.rkt:8:1 +> #<syntax (quote 2)> #<syntax (quote 2)>)
 - [X] acquire dungeon forth fsm errors ....
       got 'values' expected kernel-literal
-
-- [ ] optimizer
+- [X] optimizer
   leave S,E macros un-optimized (should be no problem ... but lets see)
   yes they are skipped optimizer/optimizer L67
   - [X] disable pair, if for transient
-  - [ ] try running benchmarks
-
-- [ ] tc-app-lambda todo items (PR to TR?)
+  - [X] try running benchmarks
+- [X] tc-app-lambda todo items (PR to TR?)
   - [X] ((lambda ....) ....) seems more-correct now, but's also apparently unnecessary,
     worth doing a TR PR though
+    NO not unneccessary this transient code fails, missing type
+     ((lambda (x) (values x (list 'A 'A))) 42)
+    [X] submit PR 1, ...
+  - [X] ((letrec-values ....) ....) seems fine without annotation,
+    but double-check benchmarks?
+
 
 - [ ] investigate contract generation, where do names go what gets reused?
   - objects are looking fine
@@ -236,6 +240,8 @@
 
 - [ ] for way later ... mutable things get a proxy, tracks "correct" indexes
   who knows if that will pay off
+
+- [ ] 2020-03-14 review diff again, factor thhings into PRs
 
 - [ ] dungeon, cell.rkt, why 3 copies of same recursive-contract ?
 
