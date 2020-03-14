@@ -213,12 +213,16 @@
     [X] submit PR 1, ...
   - [X] ((letrec-values ....) ....) seems fine without annotation,
     but double-check benchmarks?
+- [X] 2020-03-14 review diff again, factor thhings into PRs
 
+- [ ] revert static-contracts/combinators/structural.rkt
 
 - [ ] investigate contract generation, where do names go what gets reused?
   - objects are looking fine
+
 - [ ] unhygienic S require T identifier
       use contract-def/provide-property ?
+      ... need changes to provide-handling.rkt
 
 - [ ] transient breaks tail calls? or does typed-id? check make it okay?
   - Herman or Disney might have a (workshop?) paper about this,
@@ -241,8 +245,21 @@
 - [ ] for way later ... mutable things get a proxy, tracks "correct" indexes
   who knows if that will pay off
 
-- [ ] 2020-03-14 review diff again, factor thhings into PRs
-
 - [ ] dungeon, cell.rkt, why 3 copies of same recursive-contract ?
+- [ ] defender : docs, tests, etc
+- [ ] defend / optimize : share "escapes" more gracefully
+- [ ] static-contracts/combinators/derived.rkt docs + tests ... ditto object.rkt
 
+- [ ] need static-contracts/utils.rkt ???
+
+- [ ] tc-app-helper see bg comment
+      tc-app ditto
+
+- [ ] private/with-type ... allow transient as well as guarded
+
+- [ ] base-env/prims-contract.rkt ... need to store current-te-mode?
+  if so find example + regression test
+  - [ ] note, typed-context? maybe cannot double as the enforcement mode,
+    because in untyped code but generating contract for typed client
+  - [ ] WE WILL SEE make more mixed tests, or run mixed benchmarks
 
