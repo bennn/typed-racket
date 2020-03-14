@@ -38,101 +38,102 @@
 (provide wt-core)
 
 (define (with-type-helper stx body fvids fvtys exids extys resty expr? ctx)
-  (define old-context (unbox typed-context?))
-  (unless (not old-context)
-    (tc-error/stx stx "with-type cannot be used in a typed module."))
-  (set-box! typed-context? #t)
-  (do-standard-inits)
-  (define fv-types (for/list ([t (in-syntax fvtys)])
-                     (parse-type t)))
-  (define ex-types (for/list ([t (in-syntax extys)])
-                     (parse-type t)))
-  (define-values (fv-ctc-ids fv-ctc-defs)
-    (type-stxs->ids+defs (syntax->list fvtys) 'untyped))
-  (define-values (ex-ctc-ids ex-ctc-defs)
-    (type-stxs->ids+defs (syntax->list extys) guarded))
-  (define-values (region-ctc-ids region-ctc-defs)
-    (if expr?
-        (type-stxs->ids+defs (values-stx->type-stxs resty) guarded)
-        (values null null)))
-  (define region-tc-result
-    (and expr? (parse-tc-results resty)))
-  (for ([i (in-syntax fvids)]
-        [ty (in-list fv-types)])
-    (register-type i ty))
-  (define-values (lifted-definitions expanded-body)
-    (if expr?
-        (with-syntax ([body body])
-          (wt-expand #'(let () . body) ctx))
-        (with-syntax ([(body ...) body]
-                      [(id ...) exids]
-                      [(ty ...) extys])
-          (wt-expand #'(let () (begin (: id ty) ... body ... (values id ...))) ctx))))
-  (parameterize (;; do we report multiple errors
-                 [delay-errors? #t]
-                 ;; this parameter is just for printing types
-                 ;; this is a parameter to avoid dependency issues
-                 [current-type-names
-                  (lazy
-                    (append 
-                     (type-name-env-map (lambda (id ty)
-                                          (cons (syntax-e id) ty)))
-                     (type-alias-env-map (lambda (id ty)
-                                           (cons (syntax-e id) ty)))))]
-                 ;; reinitialize disappeared uses
-                 [disappeared-use-todo      null]
-                 [disappeared-bindings-todo null]
-                 ;; for error reporting
-                 [orig-module-stx stx]
-                 [expanded-module-stx expanded-body])
-    ;; we can treat the lifted definitions as top-level forms because they
-    ;; are only definitions and not forms that have special top-level meaning
-    ;; to TR
-    (tc-toplevel-form lifted-definitions)
-    (tc-expr/check expanded-body (if expr? region-tc-result (ret ex-types))))
-  (set-box! typed-context? old-context)
-  ;; then clear the new entries from the env ht
-  (for ([i (in-syntax fvids)])
-    (unregister-type i))
-  ;; report errors after setting the typed-context? flag and unregistering
-  ;; types to ensure that the state is cleaned up properly in the REPL
-  (report-all-errors)
-  (with-syntax ([(fv.id ...) fvids]
-                [(cnt ...) fv-ctc-ids]
-                [(ex-id ...) exids]
-                [(ex-cnt ...) ex-ctc-ids]
-                [(region-cnt ...) region-ctc-ids]
-                [(body) (maybe-optimize #`(#,expanded-body))]
-                [check-syntax-help (syntax-property
-                                    (syntax-property
-                                     #'(void)
-                                     'disappeared-binding (disappeared-bindings-todo))
-                                    'disappeared-use (disappeared-use-todo))])
-    (define fixed-up-definitions
-      (change-contract-fixups
-       (flatten-all-begins
-        #`(begin #,lifted-definitions
-                 #,@(if expr? (append region-ctc-defs fv-ctc-defs) null)
-                 #,@(if (not expr?) ex-ctc-defs null)))))
-    (arm
+  (parameterize ((current-type-enforcement-mode guarded))
+    (define old-context (unbox typed-context?))
+    (unless (not old-context)
+      (tc-error/stx stx "with-type cannot be used in a typed module."))
+    (set-box! typed-context? #t)
+    (do-standard-inits)
+    (define fv-types (for/list ([t (in-syntax fvtys)])
+                       (parse-type t)))
+    (define ex-types (for/list ([t (in-syntax extys)])
+                       (parse-type t)))
+    (define-values (fv-ctc-ids fv-ctc-defs)
+      (type-stxs->ids+defs (syntax->list fvtys) 'untyped))
+    (define-values (ex-ctc-ids ex-ctc-defs)
+      (type-stxs->ids+defs (syntax->list extys) guarded))
+    (define-values (region-ctc-ids region-ctc-defs)
       (if expr?
-          (quasisyntax/loc stx
-            (let ()
-              check-syntax-help
-              (local-require #,@(cdr (syntax-e extra-requires)))
-              #,@fixed-up-definitions
-              (c:with-contract typed-region
-                               #:results (region-cnt ...)
-                               #:freevars ([fv.id cnt] ...)
-                               body)))
-          (quasisyntax/loc stx
-            (begin
-              (local-require #,@(cdr (syntax-e extra-requires)))
-              (define-values () (begin check-syntax-help (values)))
-              #,@fixed-up-definitions
-              (c:with-contract typed-region
-                               ([ex-id ex-cnt] ...)
-                               (define-values (ex-id ...) body))))))))
+          (type-stxs->ids+defs (values-stx->type-stxs resty) guarded)
+          (values null null)))
+    (define region-tc-result
+      (and expr? (parse-tc-results resty)))
+    (for ([i (in-syntax fvids)]
+          [ty (in-list fv-types)])
+      (register-type i ty))
+    (define-values (lifted-definitions expanded-body)
+      (if expr?
+          (with-syntax ([body body])
+            (wt-expand #'(let () . body) ctx))
+          (with-syntax ([(body ...) body]
+                        [(id ...) exids]
+                        [(ty ...) extys])
+            (wt-expand #'(let () (begin (: id ty) ... body ... (values id ...))) ctx))))
+    (parameterize (;; do we report multiple errors
+                   [delay-errors? #t]
+                   ;; this parameter is just for printing types
+                   ;; this is a parameter to avoid dependency issues
+                   [current-type-names
+                    (lazy
+                      (append 
+                       (type-name-env-map (lambda (id ty)
+                                            (cons (syntax-e id) ty)))
+                       (type-alias-env-map (lambda (id ty)
+                                             (cons (syntax-e id) ty)))))]
+                   ;; reinitialize disappeared uses
+                   [disappeared-use-todo      null]
+                   [disappeared-bindings-todo null]
+                   ;; for error reporting
+                   [orig-module-stx stx]
+                   [expanded-module-stx expanded-body])
+      ;; we can treat the lifted definitions as top-level forms because they
+      ;; are only definitions and not forms that have special top-level meaning
+      ;; to TR
+      (tc-toplevel-form lifted-definitions)
+      (tc-expr/check expanded-body (if expr? region-tc-result (ret ex-types))))
+    (set-box! typed-context? old-context)
+    ;; then clear the new entries from the env ht
+    (for ([i (in-syntax fvids)])
+      (unregister-type i))
+    ;; report errors after setting the typed-context? flag and unregistering
+    ;; types to ensure that the state is cleaned up properly in the REPL
+    (report-all-errors)
+    (with-syntax ([(fv.id ...) fvids]
+                  [(cnt ...) fv-ctc-ids]
+                  [(ex-id ...) exids]
+                  [(ex-cnt ...) ex-ctc-ids]
+                  [(region-cnt ...) region-ctc-ids]
+                  [(body) (maybe-optimize #`(#,expanded-body))]
+                  [check-syntax-help (syntax-property
+                                      (syntax-property
+                                       #'(void)
+                                       'disappeared-binding (disappeared-bindings-todo))
+                                      'disappeared-use (disappeared-use-todo))])
+      (define fixed-up-definitions
+        (change-contract-fixups
+         (flatten-all-begins
+          #`(begin #,lifted-definitions
+                   #,@(if expr? (append region-ctc-defs fv-ctc-defs) null)
+                   #,@(if (not expr?) ex-ctc-defs null)))))
+      (arm
+        (if expr?
+            (quasisyntax/loc stx
+              (let ()
+                check-syntax-help
+                (local-require #,@(cdr (syntax-e extra-requires)))
+                #,@fixed-up-definitions
+                (c:with-contract typed-region
+                                 #:results (region-cnt ...)
+                                 #:freevars ([fv.id cnt] ...)
+                                 body)))
+            (quasisyntax/loc stx
+              (begin
+                (local-require #,@(cdr (syntax-e extra-requires)))
+                (define-values () (begin check-syntax-help (values)))
+                #,@fixed-up-definitions
+                (c:with-contract typed-region
+                                 ([ex-id ex-cnt] ...)
+                                 (define-values (ex-id ...) body)))))))))
 
 ;; Syntax (U Symbol List) -> (values Syntax Syntax)
 ;; local expansion for with-type expressions
@@ -183,9 +184,7 @@
     [pattern (~seq #:result ty:expr)])
   (syntax-parse stx
     [(_ :typed-ids fv:free-vars . body)
-     (parameterize ([current-type-enforcement-mode 'guarded])
-       (with-type-helper stx #'body #'(fv.id ...) #'(fv.ty ...) #'(id ...) #'(ty ...) #f #f (syntax-local-context)))]
+     (with-type-helper stx #'body #'(fv.id ...) #'(fv.ty ...) #'(id ...) #'(ty ...) #f #f (syntax-local-context))]
     [(_ :result-ty fv:free-vars . body)
-     (parameterize ([current-type-enforcement-mode 'guarded])
-       (with-type-helper stx #'body #'(fv.id ...) #'(fv.ty ...) #'() #'() #'ty #t (syntax-local-context)))]))
+     (with-type-helper stx #'body #'(fv.id ...) #'(fv.ty ...) #'() #'() #'ty #t (syntax-local-context))]))
 
