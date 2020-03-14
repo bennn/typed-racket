@@ -15,7 +15,6 @@
   syntax/parse
   typed-racket/rep/type-rep
   typed-racket/rep/values-rep
-  typed-racket/static-contracts/utils
   typed-racket/types/match-expanders
   (only-in typed-racket/optimizer/unboxed-let
     escapes?)
