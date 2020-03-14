@@ -77,5 +77,4 @@
     (let ((result ((optimize) stx)))
       (when *show-optimized-code*
         (pretty-print (syntax->datum result)))
-      result))
-  )
+      result)))

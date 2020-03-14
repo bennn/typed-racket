@@ -66,7 +66,7 @@
 (define-logger online-check-syntax)
 
 (define (tc-setup orig-stx stx expand-ctxt do-expand stop-forms k)
-  (set-box! typed-context? #true)
+  (set-box! typed-context? #t)
   ;(start-timing (syntax-property stx 'enclosing-module-name))
   (with-handlers
       (#;[(λ (e) (and (exn:fail? e) (not (exn:fail:syntax? e)) (not (exn:fail:filesystem? e))))

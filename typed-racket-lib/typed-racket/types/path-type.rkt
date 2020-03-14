@@ -5,6 +5,7 @@
          (contract-req)
          (rep object-rep type-rep values-rep)
          (utils tc-utils prefab)
+         (typecheck renamer)
          (types subtype resolve numeric-tower)
          (except-in (types utils abbrev kw-types) -> ->* one-of/c))
 
