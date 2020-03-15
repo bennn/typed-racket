@@ -129,6 +129,9 @@
   (match-define (list type untyped-id orig-id blame-id)
                 (contract-def/provide-property stx))
   (define failure-reason #f)
+  (unless (unbox typed-context?)
+    ;;bg TODO if always typed, remove the parameter use the box alone
+    (raise-arguments-error 'generate-contract-def/provide "current untyped context" "context" (unbox typed-context?)))
   (define result
     (type->contract type
                     #:typed-side #t
@@ -294,21 +297,14 @@
 ;;                  -> (U Any (List (Listof Syntax) Syntax))
 (define (type->contract ty init-fail
                         #:typed-side [typed-side #t]
-<<<<<<< HEAD
                         #:kind [kind 'impersonator]
                         #:cache [cache (make-hash)])
-=======
-                        #:kind [pre-kind 'impersonator]
-                        #:cache [cache (make-hash)]
-                        #:sc-cache [sc-cache (make-hash)])
->>>>>>> 0a3bfbf2... LD always 'flat kind for non-guarded contracts
   (let/ec escape
     (define (fail #:reason [reason #f]) (escape (init-fail #:reason reason)))
     (define sc
       (type->static-contract ty fail
                              #:typed-side typed-side
                              #:cache sc-cache))
-<<<<<<< HEAD
     (instantiate/optimize
      (type->static-contract ty #:typed-side typed-side fail)
      fail
@@ -316,13 +312,6 @@
      #:cache cache
      #:trusted-positive typed-side
      #:trusted-negative (not typed-side))))
-=======
-    (define kind (if (eq? guarded (current-type-enforcement-mode)) pre-kind 'flat))
-    (instantiate/optimize sc fail kind
-      #:cache cache
-      #:trusted-positive typed-side
-      #:trusted-negative (not typed-side))))
->>>>>>> 0a3bfbf2... LD always 'flat kind for non-guarded contracts
 
 (define any-wrap/sc (chaperone/sc #'any-wrap/c))
 

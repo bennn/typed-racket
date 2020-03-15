@@ -214,11 +214,26 @@
   - [X] ((letrec-values ....) ....) seems fine without annotation,
     but double-check benchmarks?
 - [X] 2020-03-14 review diff again, factor thhings into PRs
-
-- [ ] revert static-contracts/combinators/structural.rkt
+- [X] revert static-contracts/combinators/structural.rkt
+- [X] need static-contracts/utils.rkt ???
+  no, removed
+- [X] with-type error, generate-contract-def: current untyped context
+  moved `typed-context?` box reset a little later, no problem!
+  so maybe, can use that box for the TE strategy
 
 - [ ] investigate contract generation, where do names go what gets reused?
-  - objects are looking fine
+  - objects are looking fine ... they get lifted to top-module and object/c created once
+  - need all these caches?
+  - [ ] dungeon error (main)
+    g150: undefined;
+     cannot reference an identifier before its definition
+      module: "/Users/ben/code/racket/gtp/transient-tr-benchmark/dungeon/tagged/main.rkt"
+      internal name: g150.1 context...: raise-undefined proc call-in-empty-metacontinuation-frame body of "/Users/ben/code/racket/gtp/transient-tr-benchmark/dungeon/tagged/main.rkt"<Paste>
+  - [ ] zordoz error (transition)
+   g963: undefined;
+    cannot reference an identifier before its definition
+      module: "/Users/ben/code/racket/gtp/transient-tr-benchmark/zordoz/tagged/zo-transition.rkt"
+        internal name: g963.1 context...: raise-undefined proc call-in-empty-metacontinuation-frame body of "/Users/ben/code/racket/gtp/transient-tr-benchmark/zordoz/tagged/zo-transition.rkt"
 
 - [ ] unhygienic S require T identifier
       use contract-def/provide-property ?
@@ -250,8 +265,6 @@
 - [ ] defend / optimize : share "escapes" more gracefully
 - [ ] static-contracts/combinators/derived.rkt docs + tests ... ditto object.rkt
 
-- [ ] need static-contracts/utils.rkt ???
-
 - [ ] tc-app-helper see bg comment
       tc-app ditto
 
@@ -261,5 +274,7 @@
   if so find example + regression test
   - [ ] note, typed-context? maybe cannot double as the enforcement mode,
     because in untyped code but generating contract for typed client
+    ... with-type initially triggered a contract when typed-context? = #f
+        but I changed that
   - [ ] WE WILL SEE make more mixed tests, or run mixed benchmarks
 
