@@ -129,6 +129,9 @@
   (match-define (list type untyped-id orig-id blame-id)
                 (contract-def/provide-property stx))
   (define failure-reason #f)
+  (unless (unbox typed-context?)
+    ;;bg TODO if always typed, remove the parameter use the box alone
+    (raise-arguments-error 'generate-contract-def/provide "current untyped context" "context" (unbox typed-context?)))
   (define result
     (type->contract type
                     #:typed-side #t

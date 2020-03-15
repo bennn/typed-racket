@@ -91,7 +91,6 @@
       ;; to TR
       (tc-toplevel-form lifted-definitions)
       (tc-expr/check expanded-body (if expr? region-tc-result (ret ex-types))))
-    (set-box! typed-context? old-context)
     ;; then clear the new entries from the env ht
     (for ([i (in-syntax fvids)])
       (unregister-type i))
@@ -115,6 +114,7 @@
           #`(begin #,lifted-definitions
                    #,@(if expr? (append region-ctc-defs fv-ctc-defs) null)
                    #,@(if (not expr?) ex-ctc-defs null)))))
+      (set-box! typed-context? old-context) ;; reset AFTER generating contracts
       (arm
         (if expr?
             (quasisyntax/loc stx
