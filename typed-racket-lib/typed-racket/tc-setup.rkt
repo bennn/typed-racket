@@ -40,18 +40,18 @@
           (do-time "Optimized")))
       body))
 
-(define (maybe-defend body ctc-cache sc-cache)
+(define (maybe-defend forms ctc-cache sc-cache)
   (case (current-type-enforcement-mode)
     [(transient)
      (do-time "Starting defender")
      (define extra-def* (box '()))
-     (define body+
-       (for/list ([b (in-list (syntax-e body))])
+     (define forms+
+       (for/list ([b (in-list forms)])
          (defend-top b ctc-cache sc-cache extra-def*)))
      (do-time "Defended")
-     (cons (reverse (unbox extra-def*)) body+)]
+     (cons (reverse (unbox extra-def*)) forms+)]
     [else
-     (cons '() body)]))
+     (cons '() forms)]))
 
 ;; -> Promise<Dict<Name, Type>>
 ;; initialize the type names for printing
