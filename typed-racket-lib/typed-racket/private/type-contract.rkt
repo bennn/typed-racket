@@ -39,7 +39,7 @@
          include-extra-requires?)
 
 ;; submod for testing
-(module* test-exports #f (provide type->contract))
+(module* test-exports #f (provide type->contract has-contract-def-property?))
 
 ;; has-contrat-def-property? : Syntax -> Boolean
 (define (has-contract-def-property? stx)
