@@ -49,6 +49,7 @@
     format-id
     generate-temporary)
   (only-in (submod typed-racket/private/type-contract test-exports)
+    has-contract-def-property?
     type->contract)
   (for-syntax
     racket/base)
@@ -69,7 +70,8 @@
     (syntax-parse stx
      #:literals (values define-values #%plain-app begin define-syntaxes letrec-values)
      [_
-      #:when (is-ignored? stx) ;; lookup in type-table's "ignored table"
+      #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"
+                 (has-contract-def-property? stx))
       stx]
      [(~or _:ignore^ _:ignore-some^) ;; for struct definitions ... not sure what else
       stx]

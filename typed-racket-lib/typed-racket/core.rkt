@@ -46,25 +46,23 @@
               (change-provide-fixups forms ctc-cache sc-cache))
             (define (defend/cache forms)
               ;;bg; TODO cannot re-use other caches because `define`s will be out of order
-              (maybe-defend forms (make-hash) (make-hash)))
+              (maybe-defend forms ctc-cache sc-cache))
             (with-syntax*
              (;; pmb = #%plain-module-begin
               [(pmb . body2) new-mod]
               ;; perform the provide transformation from [Culpepper 07]
               [transformed-body (begin0 (remove-provides #'body2) (do-time "Removed provides"))]
+              [((before-defend-code ...) . defended-body) (defend/cache #'transformed-body)]
               ;; add the real definitions of contracts on requires
               [transformed-body
-               (begin0
-                 (change-contract-fixups/cache (syntax->list #'transformed-body))
-                 (do-time "Fixed contract ids"))]
+               (begin0 (change-contract-fixups/cache (syntax->list #'defended-body))
+                       (do-time "Fixed contract ids"))]
               ;; add the real definitions of contracts on the before- and after-code
               [(before-code ...) (change-provide-fixups/cache (flatten-all-begins pre-before-code))]
-              [(after-code ...) (begin0
-                                  (change-provide-fixups/cache (flatten-all-begins pre-after-code))
+              [(after-code ...) (begin0 (change-provide-fixups/cache (flatten-all-begins pre-after-code))
                                   (do-time "Generated contracts"))]
-              [((before-defend-code ...) . defended-body) (defend/cache #'transformed-body)]
               ;; potentially optimize the code based on the type information
-              [(optimized-body ...) (maybe-optimize #'defended-body)]
+              [(optimized-body ...) (maybe-optimize #'transformed-body)] ;; has own call to do-time
               ;; add in syntax property on useless expression to draw check-syntax arrows
               [check-syntax-help (syntax-property
                                   (syntax-property
@@ -75,7 +73,7 @@
              ;; use the regular %#module-begin from `racket/base' for top-level printing
              (arm #`(#%module-begin 
                      #,(if (unbox include-extra-requires?) extra-requires #'(begin))
-                     before-code ... before-defend-code ... optimized-body ... after-code ... check-syntax-help)))))))]))
+                     before-defend-code ... before-code ... optimized-body ... after-code ... check-syntax-help)))))))]))
 
 (define (ti-core stx )
   (current-type-enforcement-mode guarded)
