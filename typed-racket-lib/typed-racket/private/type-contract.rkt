@@ -10,6 +10,7 @@
  (env type-name-env row-constraint-env)
  (rep core-rep rep-utils free-ids type-mask values-rep
       base-types numeric-base-types)
+ (typecheck tc-metafunctions)
  (types resolve utils printer match-expanders union subtype)
  (prefix-in t: (types abbrev numeric-tower subtype))
  (private parse-type syntax-properties)
@@ -328,6 +329,30 @@
 (define (same sc)
   (triple sc sc sc))
 
+;; Macro to simplify (and avoid reindentation) of the match below
+;;
+;; The sc-cache hashtable is used to memoize static contracts. The keys are
+;; a pair of the Type-seq number for a type and 'untyped or 'typed
+(define-syntax (cached-match stx)
+  (syntax-case stx ()
+    [(_ sc-cache type-expr typed-side-expr match-clause ...)
+     #'(let ([type (values #;static-type->dynamic-type type-expr)]
+             [typed-side typed-side-expr])
+         #;(void (static-type->dynamic-type type)
+         (define key (cons type typed-side))
+         (cond [(hash-ref sc-cache key #f)]
+               [else
+                (define sc (match type match-clause ...))
+                (define fvs (fv type))
+                ;; Only cache closed terms, otherwise open terms may show up
+                ;; out of context.
+                (unless (or (not (null? fv))
+                            ;; Don't cache types with applications of Name types because
+                            ;; it does the wrong thing for recursive references
+                            (has-name-app? type))
+                  (hash-set! sc-cache key sc))
+                sc]))]))
+
 (define (type->static-contract type init-fail
                                #:typed-side [typed-side #t])
   (let/ec return
@@ -516,16 +541,20 @@
        [(Mutable-VectorTop:)
         (only-untyped mutable-vector?/sc)]
        [(Box: t) (box/sc (t->sc/both t))]
-       [(Pair: _ _)
-        (match type
-         [(List: elem-t*)
-          (apply list/sc (map t->sc elem-t*))]
-         [(List: elem-t* #:tail rest-t*)
-          (for/fold ((acc (t->sc rest-t*)))
-                    ((t (in-list (reverse elem-t*))))
-            (cons/sc (t->sc t) acc))]
-         [_
-          (error 'type->static-contract "Pair-type match failed for type ~a" type)])]
+       [(Pair: t-car t-cdr)
+        (define-values [t-last rev-sc*]
+          (let loop ((t t-cdr)
+                     (sc* (list (t->sc t-car))))
+            (match t
+             [(Pair: t-car t-cdr)
+              (loop t-cdr (cons (t->sc t-car) sc*))]
+             [_
+              (values t sc*)])))
+        (if (eq? -Null t-last)
+          (apply list/sc (reverse rev-sc*))
+          (for/fold ((sc-cdr (t->sc t-last)))
+                    ((sc (in-list rev-sc*)))
+            (cons/sc sc sc-cdr)))]
        [(Async-Channel: t) (async-channel/sc (t->sc t))]
        [(Promise: t)
         (promise/sc (t->sc t))]
@@ -744,6 +773,7 @@
        [_
         (fail #:reason "contract generation not supported for this type")]))))
 
+;; TODO full tests
 (define (type->static-contract/transient type init-fail
                                          #:typed-side [_typed-side #t]
                                          #:cache [sc-cache (make-hash)])
@@ -864,14 +894,11 @@
                                         (id/sc x)
                                         (prop->sc prop))]))
         (apply and/sc (append scs (if prop/sc (list prop/sc) '())))]
-       [(or (? Fun? t)
-            (? DepFun? t))
-        (match t
-         [(Fun: arrows)
-          (apply or/sc (map arrow->sc/transient arrows))]
-         [(DepFun/ids: _ dom _ _)
-          (define num-mand-args (length dom))
-          (make-procedure-arity-flat/sc num-mand-args '() '())])]
+       [(Fun: arrows)
+        (apply or/sc (map arrow->sc/transient arrows))]
+       [(DepFun: raw-dom _ _)
+        (define num-mand-args (length raw-dom))
+        (make-procedure-arity-flat/sc num-mand-args '() '())]
        [(Set: _) set?/sc]
        [(Sequence: _) sequence?/sc]
        [(SequenceTop:) sequence?/sc]
@@ -887,14 +914,16 @@
         mutable-vector?/sc]
        [(Box: _)
         box?/sc]
-       [(Pair: _ _)
-        (match type
-         [(List: elem-t*)
-          list?/sc]
-         [(List: elem-t* #:tail rest-t*)
-          cons?/sc]
-         [_
-          (error 'type->static-contract "Pair-type match failed for type ~a" type)])]
+       [(Pair: _ t-cdr)
+        ;; look ahead .... TODO correct for pair vs listof vs list?
+        (let cdr-loop ((t t-cdr))
+          (match t
+           [(Pair: _ t-cdr)
+            (cdr-loop t-cdr)]
+           [(== -Null)
+            list?/sc]
+           [_
+            cons?/sc]))]
        [(Async-Channel: _)
         async-channel?/sc]
        [(Promise: _)
@@ -997,7 +1026,9 @@
         evt?/sc]
        [(Rest: (list _))
         list?/sc]
-       [(? Rest? rst) (t->sc (Rest->Type rst))]
+       [(? Rest? rst)
+        ;; TODO why 2 rest cases?
+        (t->sc (Rest->Type rst))]
        [(? Prop? rep) (prop->sc rep)]
        [_
         (fail #:reason "contract generation not supported for this type")]))))
