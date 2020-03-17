@@ -235,11 +235,22 @@
         internal name: g963.1 context...: raise-undefined proc call-in-empty-metacontinuation-frame body of "/Users/ben/code/racket/gtp/transient-tr-benchmark/zordoz/tagged/zo-transition.rkt"
   - OK all these fixed ... no more errors and every function uses the caches
 
-- [ ] type->shape function (pick name!)
-
 - [ ] do all 3 caches get used?
   - what are the keys? = (cons type side), better to have transient[type]
   - log hits
+  - [X] yes all used during benchmarks run,
+        not sure if any hits across passes
+        ZERO sc-cache hits
+  - [X] unit-test hit across pass (dungeon?)
+    yes dungeon sets in defender, gets in contract-fixups (non-provide)
+  - [X] unit-test sc-cache hit ... holy cow, was missing because of typo!!!
+  - [ ] yikes figure out correct sc-cache change, then re-run the benchmarks
+  - [ ] what happens after type->shape
+
+- [ ] type->shape function (pick name!)
+  - [X] draft
+  - [ ] full
+  - [ ] test
 
 - [ ] unhygienic S require T identifier
       use contract-def/provide-property ?
