@@ -19,7 +19,7 @@
  racket/string
  syntax/flatten-begin
  (only-in (types abbrev) -Bottom -Boolean VectorTop:)
- (static-contracts instantiate structures combinators constraints utils) ;;bg
+ (static-contracts instantiate structures combinators constraints) ;;bg
  (only-in (submod typed-racket/static-contracts/instantiate internals) compute-constraints)
  ;; TODO make this from contract-req
  (prefix-in c: racket/contract)
@@ -854,8 +854,10 @@
         (flat/sc #'void?)]
        [(or (symbol? v) (boolean? v) (keyword? v) (null? v))
         (flat/sc #`(λ (x) (eq? '#,v x)))]
-       [else #;(or (number? v) (regexp? v) (string? v) (bytes? v) (char? v))
-        (flat/sc #`(λ (x) (equal? '#,v x)))])]
+       [(or (number? v) (regexp? v) (string? v) (bytes? v) (char? v))
+        (flat/sc #`(λ (x) (equal? '#,v x)))]
+       [else
+         (raise-arguments-error 'type->static-contract/transient "unexpected Val-able value" "value" v "original type" type)])]
      [(Base-name/contract: sym ctc) (flat/sc ctc)]
      [(Distinction: _ _ t) ; from define-new-subtype
       (t->sc t)]
@@ -915,7 +917,7 @@
      [(Box: _)
       box?/sc]
      [(Pair: _ t-cdr)
-      ;; look ahead .... TODO correct for pair vs listof vs list?
+      ;; look ahead, try making list/sc
       (let cdr-loop ((t t-cdr))
         (match t
          [(Pair: _ t-cdr)
