@@ -161,7 +161,10 @@
   ;; top-level? is #t only for the first call and not for recursive
   ;; calls, which helps for inlining
   (define (recur sc [top-level? #f])
-    (cond [(and cache (hash-ref cache sc #f)) => car]
+    (cond [(and cache (hash-ref cache sc #f)) =>
+           (lambda (xx)
+             #;(printf "cache hit ~s~n" sc)
+             (car xx))]
           [(arr/sc? sc) (make-contract sc)]
           [(or (parametric->/sc? sc) (sealing->/sc? sc))
            (match-define (or (parametric->/sc: vars _)
