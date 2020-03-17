@@ -223,6 +223,9 @@
       [(or (App: _ _) (Name/struct:))
        ;; TODO
        ty #;(raise-user-error 'bg:todo)]
+      [(Listof: _)
+       ;; Listof must come before Union and Mu (but not BaseUnion --- add test to be sure)
+       (-lst Univ)]
       [(or (Univ:)
            ;; (App: (Name: name _ #f) _) ;; TODO
            (Name: _ _ #f) ;; TODO
@@ -248,8 +251,15 @@
            (StructTop: _)
            (Weak-HashTableTop:))
        ty]
-      [(Listof: _)
-       (-lst Univ)]
+      [(Pair: _ t-cdr)
+       (let cdr-loop ((t t-cdr) (list-shape (-pair Univ -Null)))
+         (match t
+          [(Pair: _ t-cdr)
+           (cdr-loop t-cdr (-pair Univ list-shape))]
+          [(== -Null)
+           list-shape]
+          [_
+           (-pair Univ Univ)]))]
       [(Distinction: name id t)
        (make-Distinction name id (loop t))]
       [(Refinement: par p?)
@@ -279,16 +289,6 @@
        (make-Mutable-Vector Univ)]
       [(Box: _)
        (make-Box Univ)]
-      [(Pair: _ t-cdr)
-       ;; TODO handles listof vs list correctly?
-       (let cdr-loop ((t t-cdr) (list-shape (-pair Univ -Null)))
-         (match t
-          [(Pair: _ t-cdr)
-           (cdr-loop t-cdr (-pair Univ list-shape))]
-          [(== -Null)
-           list-shape]
-          [_
-           (-pair Univ Univ)]))]
       [(Async-Channel: _)
        (make-Async-Channel Univ)]
       [(Promise: _)
