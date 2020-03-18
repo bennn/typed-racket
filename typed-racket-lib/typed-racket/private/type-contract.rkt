@@ -17,7 +17,7 @@
  racket/format
  racket/string
  syntax/flatten-begin
- (only-in (types abbrev) -Bottom -Boolean VectorTop:)
+ (only-in (types abbrev) -Bottom -Boolean)
  (static-contracts instantiate structures combinators constraints)
  (only-in (submod typed-racket/static-contracts/instantiate internals) compute-constraints)
  ;; TODO make this from contract-req
@@ -577,7 +577,6 @@
                    (λ () (error 'type->static-contract
                                 "Recursive value lookup failed. ~a ~a" recursive-values v)))
          typed-side)]
-       [(VectorTop:) (only-untyped vector?/sc)]
        [(BoxTop:) (only-untyped box?/sc)]
        [(ChannelTop:) (only-untyped channel?/sc)]
        [(Async-ChannelTop:) (only-untyped async-channel?/sc)]
@@ -946,7 +945,6 @@
       ;                        "Recursive value lookup failed. ~a ~a" recursive-values v)))
       ; typed-side)
       any/sc]
-     [(VectorTop:) vector?/sc]
      [(BoxTop:) box?/sc]
      [(ChannelTop:) channel?/sc]
      [(Async-ChannelTop:) async-channel?/sc]
