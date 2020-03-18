@@ -10,7 +10,6 @@
  (env type-name-env row-constraint-env)
  (rep core-rep rep-utils free-ids type-mask values-rep
       base-types numeric-base-types)
- (typecheck tc-metafunctions)
  (types resolve utils printer match-expanders union subtype)
  (prefix-in t: (types abbrev numeric-tower subtype))
  (private parse-type syntax-properties)
@@ -19,7 +18,7 @@
  racket/string
  syntax/flatten-begin
  (only-in (types abbrev) -Bottom -Boolean VectorTop:)
- (static-contracts instantiate structures combinators constraints) ;;bg
+ (static-contracts instantiate structures combinators constraints)
  (only-in (submod typed-racket/static-contracts/instantiate internals) compute-constraints)
  ;; TODO make this from contract-req
  (prefix-in c: racket/contract)
@@ -338,7 +337,6 @@
     [(_ sc-cache type-expr typed-side-expr match-clause ...)
      #'(let ([type type-expr]
              [typed-side typed-side-expr])
-         #;(void (static-type->dynamic-type type))
          (define key (cons type typed-side))
          (cond [(hash-ref sc-cache key #f)
                 => (lambda (x)
@@ -349,7 +347,7 @@
                 (define fvs (fv type))
                 ;; Only cache closed terms, otherwise open terms may show up
                 ;; out of context.
-                (unless (or (not (null? fvs))
+                (unless (or (not (null? fv))
                             ;; Don't cache types with applications of Name types because
                             ;; it does the wrong thing for recursive references
                             (has-name-app? type))

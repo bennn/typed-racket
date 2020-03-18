@@ -234,6 +234,12 @@
       module: "/Users/ben/code/racket/gtp/transient-tr-benchmark/zordoz/tagged/zo-transition.rkt"
         internal name: g963.1 context...: raise-undefined proc call-in-empty-metacontinuation-frame body of "/Users/ben/code/racket/gtp/transient-tr-benchmark/zordoz/tagged/zo-transition.rkt"
   - OK all these fixed ... no more errors and every function uses the caches
+- [-] type->shape function (pick name!)
+  - [X] draft
+  - [-] full
+  - [-] test
+  - DEFERRED less motivation since type->contract no longer using cached-match
+    may still be nice for reference later, but this is a hard function to write
 
 - [ ] do all 3 caches get used?
   - what are the keys? = (cons type side), better to have transient[type]
@@ -244,17 +250,30 @@
   - [X] unit-test hit across pass (dungeon?)
     yes dungeon sets in defender, gets in contract-fixups (non-provide)
   - [X] unit-test sc-cache hit ... holy cow, was missing because of typo!!!
-  - [ ] yikes figure out correct sc-cache change, then re-run the benchmarks
-  - [ ] what happens after type->shape
+  - [X] yikes figure out correct sc-cache change, then re-run the benchmarks
+  - [ ] currently removing cache on TR pull request (tc-cache)
+  - [ ] ... after that, ask about sharing caches across CORE passes
+  - [ ] what happens after type->shape ... well, far-less motivation now
 
-- [ ] type->shape function (pick name!)
-  - [X] draft
-  - [ ] full
-  - [ ] test
+- [ ] type-contract include-extra-requires? is always #true, set to #false
+      sometimes please (maybe always true in transient, fine)
+
+- [ ] static-contracts/combinators/derived.rkt docs + tests ... ditto object.rkt
+- [ ] type-contract: new tests + docs
+- [ ] defender : docs, tests, etc
+- [ ] defend / optimize : share "escapes" more gracefully
 
 - [ ] unhygienic S require T identifier
       use contract-def/provide-property ?
       ... need changes to provide-handling.rkt
+
+- [ ] base-env/prims-contract.rkt ... need to store current-te-mode?
+  if so find example + regression test
+  - [ ] note, typed-context? maybe cannot double as the enforcement mode,
+    because in untyped code but generating contract for typed client
+    ... with-type initially triggered a contract when typed-context? = #f
+        but I changed that
+  - [ ] WE WILL SEE make more mixed tests, or run mixed benchmarks
 
 - [ ] transient breaks tail calls? or does typed-id? check make it okay?
   - Herman or Disney might have a (workshop?) paper about this,
@@ -274,24 +293,13 @@
    ... and this means, I guess, that transient-env is the wrong choice; instead
     should key on types rather than identifiers
 
-- [ ] for way later ... mutable things get a proxy, tracks "correct" indexes
-  who knows if that will pay off
-
 - [ ] dungeon, cell.rkt, why 3 copies of same recursive-contract ?
-- [ ] defender : docs, tests, etc
-- [ ] defend / optimize : share "escapes" more gracefully
-- [ ] static-contracts/combinators/derived.rkt docs + tests ... ditto object.rkt
 
 - [ ] tc-app-helper see bg comment
       tc-app ditto
 
 - [ ] private/with-type ... allow transient as well as guarded
 
-- [ ] base-env/prims-contract.rkt ... need to store current-te-mode?
-  if so find example + regression test
-  - [ ] note, typed-context? maybe cannot double as the enforcement mode,
-    because in untyped code but generating contract for typed client
-    ... with-type initially triggered a contract when typed-context? = #f
-        but I changed that
-  - [ ] WE WILL SEE make more mixed tests, or run mixed benchmarks
+- [ ] for way later ... mutable things get a proxy, tracks "correct" indexes
+  who knows if that will pay off
 

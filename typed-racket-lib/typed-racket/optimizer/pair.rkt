@@ -4,10 +4,11 @@
          racket/match
          (for-template racket/base racket/unsafe/ops racket/list)
          (for-syntax racket/base syntax/parse racket/syntax)
+         (only-in "../utils/tc-utils.rkt" current-type-enforcement-mode)
          "../utils/utils.rkt"
          (rep type-rep)
-         (types type-table utils base-abbrev resolve subtype)
-         (typecheck typechecker tc-metafunctions)
+         (types type-table utils abbrev resolve subtype)
+         (typecheck typechecker)
          (optimizer utils logging))
 
 (provide pair-opt-expr)
@@ -156,3 +157,26 @@
               (values t ; stays unsafe from now on
                       #`(#,accessor #,res))]))])
       res)))
+
+(define (static-type->dynamic-type type)
+  ;; simple: forget all type structure except list spines
+  (case (current-type-enforcement-mode)
+    ((guarded)
+     type)
+    ((transient)
+     (match type
+      [(Listof: _)
+       (-lst Univ)]
+      [(Pair: _ t-cdr)
+       (let cdr-loop ((t t-cdr))
+         (match t
+          [(Pair: _ t-cdr)
+           (-pair Univ (cdr-loop t-cdr))]
+          [tail
+           (-pair Univ (if (eq? tail -Null) -Null Univ))]))]
+      [(app resolve (Pair: _ _))
+       (-pair Univ Univ)]
+      [_
+        Univ]))
+    (else
+      (raise-arguments-error 'optimizer "can only optimize in guarded or transient mode" "(current-type-enforcement-mode)" (current-type-enforcement-mode)))))
