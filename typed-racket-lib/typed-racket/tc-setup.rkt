@@ -44,7 +44,7 @@
   (case (current-type-enforcement-mode)
     [(transient)
      (do-time "Starting defender")
-     (define extra-def* (box '()))
+     (define extra-def* (box '())) ;; TODO functional API
      (define forms+
        (for/list ([b (in-list forms)])
          (defend-top b ctc-cache sc-cache extra-def*)))

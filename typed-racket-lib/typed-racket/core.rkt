@@ -41,14 +41,14 @@
             (define ctc-cache (make-hash))
             (define sc-cache (make-hash))
             (define (change-contract-fixups/cache forms)
-              #;(printf "CONTRACT~n")
               (change-contract-fixups forms ctc-cache sc-cache))
             (define (change-provide-fixups/cache forms)
-              #;(printf "PROVIDE~n")
               (change-provide-fixups forms ctc-cache sc-cache))
             (define (defend/cache forms)
-              #;(printf "DEFEND~n")
-              (maybe-defend forms ctc-cache sc-cache))
+              (define defs+forms (maybe-defend forms ctc-cache sc-cache))
+              (when (not (null? (car defs+forms)))
+                (set-box! include-extra-requires? #t))
+              defs+forms)
             (with-syntax*
              (;; pmb = #%plain-module-begin
               [(pmb . body2) new-mod]
