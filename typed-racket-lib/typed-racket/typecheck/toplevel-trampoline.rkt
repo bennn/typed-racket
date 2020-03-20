@@ -116,7 +116,7 @@
      (λ (new-stx result)
        (arm
         (if (unbox include-extra-requires?)
-            #`(begin #,extra-requires #,@new-stx)
+            #`(begin #,(extra-requires) #,@new-stx)
             #`(begin #,@new-stx))))))
 
   (begin-for-syntax
@@ -181,7 +181,7 @@
               #'(begin e ... e-last))))
        (arm
         (if (unbox include-extra-requires?)
-            #`(begin #,extra-requires #,with-printing)
+            #`(begin #,(extra-requires) #,with-printing)
             with-printing))))))
 
 (require (for-template (submod "." trampolines)))

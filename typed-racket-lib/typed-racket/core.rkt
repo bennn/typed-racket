@@ -73,8 +73,8 @@
                                   'disappeared-use (disappeared-use-todo))])
              ;; reconstruct the module with the extra code
              ;; use the regular %#module-begin from `racket/base' for top-level printing
-             (arm #`(#%module-begin 
-                     #,(if (unbox include-extra-requires?) extra-requires #'(begin))
+             (arm #`(#%module-begin
+                     #,(if (unbox include-extra-requires?) (extra-requires) #'(begin))
                      before-defend-code ... before-code ... optimized-body ... after-code ... check-syntax-help)))))))]))
 
 (define (ti-core stx )

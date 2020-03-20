@@ -242,6 +242,15 @@
     may still be nice for reference later, but this is a hard function to write
 - [X] type-contract include-extra-requires? is always #true, set to #false
       sometimes please (maybe always true in transient, fine)
+- [X] fewer extra-requires for LD
+  - [X] tc-app error
+  - [X] submodule-struct-0 error
+  - [X] need #:opaque test
+  - wow, found a bug require/typed #:struct #:opaque was using chaperones, fixed
+
+- [ ] plot error
+  make-typed-renaming: arity mismatch; expected: 3 given: 2
+  context...: body of "/Users/ben/code/racket/fork/extra-pkgs/plot/plot-lib/plot/private/no-gui/plot-pict.rkt"
 
 - [ ] defender extra-defs, functional API
 

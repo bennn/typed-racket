@@ -569,7 +569,7 @@
            (module* #%contract-defs #f
              (#%plain-module-begin
               (#%declare #:empty-namespace) ;; avoid binding info from here
-              #,extra-requires
+              #,(extra-requires)
               new-defs ...)))
        #`(begin
            ;; Now we create definitions that are actually provided

@@ -65,6 +65,7 @@
 
 (require (for-template (submod "." forms) "../utils/require-contract.rkt"
                        (submod "../typecheck/internal-forms.rkt" forms)
+                       (only-in "../utils/tc-utils.rkt" current-type-enforcement-mode)
                        "colon.rkt"
                        "top-interaction.rkt"
                        "base-types.rkt"
@@ -397,11 +398,17 @@
            #,(if (attribute ne)
                  (internal (syntax/loc stx (define-type-alias-internal ty (Opaque pred))))
                  (syntax/loc stx (define-type-alias ty (Opaque pred))))
-           #,(if (attribute unsafe)
-                 (ignore #'(define pred-cnt any/c)) ; unsafe- shouldn't generate contracts
-                 (ignore #'(define pred-cnt
-                             (or/c struct-predicate-procedure?/c
-                                   (any-wrap-warning/c . c-> . boolean?)))))
+           #,(ignore
+               (with-syntax ((ctc (case (and (not (attribute unsafe)) ; unsafe- shouldn't generate contracts
+                                             (current-type-enforcement-mode))
+                                    ((guarded)
+                                     #'(or/c struct-predicate-procedure?/c
+                                             (any-wrap-warning/c . c-> . boolean?)))
+                                    ((transient)
+                                     #'(procedure-arity-includes/c 1))
+                                    (else
+                                      #'any/c))))
+                 #'(define pred-cnt ctc)))
            #,(ignore #'(require/contract pred hidden pred-cnt lib)))))]))
 
 
@@ -554,7 +561,15 @@
                                   si))
 
                          (dtsi* (tvar ...) spec type (body ...) #:maker maker-name #:type-only)
-                         #,(ignore #'(require/contract pred hidden (or/c struct-predicate-procedure?/c (c-> any-wrap/c boolean?)) lib))
+                         #,(ignore
+                             (with-syntax ((ctc (case (current-type-enforcement-mode)
+                                                  ((guarded)
+                                                   #'(or/c struct-predicate-procedure?/c (c-> any-wrap/c boolean?)))
+                                                  ((transient)
+                                                   #'(procedure-arity-includes/c 1))
+                                                  (else
+                                                   #'any/c))))
+                               #'(require/contract pred hidden ctc lib)))
                          #,(internal #'(require/typed-internal hidden (Any -> Boolean : type)))
                          (require/typed #:internal (maker-name real-maker) type lib
                                         #:struct-maker parent
