@@ -183,22 +183,31 @@
 
 ;; TODO: It would be better to have individual contracts specify which
 ;; modules should be required, but for now this is just all of them.
-(define extra-requires
-  #'(require
-      (submod typed-racket/private/type-contract predicates)
-      typed-racket/utils/utils
-      (for-syntax typed-racket/utils/utils)
-      typed-racket/utils/any-wrap typed-racket/utils/struct-type-c
-      typed-racket/utils/prefab-c
-      typed-racket/utils/opaque-object
-      typed-racket/utils/evt-contract
-      typed-racket/utils/hash-contract
-      typed-racket/utils/vector-contract
-      typed-racket/utils/sealing-contract
-      typed-racket/utils/promise-not-name-contract
-      typed-racket/utils/simple-result-arrow
-      racket/sequence
-      racket/contract/parametric))
+(define (extra-requires)
+  (case (current-type-enforcement-mode)
+    ((guarded)
+     #'(require
+         (submod typed-racket/private/type-contract predicates)
+         typed-racket/utils/utils
+         (for-syntax typed-racket/utils/utils)
+         typed-racket/utils/any-wrap typed-racket/utils/struct-type-c
+         typed-racket/utils/prefab-c
+         typed-racket/utils/opaque-object
+         typed-racket/utils/evt-contract
+         typed-racket/utils/hash-contract
+         typed-racket/utils/vector-contract
+         typed-racket/utils/sealing-contract
+         typed-racket/utils/promise-not-name-contract
+         typed-racket/utils/simple-result-arrow
+         racket/sequence
+         racket/contract/parametric))
+    ((transient)
+     #'(require
+         (submod typed-racket/private/type-contract predicates)
+         typed-racket/utils/utils (for-syntax typed-racket/utils/utils)))
+    (else
+     #'(begin))))
+
 
 ;; Should the above requires be included in the output?
 ;;   This box is only used for contracts generated for `require/typed`
@@ -1002,6 +1011,7 @@
      [(Struct-Property: s)
       (flat/sc #'struct-type-property?)]
      [(or (Prefab: key _) (PrefabTop: key))
+      ;; TODO prefab/c-flat-first-order (require typed-racket/utils/prefab-c)
       (flat/sc #`(struct-type-make-predicate
                   (prefab-key->struct-type (quote #,(abbreviate-prefab-key key))
                                            #,(prefab-key->field-count key))))]

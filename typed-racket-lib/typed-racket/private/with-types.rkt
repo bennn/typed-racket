@@ -120,7 +120,7 @@
             (quasisyntax/loc stx
               (let ()
                 check-syntax-help
-                (local-require #,@(cdr (syntax-e extra-requires)))
+                (local-require #,@(cdr (syntax-e (extra-requires))))
                 #,@fixed-up-definitions
                 (c:with-contract typed-region
                                  #:results (region-cnt ...)
@@ -128,7 +128,7 @@
                                  body)))
             (quasisyntax/loc stx
               (begin
-                (local-require #,@(cdr (syntax-e extra-requires)))
+                (local-require #,@(cdr (syntax-e (extra-requires))))
                 (define-values () (begin check-syntax-help (values)))
                 #,@fixed-up-definitions
                 (c:with-contract typed-region
