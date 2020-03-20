@@ -204,7 +204,7 @@
 ;;   This box is only used for contracts generated for `require/typed`
 ;;   and `cast`, contracts for `provides go into the `#%contract-defs`
 ;;   submodule, which always has the above `require`s.
-(define include-extra-requires? (box #t)) ;;bg; always true for now TODO
+(define include-extra-requires? (box #f))
 
 (define (change-contract-fixups forms [ctc-cache (make-hash)] [sc-cache (make-hash)])
   (with-new-name-tables

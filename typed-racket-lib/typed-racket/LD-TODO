@@ -240,6 +240,12 @@
   - [-] test
   - DEFERRED less motivation since type->contract no longer using cached-match
     may still be nice for reference later, but this is a hard function to write
+- [X] type-contract include-extra-requires? is always #true, set to #false
+      sometimes please (maybe always true in transient, fine)
+
+- [ ] defender extra-defs, functional API
+
+- [ ] merge TR PR hash-contract-only-untyped, adjust transient
 
 - [ ] do all 3 caches get used?
   - what are the keys? = (cons type side), better to have transient[type]
@@ -253,10 +259,13 @@
   - [X] yikes figure out correct sc-cache change, then re-run the benchmarks
   - [ ] currently removing cache on TR pull request (tc-cache)
   - [ ] ... after that, ask about sharing caches across CORE passes
-  - [ ] what happens after type->shape ... well, far-less motivation now
+  - [-] what happens after type->shape ... well, far-less motivation now
 
-- [ ] type-contract include-extra-requires? is always #true, set to #false
-      sometimes please (maybe always true in transient, fine)
+- [ ] run benchmarks on albany machine, look for errorss
+  - [X] tagged lattice
+  - [ ] untyped, typed, tagged
+  - [ ] some configs that mix typed and tagged .... idk randomize?
+  - full transient lattice
 
 - [ ] static-contracts/combinators/derived.rkt docs + tests ... ditto object.rkt
 - [ ] type-contract: new tests + docs
