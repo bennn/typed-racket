@@ -203,8 +203,8 @@
          racket/contract/parametric))
     ((transient)
      #'(require
-         (submod typed-racket/private/type-contract predicates)
-         typed-racket/utils/utils (for-syntax typed-racket/utils/utils)))
+         racket/contract/base
+         (submod typed-racket/private/type-contract predicates)))
     (else
      #'(begin))))
 
