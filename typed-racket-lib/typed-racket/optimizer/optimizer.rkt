@@ -71,8 +71,10 @@
                         (kw e.opt ...))))
 
 (define (optimize-top stx)
-  (when (eq? erasure (current-type-enforcement-mode))
-    (raise-arguments-error 'optimize-top "cannot optimize in #:erasure mode" "stx" stx "(current-type-enforcement-mode)" (current-type-enforcement-mode)))
+  (let ((te-mode (current-type-enforcement-mode)))
+    ;;bg error-check ... may want to delete since this is called in a loop!
+    (when (memq te-mode (list #f erasure))
+      (raise-optimizer-context-error te-mode)))
   (parameterize ([optimize (syntax-parser [e:opt-expr* #'e.opt])])
     (let ((result ((optimize) stx)))
       (when *show-optimized-code*

@@ -88,12 +88,6 @@
 (define (generate-contract-def stx cache)
   (define prop (get-contract-def-property stx))
   (match-define (contract-def type-stx flat? maker? typed-side) prop)
-  (when (and (type-enforcement-mode? typed-side) (not (eq? typed-side (current-type-enforcement-mode))))
-    ;;bg TODO if current mode never differs, don't need to store ... go back to typed-side
-    (raise-arguments-error 'generate-contract-def "current TE mode does not match contract def side" "typed-side" typed-side "(current-type-enforcement-mode)" (current-type-enforcement-mode)))
-  (unless (unbox typed-context?)
-    ;;bg TODO if always typed, remove the parameter use the box alone
-    (raise-arguments-error 'generate-contract-def "current untyped context" "context" (unbox typed-context?)))
   (define *typ (if type-stx (parse-type type-stx) t:-Dead-Code))
   (define kind (if (and type-stx flat?) 'flat 'impersonator))
   (syntax-parse stx #:literals (define-values)

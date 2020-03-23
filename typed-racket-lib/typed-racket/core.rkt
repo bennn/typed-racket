@@ -30,13 +30,13 @@
                     (~and #:erasure   (~bind [te-strat #'erasure])))))
          ...
          forms ...)
-     (let ([pmb-form (syntax/loc stx (#%plain-module-begin forms ...))])
-       (parameterize ([optimize? (or (and (not (attribute opt?)) (optimize?))
-                                     (and (attribute opt?) (syntax-e (attribute opt?))))]
+     (let ([pmb-form (syntax/loc stx (#%plain-module-begin forms ...))]
+           [te-mode (if (attribute te-strat) (syntax-e #'te-strat) 'guarded)])
+       (parameterize ([optimize? (and (memq te-mode (list guarded transient))
+                                      (if (attribute opt?) (syntax-e (attribute opt?)) (optimize?)))]
                       [with-refinements? (or (attribute refinement-reasoning?)
-                                             (with-refinements?))]
-                      [current-type-enforcement-mode (if (attribute te-strat) (syntax-e #'te-strat) 'guarded)])
-         (tc-module/full stx pmb-form
+                                             (with-refinements?))])
+         (tc-module/full te-mode stx pmb-form
           (λ (new-mod pre-before-code pre-after-code)
             (define ctc-cache (make-hash))
             (define sc-cache (make-hash))
@@ -77,8 +77,7 @@
                      #,(if (unbox include-extra-requires?) (extra-requires) #'(begin))
                      before-defend-code ... before-code ... optimized-body ... after-code ... check-syntax-help)))))))]))
 
-(define (ti-core stx )
-  (current-type-enforcement-mode guarded)
+(define (ti-core stx [te-mode guarded])
   (current-type-names (init-current-type-names))
   (syntax-parse stx
     #:literal-sets (kernel-literals)
@@ -91,4 +90,4 @@
      ;; TODO(endobson): Remove the call to do-standard-inits when it is no longer necessary
      ;; Cast at the top-level still needs this for some reason
      (do-standard-inits)
-     (tc-toplevel/full stx #'form)]))
+     (tc-toplevel/full te-mode stx #'form)]))

@@ -292,7 +292,7 @@
          (if types
              #`(U #,@types)
              #f)))
-     `#s(contract-def ,type-stx ,flat? ,maker? ,(current-type-enforcement-mode)))))
+     `#s(contract-def ,type-stx ,flat? ,maker? typed))))
 
 
 (define (define-predicate stx)

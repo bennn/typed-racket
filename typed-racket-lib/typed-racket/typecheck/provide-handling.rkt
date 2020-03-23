@@ -156,7 +156,7 @@
   ;; mk-syntax-quad : identifier? identifier? -> quad/c
   (define (mk-syntax-quad internal-id new-id)
     (case (current-type-enforcement-mode)
-      [(guarded)
+      [(#true guarded)
        (with-syntax* ([id internal-id]
                       [export-id new-id]
                       [untyped-id (freshen-id #'id)])
@@ -176,7 +176,7 @@
        ;; export the syntax
        (mk-ignored-quad internal-id)]
       [else
-       (raise-arguments-error 'mk-syntax-quad "bad mode" "(current-type-enforcement-mode)" (current-type-enforcement-mode))]))
+       (error 'mk-syntax-quad "(unbox typed-context?) is #false")]))
 
   ;; mk-value-quad : identifier? identifier? (or/c Type #f) -> quad/c
   (define (mk-value-quad internal-id new-id ty)

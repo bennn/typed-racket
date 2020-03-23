@@ -49,6 +49,7 @@
   (provide tc-toplevel-trampoline
            tc-toplevel-trampoline/report)
 
+  ;; TODO add maybe-defend + tests
   (define-for-syntax (maybe-optimize body)
     ;; do we optimize?
     (if (optimize?)

@@ -178,5 +178,4 @@
        (-pair Univ Univ)]
       [_
         Univ]))
-    (else
-      (raise-arguments-error 'optimizer "can only optimize in guarded or transient mode" "(current-type-enforcement-mode)" (current-type-enforcement-mode)))))
+    (else (raise-optimizer-context-error (current-type-enforcement-mode)))))

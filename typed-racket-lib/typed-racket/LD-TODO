@@ -249,12 +249,10 @@
   - wow, found a bug require/typed #:struct #:opaque was using chaperones, fixed
   - [X] even fewer requires?
     down to racket/contract/base (could go further, remove all chaperones)
-
-- [ ] plot error
-  make-typed-renaming: arity mismatch; expected: 3 given: 2
+- [X] plot error make-typed-renaming: arity mismatch; expected: 3 given: 2
   context...: body of "/Users/ben/code/racket/fork/extra-pkgs/plot/plot-lib/plot/private/no-gui/plot-pict.rkt"
-
-- [ ] replace current-te param with the context box (try core.rkt first)
+  (gotta be compiled-code error ... the fork is ok, cannot reproduce)
+- [X] replace current-te param with the context box (try core.rkt first)
 
 - [ ] defender extra-defs, functional API
 
@@ -325,3 +323,6 @@
 - [ ] for way later ... mutable things get a proxy, tracks "correct" indexes
   who knows if that will pay off
 
+- [ ] add defend to typecheck/toplevel-trampoline + tests
+- [ ] with-type, add te-mode param and update docs
+- [ ] define-typed/untyped-id ... adapt to E T

@@ -38,15 +38,15 @@ don't depend on any other portion of the system
          int-err
 
          typed-context?
-         make-env
-         id-from?
-         id-from
-
          current-type-enforcement-mode
          type-enforcement-mode?
          guarded
          transient
          erasure
+
+         make-env
+         id-from?
+         id-from
 
          (all-from-out "disappeared-use.rkt"))
 
@@ -286,6 +286,7 @@ don't depend on any other portion of the system
           (current-continuation-marks))))
 
 ;; are we currently expanding in a typed module (or top-level form)?
+;; (box/c (or/c #t #f type-enforcement-mode?))
 (define typed-context? (box #f))
 
 (define guarded 'guarded)
@@ -300,7 +301,12 @@ don't depend on any other portion of the system
 
 ;; if we are in a typed module, how do we enforce types?
 ;; (or/c #f type-enforcement-mode?)
-(define current-type-enforcement-mode (make-parameter #f))
+(define (current-type-enforcement-mode)
+  (case (unbox typed-context?)
+    ((#true guarded) guarded)
+    ((transient) transient)
+    ((erasure) erasure)
+    (else #f)))
 
 ;; environment constructor
 (define-syntax (make-env stx)
