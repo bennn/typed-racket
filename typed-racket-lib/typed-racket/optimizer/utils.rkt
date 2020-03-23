@@ -23,7 +23,8 @@
          define-unsafe-syntax-class
          define-literal-syntax-class
          define-merged-syntax-class
-         syntax/loc/origin quasisyntax/loc/origin)
+         syntax/loc/origin quasisyntax/loc/origin
+         raise-optimizer-context-error)
 
 ;; for tracking both origin and source location information
 (define-syntax-rule (syntax/loc/origin loc op body)
@@ -157,3 +158,8 @@
   [pattern (set! _ e:expr)
     #:with (sub-exprs ...) #'(e)])
 
+
+(define (raise-optimizer-context-error te-mode)
+  (define msg
+    (format "cannot optimize in ~s context" (if te-mode "erasure" "untyped")))
+  (raise-arguments-error 'optimize-top msg))
