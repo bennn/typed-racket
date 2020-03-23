@@ -247,10 +247,14 @@
   - [X] submodule-struct-0 error
   - [X] need #:opaque test
   - wow, found a bug require/typed #:struct #:opaque was using chaperones, fixed
+  - [X] even fewer requires?
+    down to racket/contract/base (could go further, remove all chaperones)
 
 - [ ] plot error
   make-typed-renaming: arity mismatch; expected: 3 given: 2
   context...: body of "/Users/ben/code/racket/fork/extra-pkgs/plot/plot-lib/plot/private/no-gui/plot-pict.rkt"
+
+- [ ] replace current-te param with the context box (try core.rkt first)
 
 - [ ] defender extra-defs, functional API
 
