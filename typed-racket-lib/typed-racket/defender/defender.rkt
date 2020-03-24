@@ -1,7 +1,7 @@
 #lang racket/base
 
 ;; TODO
-;;  - [ ] build + test occurrence-type optimizer
+;;  - [X] build + test occurrence-type optimizer
 ;;  - [ ] build/test erasure-racket
 ;;
 ;; TODO
@@ -65,109 +65,124 @@
 
 ;; =============================================================================
 
-(define (defend-top stx ctc-cache sc-cache extra-defs*)
-  (let loop ([stx stx] [skip-dom? #f])
-    (syntax-parse stx
-     #:literals (values define-values #%plain-app begin define-syntaxes letrec-values)
-     [_
-      #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"
-                 (has-contract-def-property? stx))
-      stx]
-     [(~or _:ignore^ _:ignore-some^) ;; for struct definitions ... not sure what else
-      stx]
-     [((~or (~literal #%provide)
-            (~literal #%require)
-            (~literal begin-for-syntax)
-            (~literal define-syntaxes)
-            (~literal module)
-            (~literal module*)) . _)
-      ;; ignore the same things the optimizer ignores
-      stx]
-     [(~and _:kw-lambda^ ((~literal let-values) ([(f) fun]) body))
-      stx
-      #;(syntax/loc stx (let-values ([(f) fun]) body))]
-     [(~and _:opt-lambda^ ((~literal let-values) ([(f) fun]) body))
-      stx
-      #;(syntax/loc stx (let-values ([(f) fun]) body))]
-     [(op:lambda-identifier formals . body)
-      (define dom-map (type->domain-map (stx->arrow-type stx)))
-      (define body+ (loop #'body #f))
-      (void (readd-props! body+ #'body))
-      (define formals+
-        (if skip-dom? '() (protect-formals dom-map #'formals ctc-cache sc-cache extra-defs*)))
-      (define stx+
-        (with-syntax ([body+ body+])
-          (if (null? formals+)
-            (syntax/loc stx (op formals . body+))
-            (let ((stx (quasisyntax/loc stx (op formals (#%plain-app void . #,formals+) . body+))))
-              (register-ignored! (caddr (syntax-e stx)))
-              stx))))
-      (void (readd-props! stx+ stx))
-      stx+]
-     [(#%plain-app (letrec-values (((a:id) e0)) b:id) e1* ...)
-      #:when (free-identifier=? #'a #'b)
-      ;; (for ....) combinators expand to a recursive function that does not escape,
-      ;;  no need to check the domain --- use (loop e #true) to skip
-      ;; TODO can the optimizer remove these checks instead?
-      (define skip? (not (escapes? #'a #'e0 #false)))
-      (with-syntax ((e0+ (loop #'e0 skip?))
-                   ((e1*+ ...) (for/list ((e1 (in-list (syntax-e #'(e1* ...)))))
-                                 (loop e1 #f))))
-        (syntax/loc stx
-          (#%plain-app (letrec-values (((a) e0+)) b) e1*+ ...)))]
-     [(x* ...)
-      #:when (is-application? stx)
-      (define stx+
-        (syntax*->syntax stx
-          (for/list ([x (in-list (syntax-e #'(x* ...)))])
-            (define x+ (loop x #f))
-            (readd-props! x+ x)
-            x+)))
-      (void
-        (readd-props! stx+ stx))
-      (define-values [pre* f post*] (split-application stx+))
-      (if (or (is-ignored? f)
-              (blessed-codomain? f)
-              (cdr-list? f post*))
-        stx+
-        (let ()
-          (define cod-tc-res (maybe-type-of stx))
-          (define stx/dom
-            (with-syntax ([(pre ...) pre*]
-                          [f f]
-                          [post* post*])
-              (syntax/loc stx+ (pre ... f . post*))))
-          (add-typeof-expr stx/dom (ret Univ)) ;; TODO we can do better!
-          (define stx/cod
-            (protect-codomain cod-tc-res stx/dom ctc-cache sc-cache extra-defs*))
-          (readd-props! stx/cod stx)
-          stx/cod))]
-     [((~and x (~literal #%expression)) _)
-      #:when (type-inst-property #'x)
-      stx]
-     [((~literal #%expression) e)
-      #:when (type-ascription-property stx)
-      (define e+ (loop #'e #f))
-      (void (readd-props! e+ #'e))
-      (define e++
-        (with-syntax ([e+ e+])
-          (syntax/loc stx (#%expression e+))))
-      (void (readd-props! e++ stx))
-      e++]
-     [_
-      #:when (type-ascription-property stx)
-      (raise-user-error 'defend-top "strange type-ascription ~a" (syntax->datum stx))]
-     [(x* ...)
-      (define stx+
-        (syntax*->syntax stx
-          (for/list ((x (in-list (syntax-e #'(x* ...)))))
-            (define x+ (loop x #f))
-            (readd-props! x+ x)
-            x+)))
-      (readd-props! stx+ stx)
-      stx+]
-     [_
-      stx])))
+(define (defend-top stx ctc-cache sc-cache)
+  (define rev-extra-def* (box '()))
+  (define (register-extra-defs! ex*)
+    (unless (null? ex*)
+      (define stx (with-syntax ((ex* ex*)) #'(begin . ex*)))
+      (set-box! rev-extra-def* (cons stx (unbox rev-extra-def*)))))
+  (define defended-stx
+    (let loop ([stx stx] [skip-dom? #f])
+      (syntax-parse stx
+       #:literals (values define-values #%plain-app begin define-syntaxes letrec-values)
+       [_
+        #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"
+                   (has-contract-def-property? stx))
+        stx]
+       [(~or _:ignore^ _:ignore-some^) ;; for struct definitions ... not sure what else
+        stx]
+       [((~or (~literal #%provide)
+              (~literal #%require)
+              (~literal begin-for-syntax)
+              (~literal define-syntaxes)
+              (~literal module)
+              (~literal module*)) . _)
+        ;; ignore the same things the optimizer ignores
+        stx]
+       [(~and _:kw-lambda^ ((~literal let-values) ([(f) fun]) body))
+        stx
+        #;(syntax/loc stx (let-values ([(f) fun]) body))]
+       [(~and _:opt-lambda^ ((~literal let-values) ([(f) fun]) body))
+        stx
+        #;(syntax/loc stx (let-values ([(f) fun]) body))]
+       [(op:lambda-identifier formals . body)
+        (define dom-map (type->domain-map (stx->arrow-type stx)))
+        (define body+ (loop #'body #f))
+        (void (readd-props! body+ #'body))
+        (define formals+
+          (let-values ([(extra* formals+)
+                        (if skip-dom?
+                          (values '() '())
+                          (protect-formals dom-map #'formals ctc-cache sc-cache))])
+            (register-extra-defs! extra*)
+            formals+))
+        (define stx+
+          (with-syntax ([body+ body+])
+            (if (null? formals+)
+              (syntax/loc stx (op formals . body+))
+              (let ((stx (quasisyntax/loc stx (op formals (#%plain-app void . #,formals+) . body+))))
+                (register-ignored! (caddr (syntax-e stx)))
+                stx))))
+        (void (readd-props! stx+ stx))
+        stx+]
+       [(#%plain-app (letrec-values (((a:id) e0)) b:id) e1* ...)
+        #:when (free-identifier=? #'a #'b)
+        ;; (for ....) combinators expand to a recursive function that does not escape,
+        ;;  no need to check the domain --- use (loop e #true) to skip
+        ;; TODO can the optimizer remove these checks instead?
+        (define skip? (not (escapes? #'a #'e0 #false)))
+        (with-syntax ((e0+ (loop #'e0 skip?))
+                     ((e1*+ ...) (for/list ((e1 (in-list (syntax-e #'(e1* ...)))))
+                                   (loop e1 #f))))
+          (syntax/loc stx
+            (#%plain-app (letrec-values (((a) e0+)) b) e1*+ ...)))]
+       [(x* ...)
+        #:when (is-application? stx)
+        (define stx+
+          (syntax*->syntax stx
+            (for/list ([x (in-list (syntax-e #'(x* ...)))])
+              (define x+ (loop x #f))
+              (readd-props! x+ x)
+              x+)))
+        (void
+          (readd-props! stx+ stx))
+        (define-values [pre* f post*] (split-application stx+))
+        (if (or (is-ignored? f)
+                (blessed-codomain? f)
+                (cdr-list? f post*))
+          stx+
+          (let ()
+            (define cod-tc-res (maybe-type-of stx))
+            (define stx/dom
+              (with-syntax ([(pre ...) pre*]
+                            [f f]
+                            [post* post*])
+                (syntax/loc stx+ (pre ... f . post*))))
+            (add-typeof-expr stx/dom (ret Univ)) ;; TODO we can do better!
+            (define stx/cod
+              (let-values ([(extra* cod+)
+                            (protect-codomain cod-tc-res stx/dom ctc-cache sc-cache)])
+                (register-extra-defs! extra*)
+                cod+))
+            (readd-props! stx/cod stx)
+            stx/cod))]
+       [((~and x (~literal #%expression)) _)
+        #:when (type-inst-property #'x)
+        stx]
+       [((~literal #%expression) e)
+        #:when (type-ascription-property stx)
+        (define e+ (loop #'e #f))
+        (void (readd-props! e+ #'e))
+        (define e++
+          (with-syntax ([e+ e+])
+            (syntax/loc stx (#%expression e+))))
+        (void (readd-props! e++ stx))
+        e++]
+       [_
+        #:when (type-ascription-property stx)
+        (raise-user-error 'defend-top "strange type-ascription ~a" (syntax->datum stx))]
+       [(x* ...)
+        (define stx+
+          (syntax*->syntax stx
+            (for/list ((x (in-list (syntax-e #'(x* ...)))))
+              (define x+ (loop x #f))
+              (readd-props! x+ x)
+              x+)))
+        (readd-props! stx+ stx)
+        stx+]
+       [_
+        stx])))
+  (values (reverse (unbox rev-extra-def*)) defended-stx))
 
 (define-syntax-class lambda-identifier
   (pattern (~literal #%plain-lambda))
@@ -451,30 +466,36 @@
                      (dynamic-require mpi+ #f)
                      #t)))))))))
 
-(define (protect-domain dom-type dom-stx ctc-cache sc-cache extra-defs*)
-  (define ctc-stx
-    (and dom-type (type->flat-contract dom-type ctc-cache sc-cache extra-defs*)))
-  (cond
-   [(not ctc-stx)
-    #f]
-   [else
-    (define err-msg
-      (parameterize ([error-print-width 20])
-        (format "~e : ~a" (#%plain-app syntax->datum dom-stx) dom-type)))
-    ;; TODO register ignored
-    (with-syntax ([ctc ctc-stx]
-                  [err err-msg]
-                  [dom dom-stx])
-      (define new-stx
-        (syntax/loc dom-stx
-          (if (#%plain-app ctc dom)
-            '#true
-            (#%plain-app error 'transient-assert (#%plain-app format #;'"die" '"got ~s in ~a" dom 'err)))))
-      (register-ignored! new-stx)
-      new-stx)]))
+(define (protect-domain dom-type dom-stx ctc-cache sc-cache)
+  (define-values [extra-def* ctc-stx]
+    (if dom-type
+      (values '() #f)
+      (type->flat-contract dom-type ctc-cache sc-cache)))
+  (define dom-stx+
+    (cond
+     [(not ctc-stx)
+      #f]
+     [else
+      (define err-msg
+        (parameterize ([error-print-width 20])
+          (format "~e : ~a" (#%plain-app syntax->datum dom-stx) dom-type)))
+      ;; TODO register ignored
+      (with-syntax ([ctc ctc-stx]
+                    [err err-msg]
+                    [dom dom-stx])
+        (define new-stx
+          (syntax/loc dom-stx
+            (if (#%plain-app ctc dom)
+              '#true
+              (#%plain-app error 'transient-assert (#%plain-app format #;'"die" '"got ~s in ~a" dom 'err)))))
+        (register-ignored! new-stx)
+        new-stx)]))
+  ;; must return extra, could contain a def for any/c that we use later
+  ;;bg TODO test what happens if extra-def not returned when stx is #f
+  (values extra-def* dom-stx+))
 
 ;; protect-codomain : (U #f Tc-Results) (Syntaxof List) Hash Hash (Boxof Syntax) -> (Syntaxof List)
-(define (protect-codomain cod-tc-res app-stx ctc-cache sc-cache extra-defs*)
+(define (protect-codomain cod-tc-res app-stx ctc-cache sc-cache)
   (define t* (tc-results->type* cod-tc-res))
   (cond
    [(or (not cod-tc-res) (not t*))
@@ -483,68 +504,69 @@
     #;(raise-argument-error 'protect-codomain "non-empty tc-results" cod-tc-res)
     app-stx]
    [else
-    (define ctc-stx* ;; (Listof (U #f Syntax))
-      (for/list ([t (in-list t*)])
-        (type->flat-contract t ctc-cache sc-cache extra-defs*)))
+    (define-values [extra-def* ctc-stx*]
+      (type->flat-contract* t* ctc-cache sc-cache))
     (define err-msg
       (parameterize ([error-print-width 20])
         (format "~e : ~a" (#%plain-app syntax->datum app-stx) t*)))
-    (if (not (ormap values ctc-stx*))
-      ;; Nothing to check
-      app-stx
-      ;; Assemble everything into a syntax object that:
-      ;; - performs the application
-      ;; - binds the result(s) to temporary variable(s)
-      ;; - checks the tag of each temporary
-      (with-syntax ([app app-stx]
-                    [err err-msg])
-        (define var-name 'dyn-cod)
-        (if (null? (cdr t*))
-          ;; -- application returns 1 result, just bind it and check it
-          (with-syntax ([(ctc) ctc-stx*]
-                        [v (generate-temporary var-name)])
-            (define new-stx
-              (with-type
-                cod-tc-res
-                (syntax/loc app-stx
-                  (let-values ([(v) app])
-                    (if (#%plain-app ctc v)
-                      v
-                      (#%plain-app error 'transient-assert (#%plain-app format #;'"die" '"got ~s in ~a" v 'err)))))))
-            (define if-stx (caddr (syntax-e new-stx)))
-            (register-ignored! if-stx)
-            (define chk-stx (syntax-e (cadr (syntax-e if-stx))))
-            (register-ignored! chk-stx)
-            (test-position-add-true chk-stx)
-            (test-position-add-false chk-stx)
-            (register-ignored! (caddr (syntax-e if-stx)))
-            (register-ignored! (cadddr (syntax-e if-stx)))
-            new-stx)
-          ;; - application returns +1 results:
-          ;;   - bind all,
-          ;;   - check the ones with matching contracts,
-          ;;   - return all
-          (with-syntax ([v* (for/list ([_t (in-list t*)])
-                               ;; should be OK to do this instead of `generate-temporaries`, right?
-                               (generate-temporary var-name))])
-            (define new-stx
-              (with-type
-                cod-tc-res
-                (quasisyntax/loc app-stx
-                  (let-values ([v* app])
-                    (if #,(make-and-stx
-                            app-stx
-                            (for/list ([ctc-stx (in-list ctc-stx*)]
-                                       [v (in-list (syntax-e #'v*))]
-                                       #:when ctc-stx)
-                                (register-ignored! ctc-stx)
-                                (test-position-add-true ctc-stx)
-                                (test-position-add-false ctc-stx)
-                                (quasisyntax/loc app-stx (#%plain-app #,ctc-stx #,v))))
-                      (#%plain-app values . v*)
-                      (#%plain-app error 'transient-assert 'err))))))
-            (register-ignored! (caddr (syntax-e new-stx)))
-            new-stx))))]))
+    (define cod-stx+
+      (if (not (ormap values ctc-stx*))
+        ;; Nothing to check
+        app-stx
+        ;; Assemble everything into a syntax object that:
+        ;; - performs the application
+        ;; - binds the result(s) to temporary variable(s)
+        ;; - checks the tag of each temporary
+        (with-syntax ([app app-stx]
+                      [err err-msg])
+          (define var-name 'dyn-cod)
+          (if (null? (cdr t*))
+            ;; -- application returns 1 result, just bind it and check it
+            (with-syntax ([(ctc) ctc-stx*]
+                          [v (generate-temporary var-name)])
+              (define new-stx
+                (with-type
+                  cod-tc-res
+                  (syntax/loc app-stx
+                    (let-values ([(v) app])
+                      (if (#%plain-app ctc v)
+                        v
+                        (#%plain-app error 'transient-assert (#%plain-app format #;'"die" '"got ~s in ~a" v 'err)))))))
+              (define if-stx (caddr (syntax-e new-stx)))
+              (register-ignored! if-stx)
+              (define chk-stx (syntax-e (cadr (syntax-e if-stx))))
+              (register-ignored! chk-stx)
+              (test-position-add-true chk-stx)
+              (test-position-add-false chk-stx)
+              (register-ignored! (caddr (syntax-e if-stx)))
+              (register-ignored! (cadddr (syntax-e if-stx)))
+              new-stx)
+            ;; - application returns +1 results:
+            ;;   - bind all,
+            ;;   - check the ones with matching contracts,
+            ;;   - return all
+            (with-syntax ([v* (for/list ([_t (in-list t*)])
+                                 ;; should be OK to do this instead of `generate-temporaries`, right?
+                                 (generate-temporary var-name))])
+              (define new-stx
+                (with-type
+                  cod-tc-res
+                  (quasisyntax/loc app-stx
+                    (let-values ([v* app])
+                      (if #,(make-and-stx
+                              app-stx
+                              (for/list ([ctc-stx (in-list ctc-stx*)]
+                                         [v (in-list (syntax-e #'v*))]
+                                         #:when ctc-stx)
+                                  (register-ignored! ctc-stx)
+                                  (test-position-add-true ctc-stx)
+                                  (test-position-add-false ctc-stx)
+                                  (quasisyntax/loc app-stx (#%plain-app #,ctc-stx #,v))))
+                        (#%plain-app values . v*)
+                        (#%plain-app error 'transient-assert 'err))))))
+              (register-ignored! (caddr (syntax-e new-stx)))
+              new-stx)))))
+    (values extra-def* cod-stx+)]))
 
 (define (make-and-stx loc stx*)
   ;; TODO awkward, remove?
@@ -558,33 +580,34 @@
     v))
 
 ;; protect-formals : TypeMap (Syntaxof List) Hash Hash (Boxof Syntax) -> (Syntaxof List)
-(define (protect-formals dom-map formals ctc-cache sc-cache extra-defs*)
-  (filter values
-    (let loop ([dom* formals] [position 0])
-      ;;  wow this is off the hook  ... sometimes called with (a b (c . d))
+(define (protect-formals dom-map formals ctc-cache sc-cache)
+  (let loop ([dom* formals] [position 0])
+    ;; may be called with (a b (c . d))
+    (cond
+     [(null? dom*)
+      (values '() '())]
+     [(not (pair? dom*))
       (cond
-       [(null? dom*)
-        '()]
-       [(not (pair? dom*))
-        (cond
-         [(identifier? dom*)
-          (define t (type-map-ref dom-map REST-KEY))
-          (list (protect-domain t (datum->syntax formals dom*) ctc-cache sc-cache extra-defs*))]
-         [(syntax? dom*)
-          (loop (syntax-e dom*) position)]
-         [else
-          (raise-arguments-error 'protect-formals "strange domain element in formals"
-            "elem" dom*
-            "formals" formals)])]
-       [(keyword? (syntax-e (car dom*)))
-        (raise-arguments-error 'protect-formals "unexpected keyword in domain"
-          "elem" (car dom*)
-          "formals" formals)]
+       [(identifier? dom*)
+        (define t (type-map-ref dom-map REST-KEY))
+        (protect-domain t (datum->syntax formals dom*) ctc-cache sc-cache)]
+       [(syntax? dom*)
+        (loop (syntax-e dom*) position)]
        [else
-        (define var (formal->var (car dom*)))
-        (define t (type-map-ref dom-map position))
-        (cons (protect-domain t var ctc-cache sc-cache extra-defs*)
-              (loop (cdr dom*) (+ position 1)))]))))
+        (raise-arguments-error 'protect-formals "strange domain element in formals"
+          "elem" dom*
+          "formals" formals)])]
+     [(keyword? (syntax-e (car dom*)))
+      (raise-arguments-error 'protect-formals "unexpected keyword in domain"
+        "elem" (car dom*)
+        "formals" formals)]
+     [else
+      (define var (formal->var (car dom*)))
+      (define t (type-map-ref dom-map position))
+      (define-values [ex0* dom-first] (protect-domain t var ctc-cache sc-cache))
+      (define-values [ex1* dom-rest] (loop (cdr dom*) (+ position 1)))
+      (values (append ex0* ex1*)
+              (if dom-first (cons dom-first dom-rest) dom-rest))])))
 
 (define (formal->var stx)
   (syntax-parse stx
@@ -648,17 +671,28 @@
       '()
       (cons (car stx*) (syntax*->syntax ctx (cdr stx*))))))
 
-(define (type->flat-contract t ctc-cache sc-cache extra-defs*)
+(define (type->flat-contract t ctc-cache sc-cache)
   (define (fail #:reason r)
     (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" t r))
   (match-define (list defs ctc)
-    (type->contract t fail
-      #:typed-side #f
-      #:cache ctc-cache
-      #:sc-cache sc-cache))
+    (type->contract t fail #:cache ctc-cache #:sc-cache sc-cache))
   (for-each register-ignored! defs)
-  (set-box! extra-defs* (append (reverse defs) (unbox extra-defs*)))
-  (if (or (free-identifier=? ctc #'any/c)
-          (free-identifier=? ctc #'none/c))
-    #f
-    ctc))
+  (values
+    defs
+    (if (or (free-identifier=? ctc #'any/c)
+            (free-identifier=? ctc #'none/c))
+      #f
+      ctc)))
+
+(define (type->flat-contract* t* ctc-cache sc-cache)
+  (for/fold ((extra-def* '())
+             (ctc-stx* '())
+             #:result (values (reverse extra-def*) (reverse ctc-stx*)))
+            ((t (in-list t*)))
+    (define-values [ex* ctc-stx] (type->flat-contract t ctc-cache sc-cache))
+    (values (rev-append ex* extra-def*) (cons ctc-stx ctc-stx*))))
+
+(define (rev-append a* b*)
+  (let loop ((a* a*) (b* b*))
+    (if (null? a*) b* (loop (cdr a*) (cons (car a*) b*)))))
+

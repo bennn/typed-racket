@@ -39,18 +39,15 @@
           (do-time "Optimized")))
       body))
 
-(define (maybe-defend forms ctc-cache sc-cache)
+(define (maybe-defend body-stx ctc-cache sc-cache)
   (case (current-type-enforcement-mode)
     [(transient)
      (do-time "Starting defender")
-     (define extra-def* (box '())) ;; TODO functional API
-     (define forms+
-       (for/list ([b (in-list forms)])
-         (defend-top b ctc-cache sc-cache extra-def*)))
-     (do-time "Defended")
-     (cons (reverse (unbox extra-def*)) forms+)]
+     (define-values [extra-def* body+] (defend-top body-stx ctc-cache sc-cache))
+     (do-time "End defender")
+     (values extra-def* body+)]
     [else
-     (cons '() forms)]))
+     (values '() body-stx)]))
 
 ;; -> Promise<Dict<Name, Type>>
 ;; initialize the type names for printing
