@@ -253,8 +253,46 @@
   context...: body of "/Users/ben/code/racket/fork/extra-pkgs/plot/plot-lib/plot/private/no-gui/plot-pict.rkt"
   (gotta be compiled-code error ... the fork is ok, cannot reproduce)
 - [X] replace current-te param with the context box (try core.rkt first)
+- [X] defender extra-defs, functional API
 
-- [ ] defender extra-defs, functional API
+- [ ] lnm error racket 7.6 on albany
+  gtp-measure: [configuration  9/64] 001000                                       
+  gtp-measure: begin subprocess 20999                                             
+  gtp-measure: end subprocess 20999                                               
+  gtp-measure: subprocess 20999 terminated with exit code 1                       
+  gtp-measure: rktd->spreadsheet: broke its own contract                          
+    promised: g24                                                                 
+    produced: #<procedure:rktd->spreadsheet>                                      
+    in: g24                                                                       
+    contract from:.                                                               
+        (interface for rktd->spreadsheet)                                         
+    blaming: (interface for rktd->spreadsheet)                                    
+     (assuming the contract is correct)                                           
+    at: /home/ben/code/racket/transient/manifest-0/2/0-manifest-0.rkt/8-tag_lnm/configuration/main.rkt:8.3
+    context...:                                                                   
+     .../private/blame.rkt:347:0: raise-blame-error                               
+     proc                                                                         
+     call-in-empty-metacontinuation-frame                                         
+     body of "/home/ben/code/racket/transient/manifest-0/2/0-manifest-0.rkt/8-tag_lnm/configuration/main.rkt"
+
+   gtp-measure: [configuration 11/64] 001010                                       
+   gtp-measure: begin subprocess 21019                                             
+   gtp-measure: end subprocess 21019                                               
+   gtp-measure: subprocess 21019 terminated with exit code 1                       
+   gtp-measure: lnm-plot: broke its own contract                                   
+     promised: g23                                                                 
+     produced: #<procedure:lnm-plot>                                               
+     in: g23                                                                       
+     contract from: (interface for lnm-plot)                                       
+     blaming: (interface for lnm-plot)                                             
+      (assuming the contract is correct)                                           
+     at: /home/ben/code/racket/transient/manifest-0/2/0-manifest-0.rkt/8-tag_lnm/configuration/main.rkt:11.2
+     context...:                                                                   
+      .../private/blame.rkt:347:0: raise-blame-error                               
+      proc                                                                         
+      call-in-empty-metacontinuation-frame                                         
+      body of "/home/ben/code/racket/transient/manifest-0/2/0-manifest-0.rkt/8-tag_lnm/configuration/main.rkt"
+
 
 - [ ] merge TR PR hash-contract-only-untyped, adjust transient
 

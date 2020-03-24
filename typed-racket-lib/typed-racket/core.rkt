@@ -44,17 +44,17 @@
               (change-contract-fixups forms ctc-cache sc-cache))
             (define (change-provide-fixups/cache forms)
               (change-provide-fixups forms ctc-cache sc-cache))
-            (define (defend/cache forms)
-              (define defs+forms (maybe-defend forms ctc-cache sc-cache))
-              (when (not (null? (car defs+forms)))
+            (define (defend/cache body-stx)
+              (define-values [extra-def* body+] (maybe-defend body-stx ctc-cache sc-cache))
+              (unless (null? extra-def*)
                 (set-box! include-extra-requires? #t))
-              defs+forms)
+              (cons extra-def* body+))
             (with-syntax*
              (;; pmb = #%plain-module-begin
               [(pmb . body2) new-mod]
               ;; perform the provide transformation from [Culpepper 07]
               [transformed-body (begin0 (remove-provides #'body2) (do-time "Removed provides"))]
-              [((before-defend-code ...) . defended-body) (defend/cache (syntax->list #'transformed-body))]
+              [((before-defend-code ...) . defended-body) (defend/cache #'transformed-body)]
               ;; add the real definitions of contracts on requires
               [transformed-body
                (begin0 (change-contract-fixups/cache (syntax->list #'defended-body))
