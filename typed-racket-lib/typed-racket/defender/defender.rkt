@@ -469,8 +469,8 @@
 (define (protect-domain dom-type dom-stx ctc-cache sc-cache)
   (define-values [extra-def* ctc-stx]
     (if dom-type
-      (values '() #f)
-      (type->flat-contract dom-type ctc-cache sc-cache)))
+      (type->flat-contract dom-type ctc-cache sc-cache)
+      (values '() #f)))
   (define dom-stx+
     (cond
      [(not ctc-stx)
@@ -479,7 +479,6 @@
       (define err-msg
         (parameterize ([error-print-width 20])
           (format "~e : ~a" (#%plain-app syntax->datum dom-stx) dom-type)))
-      ;; TODO register ignored
       (with-syntax ([ctc ctc-stx]
                     [err err-msg]
                     [dom dom-stx])
@@ -590,7 +589,9 @@
       (cond
        [(identifier? dom*)
         (define t (type-map-ref dom-map REST-KEY))
-        (protect-domain t (datum->syntax formals dom*) ctc-cache sc-cache)]
+        (define-values [ex* dom-stx]
+          (protect-domain t (datum->syntax formals dom*) ctc-cache sc-cache))
+        (values ex* (list dom-stx))]
        [(syntax? dom*)
         (loop (syntax-e dom*) position)]
        [else
@@ -675,7 +676,7 @@
   (define (fail #:reason r)
     (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" t r))
   (match-define (list defs ctc)
-    (type->contract t fail #:cache ctc-cache #:sc-cache sc-cache))
+    (type->contract t fail #:typed-side #false #:cache ctc-cache #:sc-cache sc-cache))
   (for-each register-ignored! defs)
   (values
     defs
