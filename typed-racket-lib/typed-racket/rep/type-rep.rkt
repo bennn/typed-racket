@@ -32,8 +32,6 @@
                                    "base-type-rep.rkt"
                                    "base-union.rkt")
                      Type Prop Object PathElem SomeValues)
-         Union-ts make-Union Union-mask Union-base ;; bg TODO delete
-
          Type?
          Mu-maybe-name:
          Vector: Vector?
@@ -989,7 +987,6 @@
 
 ;; Intersection
 ;; ts - the list of types (gives deterministic behavior)
-;; prop - ???
 ;; elems - the set equivalent of 'ts', useful for equality tests
 (def-type Intersection ([ts (cons/c Type? (listof Type?))]
                         [prop (and/c Prop? (not/c FalseProp?))]
