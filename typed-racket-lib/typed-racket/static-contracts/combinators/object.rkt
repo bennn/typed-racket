@@ -167,25 +167,14 @@
    [(instanceof-combinator (list class))
     #`(instanceof/c #,(f class))]))
 
-(define (make-class-shape/sc inits fields publics augments)
-  (define init* (map car inits))
-  (define field* (map car fields))
-  (define public* (map car publics))
-  (define augment* (map car augments))
-  (define pubment*
-    (for/list ([name (in-list public*)]
-               #:when (memq name augment*))
-      name))
-  (define override*
-    (for/list ([name (in-list public*)]
-               #:unless (memq name pubment*))
-      name))
+(define (make-class-shape/sc init* field* public* augment*)
+  (define-values [pubment* override*] (partition (lambda (nm) (memq nm augment*)) public*))
   (with-syntax ((ctc-stx
                   #`(class/c
                       (init . #,init*)
                       (field . #,field*)
+                      (inner . #,augment*)
                       (override . #,override*)
-                      (augment . #,augment*)
                       . #,pubment*)))
     (flat/sc
       #'(let ((check-cls-shape (contract-first-order ctc-stx)))
@@ -207,5 +196,7 @@
  [struct member-spec ([modifier symbol?] [id symbol?] [sc static-contract?])]
  [object/sc (boolean? (listof object-member-spec?) . -> . static-contract?)]
  [class/sc (boolean? (listof member-spec?) (listof symbol?) . -> . static-contract?)]
- [instanceof/sc (static-contract? . -> . static-contract?)])
+ [instanceof/sc (static-contract? . -> . static-contract?)]
+ [make-class-shape/sc ((listof symbol?) (listof symbol?) (listof symbol?) (listof symbol?) . -> . static-contract?)]
+ [make-object-shape/sc ((listof symbol?) (listof symbol?) . -> . static-contract?)])
 
