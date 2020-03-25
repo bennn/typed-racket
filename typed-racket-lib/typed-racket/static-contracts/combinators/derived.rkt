@@ -6,7 +6,7 @@
 
 (require "simple.rkt" "structural.rkt" "any.rkt"
          (for-template racket/base racket/list racket/set racket/promise
-                       racket/class racket/unit racket/async-channel))
+                       racket/class racket/unit racket/async-channel typed-racket/utils/transient-contract))
 (provide (all-defined-out))
 
 (define identifier?/sc (flat/sc #'identifier?))
@@ -90,22 +90,7 @@
     #`(λ (f)
         (and (procedure? f)
              (procedure-arity-includes? f '#,num-mand '#,(not (null? mand-kws)))
-             #,@(if (null? mand-kws)
+             #,@(if (and (null? mand-kws) (null? opt-kws))
                   #'()
-                  #`((let-values (((f-mand-kws _) (procedure-keywords f)))
-                       (equal? '#,mand-kws f-mand-kws))))
-             #,@(if (null? opt-kws)
-                  #'()
-                  #`((let-values (((_ f-opt-kws) (procedure-keywords f)))
-                       (let loop ((expected-kws '#,(sort opt-kws keyword<?))
-                                  (actual-kws f-opt-kws))
-                         (cond
-                          ((null? expected-kws)
-                           #true)
-                          ((or (null? actual-kws) (keyword<? (car expected-kws) (car actual-kws)))
-                           #false)
-                          ((keyword<? (car actual-kws) (car expected-kws))
-                           (loop expected-kws (cdr actual-kws)))
-                          (else
-                           (loop (cdr expected-kws) (cdr actual-kws))))))))))))
+                  #`((procedure-keywords-includes? f '#,mand-kws '#,opt-kws)))))))
 

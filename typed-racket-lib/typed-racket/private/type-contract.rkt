@@ -198,7 +198,8 @@
     ((transient)
      #'(require
          racket/contract/base
-         (submod typed-racket/private/type-contract predicates)))
+         (submod typed-racket/private/type-contract predicates)
+         typed-racket/utils/transient-contract))
     (else
      #'(begin))))
 
