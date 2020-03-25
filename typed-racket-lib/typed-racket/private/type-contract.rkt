@@ -53,7 +53,7 @@
 ;; type : (syntaxof Type?)
 ;; flat? : boolean?
 ;; maker? : boolean?
-;; typed-side : (or/c 'untyped type-enforcement-mode)
+;; typed-side : (or/c 'untyped 'typed)
 (struct contract-def (type flat? maker? typed-side) #:prefab)
 
 ;; get-contract-def-property : Syntax -> (U False Contract-Def)
