@@ -24,7 +24,7 @@
  (prefix-in c: racket/contract)
  (contract-req)
  (for-syntax racket/base)
- (for-template racket/base racket/contract (utils any-wrap)))
+ (for-template racket/base racket/contract (utils any-wrap transient-contract)))
 
 (provide
   (c:contract-out
@@ -277,24 +277,26 @@
 (define (contract-kind->keyword sym)
   (string->keyword (symbol->string sym)))
 
+(define typed-side?-str "(or/c 'typed 'untyped 'both)")
+
 (define (from-typed? side)
   (case side
    [(typed both) #t]
    [(untyped) #f]
-   [else (raise-argument-error 'from-typed? "side?" side)]))
+   [else (raise-argument-error 'from-typed? typed-side?-str side)]))
 
 (define (from-untyped? side)
   (case side
    [(untyped both) #t]
    [(typed) #f]
-   [else (raise-argument-error 'from-untyped? "side?" side)]))
+   [else (raise-argument-error 'from-untyped? typed-side?-str side)]))
 
 (define (flip-side side)
   (case side
    [(typed) 'untyped]
    [(untyped) 'typed]
    [(both) 'both]
-   [else (raise-argument-error 'flip-side "side?" side)]))
+   [else (raise-argument-error 'flip-side typed-side?-str side)]))
 
 ;; type->contract : Type Procedure
 ;;                  #:typed-side Boolean #:kind Symbol #:cache Hash
@@ -328,7 +330,7 @@
     ((untyped) (triple-untyped trip))
     ((typed) (triple-typed trip))
     ((both) (triple-both trip))
-    (else (raise-argument-error 'triple-lookup "side?" 1 trip side))))
+    (else (raise-argument-error 'triple-lookup typed-side?-str 1 trip side))))
 (define (same sc)
   (triple sc sc sc))
 
@@ -342,10 +344,7 @@
      #'(let ([type type-expr]
              [typed-side typed-side-expr])
          (define key (cons type typed-side))
-         (cond [(hash-ref sc-cache key #f)
-                => (lambda (x)
-                     #;(printf "sc cache hit ~s~n" key)
-                     x)]
+         (cond [(hash-ref sc-cache key #f)]
                [else
                 (define sc (match type match-clause ...))
                 (define fvs (fv type))
@@ -627,7 +626,7 @@
             n*s
             (list untyped typed both)
             (recursive-sc-use (if (from-typed? typed-side) typed-n* untyped-n*)))]
-          [else (raise-argument-error 'Mu-case "side?" typed-side)])]
+          [else (raise-argument-error 'Mu-case typed-side?-str typed-side)])]
        ;; Don't directly use the class static contract generated for Name,
        ;; because that will get an #:opaque class contract. This will do the
        ;; wrong thing for object types since it errors too eagerly.
@@ -995,7 +994,7 @@
      [(Instance: (Class: _ _ fields methods _ _))
       (make-object-shape/sc (map car fields) (map car methods))]
      [(Class: row-var inits fields publics augments _)
-      (make-class-shape/sc inits fields publics augments)]
+      (make-class-shape/sc (map car inits) (map car fields) (map car publics) (map car augments))]
      [(Unit: imports exports init-depends results)
       (raise-user-error 'type->static-contract/transient "unit")]
      [(Struct: _ _ _ _ _ pred? _)
@@ -1078,10 +1077,19 @@
     (match-lambda
       [(Arrow: dom _ kws _)
        (define num-mand-args (length dom))
-       (define-values (mand-kws opt-kws)
-         (let*-values ([(mand-kws opt-kws) (partition-kws kws)])
+       (define-values [mand-kws opt-kws]
+         (let-values ([(mand-kws opt-kws) (partition-kws kws)])
            (values (map conv mand-kws) (map conv opt-kws))))
        (make-procedure-arity-flat/sc num-mand-args mand-kws opt-kws)])))
+
+(define (make-procedure-arity-flat/sc num-mand mand-kws opt-kws)
+  (flat/sc
+    #`(λ (f)
+        (and (procedure? f)
+             (procedure-arity-includes? f '#,num-mand '#,(not (null? mand-kws)))
+             #,@(if (and (null? mand-kws) (null? opt-kws))
+                  #'()
+                  #`((procedure-arity-includes-keywords? f '#,mand-kws '#,opt-kws)))))))
 
 (define (t->sc/function f fail typed-side recursive-values loop method?)
   (define (t->sc t #:recursive-values (recursive-values recursive-values))
