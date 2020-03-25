@@ -254,45 +254,39 @@
   (gotta be compiled-code error ... the fork is ok, cannot reproduce)
 - [X] replace current-te param with the context box (try core.rkt first)
 - [X] defender extra-defs, functional API
+- [X] base-env/prims-contract.rkt ... need to store current-te-mode?
+  if so find example + regression test
+  - [X] note, typed-context? maybe cannot double as the enforcement mode,
+    because in untyped code but generating contract for typed client
+    ... with-type initially triggered a contract when typed-context? = #f
+        but I changed that
+  - [X] WE WILL SEE make more mixed tests, or run mixed benchmarks
+  - NOT currently storing
+- [X] lnm error racket 7.6 on albany
+  - gtp-measure: config 001000 rktd->spreadsheet: broke its own contract
+    promised: g24 produced: #<procedure:rktd->spreadsheet>
+    cannot reproduce
+  - gtp-measure: config 001010 lnm-plot: broke its own contract
+    promised: g23 produced: #<procedure:lnm-plot>
+    cannot reproduce
+  - [X] reproduced on albany, try again (lnm-test/) YES reproduced
+  - ... unbelievable, both reproducible today ... compiled-cache error?
+  - [X] racket/contract allows opt -> mand conversion and now we do too
 
-- [ ] lnm error racket 7.6 on albany
-  gtp-measure: [configuration  9/64] 001000                                       
-  gtp-measure: begin subprocess 20999                                             
-  gtp-measure: end subprocess 20999                                               
-  gtp-measure: subprocess 20999 terminated with exit code 1                       
-  gtp-measure: rktd->spreadsheet: broke its own contract                          
-    promised: g24                                                                 
-    produced: #<procedure:rktd->spreadsheet>                                      
-    in: g24                                                                       
-    contract from:.                                                               
-        (interface for rktd->spreadsheet)                                         
-    blaming: (interface for rktd->spreadsheet)                                    
-     (assuming the contract is correct)                                           
-    at: /home/ben/code/racket/transient/manifest-0/2/0-manifest-0.rkt/8-tag_lnm/configuration/main.rkt:8.3
-    context...:                                                                   
-     .../private/blame.rkt:347:0: raise-blame-error                               
-     proc                                                                         
-     call-in-empty-metacontinuation-frame                                         
-     body of "/home/ben/code/racket/transient/manifest-0/2/0-manifest-0.rkt/8-tag_lnm/configuration/main.rkt"
+- [ ] static-contracts/combinators/derived.rkt docs + tests ... ditto object.rkt
+- [ ] type-contract: new tests + docs
+- [ ] defender : docs, tests, etc
+- [ ] defend / optimize : share "escapes" more gracefully
 
-   gtp-measure: [configuration 11/64] 001010                                       
-   gtp-measure: begin subprocess 21019                                             
-   gtp-measure: end subprocess 21019                                               
-   gtp-measure: subprocess 21019 terminated with exit code 1                       
-   gtp-measure: lnm-plot: broke its own contract                                   
-     promised: g23                                                                 
-     produced: #<procedure:lnm-plot>                                               
-     in: g23                                                                       
-     contract from: (interface for lnm-plot)                                       
-     blaming: (interface for lnm-plot)                                             
-      (assuming the contract is correct)                                           
-     at: /home/ben/code/racket/transient/manifest-0/2/0-manifest-0.rkt/8-tag_lnm/configuration/main.rkt:11.2
-     context...:                                                                   
-      .../private/blame.rkt:347:0: raise-blame-error                               
-      proc                                                                         
-      call-in-empty-metacontinuation-frame                                         
-      body of "/home/ben/code/racket/transient/manifest-0/2/0-manifest-0.rkt/8-tag_lnm/configuration/main.rkt"
+- [ ] cod check for/list etc, its always a list or void or sum
+  (2020-02-28 still a problem, (check (#%app for-loop  ....)))
 
+- [ ] pos->vals appears in for loop expansion, gets a cod check, but doesn't need one why
+  "pos->vals" is only a variable name, used to describe the first result of `make-sequence`, great
+  one fix: give `make-sequence` a deeper type and in the defender check for "deeper"
+   ... so pos->vals gets a blessed type
+   ... and this means, I guess, that transient-env is the wrong choice; instead
+    should key on types rather than identifiers
 
 - [ ] merge TR PR hash-contract-only-untyped, adjust transient
 
@@ -316,22 +310,9 @@
   - [ ] some configs that mix typed and tagged .... idk randomize?
   - full transient lattice
 
-- [ ] static-contracts/combinators/derived.rkt docs + tests ... ditto object.rkt
-- [ ] type-contract: new tests + docs
-- [ ] defender : docs, tests, etc
-- [ ] defend / optimize : share "escapes" more gracefully
-
 - [ ] unhygienic S require T identifier
       use contract-def/provide-property ?
       ... need changes to provide-handling.rkt
-
-- [ ] base-env/prims-contract.rkt ... need to store current-te-mode?
-  if so find example + regression test
-  - [ ] note, typed-context? maybe cannot double as the enforcement mode,
-    because in untyped code but generating contract for typed client
-    ... with-type initially triggered a contract when typed-context? = #f
-        but I changed that
-  - [ ] WE WILL SEE make more mixed tests, or run mixed benchmarks
 
 - [ ] transient breaks tail calls? or does typed-id? check make it okay?
   - Herman or Disney might have a (workshop?) paper about this,
@@ -340,16 +321,6 @@
 - [ ] low priority: change extra-env-lang to accept transient blessing,
       plot-lib is the only user I know of
 - [ ] bless require/typed struct predicates
-
-- [ ] cod check for/list etc, its always a list or void or sum
-  (2020-02-28 still a problem, (check (#%app for-loop  ....)))
-
-- [ ] pos->vals appears in for loop expansion, gets a cod check, but doesn't need one why
-  "pos->vals" is only a variable name, used to describe the first result of `make-sequence`, great
-  one fix: give `make-sequence` a deeper type and in the defender check for "deeper"
-   ... so pos->vals gets a blessed type
-   ... and this means, I guess, that transient-env is the wrong choice; instead
-    should key on types rather than identifiers
 
 - [ ] dungeon, cell.rkt, why 3 copies of same recursive-contract ?
 
