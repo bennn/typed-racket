@@ -3,16 +3,16 @@
 ;; Extra flat contracts for the Transient runtime
 
 (provide
-  procedure-keywords-includes?)
+  procedure-arity-includes-keywords?)
 
 ;; ---------------------------------------------------------------------------------------------------
 
-;; procedure-keywords-includes? : (-> procedure? (listof keyword?) (listof keyword?) boolean?)
-;; Returns true if the procedure accepts calls that supply all mandatory keywords and some
-;;  optional keywords, in the sense of racket/contract arity checking.
-;; - f must declare all optional keywords as optional
-;; - f may declare all mandatory keywords as either mandatory or optional
-(define (procedure-keywords-includes? f mand-kw* opt-kw*)
+;; procedure-arity-includes-keywords? : (-> procedure? (listof keyword?) (listof keyword?) boolean?)
+;; Returns true if the procedure accepts calls that supply all mandatory keywords
+;; and some optional keywords --- in the sense of racket/contract arity checking.
+;; + function must declare all optional keywords as optional
+;; + function may declare all mandatory keywords as either mandatory or optional
+(define (procedure-arity-includes-keywords? f mand-kw* opt-kw*)
   (define-values [f-mand-kw* f-opt-kw*] (procedure-keywords f))
   ;; note: f-opt-kw* = (sort f-opt-kw* keyword<?)
   (define mand-ok/extra*
@@ -21,7 +21,7 @@
                (actual-kw* f-mand-kw*))
       (cond
         [(null? actual-kw*)
-         mand-kw*]
+         expected-kw*]
         [(null? expected-kw*)
          #f]
         [else
@@ -38,6 +38,6 @@
            #false)
           ((eq? (car actual-kw*) (car expected-kw*))
            (loop (cdr expected-kw*) (cdr actual-kw*)))
-          (else ;; (keyword<? (car actual-kw*) (car expected-kw*))
+          (else ;#(keyword<? actual expected)
            (loop expected-kw* (cdr actual-kw*)))))))
 

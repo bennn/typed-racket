@@ -272,11 +272,11 @@
   - [X] reproduced on albany, try again (lnm-test/) YES reproduced
   - ... unbelievable, both reproducible today ... compiled-cache error?
   - [X] racket/contract allows opt -> mand conversion and now we do too
+- [X] static-contracts/combinators/derived.rkt docs + tests ... ditto object.rkt
 
-- [ ] static-contracts/combinators/derived.rkt docs + tests ... ditto object.rkt
+- [ ] defend / optimize : share "escapes" more gracefully
 - [ ] type-contract: new tests + docs
 - [ ] defender : docs, tests, etc
-- [ ] defend / optimize : share "escapes" more gracefully
 
 - [ ] cod check for/list etc, its always a list or void or sum
   (2020-02-28 still a problem, (check (#%app for-loop  ....)))
@@ -306,9 +306,9 @@
 
 - [ ] run benchmarks on albany machine, look for errorss
   - [X] tagged lattice
+  - [ ] guarded/transient lattice (new copy of benchmarks?)
   - [ ] untyped, typed, tagged
   - [ ] some configs that mix typed and tagged .... idk randomize?
-  - full transient lattice
 
 - [ ] unhygienic S require T identifier
       use contract-def/provide-property ?
@@ -335,3 +335,7 @@
 - [ ] add defend to typecheck/toplevel-trampoline + tests
 - [ ] with-type, add te-mode param and update docs
 - [ ] define-typed/untyped-id ... adapt to E T
+
+- [ ] enable #:with-refinements etc by looking for command-line arguments?
+  - could make a #lang, but perhaps easier this way,
+    try a pull request
