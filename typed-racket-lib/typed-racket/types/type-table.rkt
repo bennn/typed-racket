@@ -17,7 +17,6 @@
 
 (provide/cond-contract
  [add-typeof-expr (syntax? tc-results/c . -> . any/c)]
- [set-typeof-expr (syntax? tc-results/c . -> . any/c)] ;;bg
  ;; need this to forget type information, because the 1st typechecking pass
  ;; optimistically assumes everything is well typed, and the 2nd pass needs
  ;; to pessimisitcally assume "Any" about things from untyped code
@@ -81,9 +80,6 @@
                             [prev (merge-tc-results (list t prev) #t)]
                             [else t]))
                 #f))
-
-(define (set-typeof-expr e t)
-  (hash-set! type-table e t))
 
 ;; Need to define/provide this, because `type-of` doesnt actually raise an exception, just delays an int-err
 ;; TODO though, probably an issue with missing type and argument happesn to be a format string
