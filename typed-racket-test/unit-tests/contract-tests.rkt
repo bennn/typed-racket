@@ -18,47 +18,75 @@
 (provide tests)
 (gen-test-main)
 
-(define (tc-fail #:reason [reason #f])
-  (fail-check (or reason "Type could not be converted to contract")))
-
-(define-syntax-rule (t e)
-  (test-case (format "~a" 'e)
-    (let ([v e])
-      (with-check-info (('type v))
-        (type->contract
-          e
-          tc-fail)))))
-
-(define-syntax-rule (t-sc e-t e-sc)
-  (test-case (format "~a" '(e-t -> e-sc))
-    (let ([t e-t] [sc e-sc])
-      (with-check-info (['type t] ['expected sc])
-        (define actual
-          (optimize
-            (type->static-contract
-              t
-              tc-fail)))
-        (with-check-info (['actual actual])
-          (unless (equal? actual sc)
-            (fail-check "Static contract didn't match expected")))))))
+(begin-for-syntax
+  (define-splicing-syntax-class type-enforcement-flag
+    #:attributes (value)
+    (pattern (~or #:guarded
+                  (~seq))
+      #:with value 'guarded)
+    (pattern (~seq #:erasure)
+      #:with value 'erasure)
+    (pattern (~seq #:transient)
+      #:with value 'transient)))
 
 
-(define-syntax-rule (t/fail e expected-reason)
-  (test-case (format "~a" 'e)
-   (let ((v e))
-     (with-check-info (('expected expected-reason)
-                       ('type v))
-       (define reason
-         (let/ec exit
-           (let ([contract (type->contract v (λ (#:reason [reason #f])
-                                                (exit (or reason "No reason given"))))])
-             (match-define (list ctc-defs ctc) contract)
-             (define ctc-data (map syntax->datum (append ctc-defs (list ctc))))
-             (with-check-info (('contract ctc-data))
-               (fail-check "type could be converted to contract")))))
-       (unless (regexp-match? expected-reason reason)
-         (with-check-info (('reason reason))
-           (fail-check "Reason didn't match expected.")))))))
+;; (t ty [te-flag #:guarded])
+;; Convert type to a contract using the type enforcement mode named by `te-flag`
+(define-syntax (t stx)
+  (syntax-parse stx
+   [(_ e te-flag:type-enforcement-flag)
+    #'(test-case (format "~a" 'e)
+        (let ([v e])
+          (with-check-info (('type v) ('enforcement-mode 'te-flag.value))
+            (type->contract
+              e
+              (λ (#:reason [reason #f])
+                (fail-check (or reason "Type could not be converted to contract")))
+              #:enforcement-mode 'te-flag.value))))]))
+
+
+;; TODO doc
+;; (t-sc ty sc [te-mode #:guarded])
+;; Convert `ty` to an optimized static contract, check equal to `sc`
+(define-syntax (t-sc stx)
+  (syntax-parse stx
+   [(_ e-t e-sc te-flag:type-enforcement-flag)
+    #'(test-case (format "~a" '(e-t -> e-sc))
+       (let ([t e-t] [sc e-sc])
+         (with-check-info (['type t] ['expected sc] ['enforcement-mode 'te-flag.value])
+           (define actual
+             (optimize
+               (type->static-contract
+                 t
+                 (λ (#:reason [reason #f])
+                   (fail-check (or reason "Type could not be converted to contract")))
+                 #:enforcement-mode 'te-flag.value)))
+           (with-check-info (['actual actual])
+             (unless (equal? actual sc)
+               (fail-check "Static contract didn't match expected"))))))]))
+
+
+;; TODO doc
+(define-syntax (t/fail stx)
+  (syntax-parse stx
+   [(_ e expected-reason te-flag:type-enforcement-flag)
+    #'(test-case (format "~a" 'e)
+        (let ((v e))
+          (with-check-info (('expected expected-reason)
+                            ('type v)
+                            ('enforcement-mode 'te-flag.value))
+            (define reason
+              (let/ec exit
+                (let ([contract (type->contract v (λ (#:reason [reason #f])
+                                                     (exit (or reason "No reason given")))
+                                                #:enforcement-mode 'te-flag.value)])
+                  (match-define (list ctc-defs ctc) contract)
+                  (define ctc-data (map syntax->datum (append ctc-defs (list ctc))))
+                  (with-check-info (('contract ctc-data))
+                    (fail-check "type could be converted to contract")))))
+            (unless (regexp-match? expected-reason reason)
+              (with-check-info (('reason reason))
+                (fail-check "Reason didn't match expected."))))))]))
 
 ;; construct a namespace for use in typed-untyped interaction tests
 (define (ctc-namespace)
@@ -91,6 +119,7 @@
               (regexp-match? re (exn-message e))))
        thunk)))))
 
+;; TODO doc
 ;; (t-int/fail type (-> any any) any #:msg regexp)
 ;; Like t-int, but checks failing cases. Takes a regexp for checking
 ;; the exception message.
@@ -101,7 +130,7 @@
       (quasisyntax/loc stx
         (t-int/check arg ...  (check-re re 'loc))))]))
 
-;; tests typed-untyped interaction
+;; TODO doc
 (define-syntax (t-int/check stx)
   (syntax-parse stx
     [(_ type-expr fun-expr val-expr
@@ -109,16 +138,21 @@
                    (~bind [typed-side #'#t]))
              (~and (~seq #:untyped)
                    (~bind [typed-side #'#f])))
+        te-flag:type-enforcement-flag
         check)
-     (define pos (if (syntax-e #'typed-side) 'typed 'untyped))
-     (define neg (if (syntax-e #'typed-side) 'untyped 'typed))
+     (define-values [pos neg]
+       (if (syntax-e #'typed-side)
+         (values 'typed 'untyped)
+         (values 'untyped 'typed)))
      #`(test-case (format "~a for ~a in ~a" 'type-expr 'val-expr 'fun-expr)
          (let ([type-val type-expr])
-           (with-check-info (['type type-val] ['test-value (quote val-expr)])
+           (with-check-info (['type type-val] ['test-value (quote val-expr)] ['enforcement-mode 'te-flag.value])
              (define ctc-result
                (type->contract type-val
                                #:typed-side typed-side
-                               tc-fail))
+                               (λ (#:reason [reason #f])
+                                 (fail-check (or reason "Type could not be converted to contract")))
+                               #:enforcement-mode 'te-flag.value))
              (match-define (list extra-stxs ctc-stx) ctc-result)
              (define namespace (ctc-namespace))
              (define val (eval (quote val-expr) namespace))
@@ -137,8 +171,10 @@
                           (fun-val ctced-val)))))))]))
 
 (define tests
+ (test-suite
+  "Contract Tests"
   (test-suite
-   "Contract Tests"
+   "Guarded Tests"
    (t (-Number . -> . -Number))
    (t (-Promise -Number))
    (t (-set Univ)) 
@@ -907,4 +943,17 @@
                (make-channel)
                #:typed
                #:msg "higher-order value passed as `Any`")
-   ))
+   )
+
+  (test-suite
+   "Transient Tests"
+   ;; OK these all work, can use
+   #;(t/fail ((-poly (a) (-vec a)) . -> . -Symbol) "cannot generate contract for non-function polymorphic type" #:transient)
+   #;(t-sc -Number number/sc #:transient)
+   #;(t-int Any-Syntax syntax? #'#'A #:typed #:transient)
+   #;(t-int/fail (-poly (a) (-> a a)) (λ (f) (f 1)) (λ (x) 1) #:untyped #:transient #:msg #rx"produced: 1.*blaming: untyped")
+
+   (t (-Number . -> . -Number) #:transient)
+   #;(t (Ephemeronof -Number))
+  )
+))
