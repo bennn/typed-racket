@@ -274,6 +274,8 @@
   - [X] racket/contract allows opt -> mand conversion and now we do too
 - [X] static-contracts/combinators/derived.rkt docs + tests ... ditto object.rkt
 
+- [ ] typed-racket-test/t-succeed/README.md
+
 - [ ] defend / optimize : share "escapes" more gracefully
 - [ ] type-contract: new tests + docs
 - [ ] defender : docs, tests, etc

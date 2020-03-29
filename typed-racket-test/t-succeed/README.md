@@ -1,17 +1,22 @@
-- [ ] Go through all the succeed tests, see if
+- [X] Go through all the succeed tests, see if
       they make sense for transient or not.
-- [ ] try running all
+- [X] try running all
 - [ ] delete typing-only tests
+- [ ] fixes / deletes
 
 Note: seems not-practical to auto-convert the lang
  to transient. Many use submod. Others use require.
- It could work with a lang (t/r/transient)
+ It could work with a lang (t/r/transient).
+ But expectations change too.
 
+o = fixed
 X = not worth testing, fully untyped or something
 H0 = failed to parse arrow type
-?? = type-map ref missing
-
+H2 = error in guarded? wrong contract violation
 H3 = transient assert
+H4 = unbound id
+H5 = contract generation not supported
+?? = type-map ref missing
 
 H6 = expected contract error, got transient assert
 H7 = no exception
@@ -93,7 +98,7 @@ H0   dotted-identity2.rkt
      dviu-unit-from-context.rkt
 H4   empty-case-arrow.rkt
 H3   empty-or.rkt
-H5   ephemerons.rkt
+oH5   ephemerons.rkt
 H6   even-odd-recursive-type.rkt
      even-odd.rkt
      events-with-async-channel.rkt
@@ -202,7 +207,7 @@ H0   lots-o-bugs.rkt
      make-predicate-mod.rkt
 todo    make-predicate-top-level.rkt
      make-top-predicate.rkt
-H5?  mandelbrot.rkt
+oH5   mandelbrot.rkt
      manual-examples.rkt
      map-nonempty.rkt
      map1.rkt
