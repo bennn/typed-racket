@@ -532,7 +532,7 @@
                (sequence/sc (t->sc t)))]
        [(Sequence: ts) (apply sequence/sc (map t->sc ts))]
        [(SequenceTop:)
-        (only-untyped (flat/sc #'sequence?))]
+        (only-untyped sequence?/sc)]
        [(Immutable-HeterogeneousVector: ts)
         (apply immutable-vector/sc (map t->sc ts))]
        [(Immutable-Vector: t)
@@ -839,7 +839,9 @@
                                (λ () resolved-sc))
              (lookup-name-sc type typed-side)])]
      ;; Ordinary type applications or struct type names, just resolve
-     [(or (App: _ _) (Name/struct:)) (t->sc (resolve-once type))]
+     [(or (App: _ _)
+          (Name/struct:))
+      (t->sc (resolve-once type))]
      [(Univ:) any/sc]
      [(Bottom:) (or/sc)]
      [(Listof: _) list?/sc]
@@ -871,9 +873,6 @@
           (apply or/sc (append other-scs (map t->sc (nbits->base-types nbits)))))]
      [(? Union? t)
       (match (normalize-type t)
-        [(HashTableTop:)
-         ;;bg TODO needed?
-         hash?/sc]
         [(Union-all-flat: elems)
          (let* ([sc* (map t->sc elems)]
                 [sc* (remove-duplicates sc*)]
@@ -901,20 +900,24 @@
       (define num-mand-args (length raw-dom))
       (make-procedure-arity-flat/sc num-mand-args '() '())]
      [(Set: _) set?/sc]
-     [(Sequence: _) sequence?/sc]
-     [(SequenceTop:) sequence?/sc]
+     [(or (Sequence: _)
+          (SequenceTop:))
+      sequence?/sc]
      [(Immutable-HeterogeneousVector: ts)
       (immutable-vector-length/sc (length ts))]
      [(Immutable-Vector: _)
       immutable-vector?/sc]
      [(Mutable-HeterogeneousVector: ts)
       (mutable-vector-length/sc (length ts))]
-     [(Mutable-Vector: _)
+     [(or (Mutable-Vector: _)
+          (Mutable-VectorTop:))
       mutable-vector?/sc]
-     [(Mutable-VectorTop:)
-      mutable-vector?/sc]
-     [(Box: _)
+     [(or (Box: _)
+          (BoxTop:))
       box?/sc]
+     [(or (Weak-Box: _)
+          (Weak-BoxTop:))
+      weak-box?/sc]
      [(Pair: _ t-cdr)
       ;; look ahead, try making list/sc
       (let cdr-loop ((t t-cdr))
@@ -925,19 +928,18 @@
           list?/sc]
          [_
           cons?/sc]))]
-     [(Async-Channel: _)
+     [(or (Async-Channel: _)
+          (Async-ChannelTop:))
       async-channel?/sc]
      [(Promise: _)
       promise?/sc]
      [(Opaque: p?)
       (flat/sc p?)]
-     [(Continuation-Mark-Keyof: _)
+     [(or (Continuation-Mark-Keyof: _)
+          (Continuation-Mark-KeyTop:))
       continuation-mark-key?/sc]
-     [(Continuation-Mark-KeyTop:)
-      continuation-mark-key?/sc]
-     [(Prompt-Tagof: _ _)
-      prompt-tag?/sc]
-     [(Prompt-TagTop:)
+     [(or (Prompt-Tagof: _ _)
+          (Prompt-TagTop:))
       prompt-tag?/sc]
      [(F: v)
       ;;bg TODO need to check anything???
@@ -947,16 +949,14 @@
       ;                        "Recursive value lookup failed. ~a ~a" recursive-values v)))
       ; typed-side)
       any/sc]
-     [(BoxTop:) box?/sc]
-     [(ChannelTop:) channel?/sc]
-     [(Async-ChannelTop:) async-channel?/sc]
-     [(MPairTop:) mpair?/sc]
-     [(ThreadCellTop:) thread-cell?/sc]
-     [(ThreadCell: _) thread-cell?/sc]
+     [(or (MPair: _ _)
+          (MPairTop:))
+      mpair?/sc]
+     [(or (ThreadCell: _)
+          (ThreadCellTop:))
+      thread-cell?/sc]
      [(ClassTop:) class?/sc]
      [(UnitTop:) unit?/sc]
-     [(StructTypeTop:) struct-type?/sc]
-     [(StructTop: s) (flat/sc #'struct?)] ;;bg TODO test
      [(Poly: vs b)
       ;;bg: for tag checks, poly-vars don't matter ... types inside better have a shape
       (let ((recursive-values (for/fold ([rv recursive-values]) ([v vs])
@@ -996,14 +996,19 @@
       (make-class-shape/sc (map car inits) (map car fields) (map car publics) (map car augments))]
      [(Unit: imports exports init-depends results)
       (raise-user-error 'type->static-contract/transient "unit")]
-     [(Struct: _ _ _ _ _ pred? _)
-      ;; (flat-named-contract '#,(syntax-e pred?) (lambda (x) (#,pred? x)))
+     [(or (Struct: _ _ _ _ _ pred? _)
+          (StructTop: (Struct: _ _ _ _ _ pred? _)))
       (flat/sc #`(lambda (x) (#,pred? x)))]
+     [(StructTypeTop:)
+      struct-type?/sc]
      [(StructType: s)
-      (flat/sc #'struct-type?)]
+      (t->sc s)]
      [(Struct-Property: s)
-      (flat/sc #'struct-type-property?)]
-     [(or (Prefab: key _) (PrefabTop: key))
+      ;; TODO test by accessing the property ... use a default one
+      (t->sc s)]
+     [(or (Prefab: key _)
+          (PrefabTop: key))
+      ;; TODO test
       ;; TODO prefab/c-flat-first-order (require typed-racket/utils/prefab-c)
       (flat/sc #`(struct-type-make-predicate
                   (prefab-key->struct-type (quote #,(abbreviate-prefab-key key))
@@ -1021,7 +1026,8 @@
      [(or (Weak-HashTable: _ _)
           (Weak-HashTableTop:))
       weak-hash?/sc]
-     [(Channel: t)
+     [(or (Channel: _)
+          (ChannelTop:))
       channel?/sc]
      [(Evt: t)
       evt?/sc]
