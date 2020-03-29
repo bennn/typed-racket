@@ -953,6 +953,8 @@
                (make-channel)
                #:typed
                #:msg "higher-order value passed as `Any`")
+   (t/fail (make-Ephemeron -Symbol)
+           "contract generation not supported for this type")
    )
 
   (test-suite
@@ -964,6 +966,6 @@
    #;(t-int/fail (-poly (a) (-> a a)) (λ (f) (f 1)) (λ (x) 1) #:untyped #:transient #:msg #rx"produced: 1.*blaming: untyped")
 
    (t (-Number . -> . -Number) #:transient)
-   #;(t (Ephemeronof -Number))
+   (t (make-Ephemeron -Symbol) #:transient)
   )
 ))
