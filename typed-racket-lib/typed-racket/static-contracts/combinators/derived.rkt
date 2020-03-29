@@ -11,6 +11,7 @@
 
 (define identifier?/sc (flat/sc #'identifier?))
 (define box?/sc (flat/sc #'box?))
+(define weak-box?/sc (flat/sc #'weak-box?))
 (define syntax?/sc (flat/sc #'syntax?))
 (define promise?/sc (flat/sc #'promise?))
 
