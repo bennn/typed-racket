@@ -30,7 +30,9 @@
   (c:contract-out
     [type->static-contract
       (c:parametric->/c (a) ((Type? (c:-> #:reason (c:or/c #f string?) a))
-                             (#:typed-side boolean?) . c:->* . (c:or/c a static-contract?)))]))
+                             (#:typed-side boolean?
+                              #:enforcement-mode type-enforcement-mode?)
+                             . c:->* . (c:or/c a static-contract?)))]))
 
 (provide change-contract-fixups
          change-provide-fixups
@@ -123,9 +125,6 @@
   (match-define (list type untyped-id orig-id blame-id)
                 (contract-def/provide-property stx))
   (define failure-reason #f)
-  (unless (unbox typed-context?)
-    ;;bg TODO if always typed, remove the parameter use the box alone
-    (raise-arguments-error 'generate-contract-def/provide "current untyped context" "context" (unbox typed-context?)))
   (define result
     (type->contract type
                     #:typed-side #t
@@ -177,8 +176,8 @@
 
 ;; TODO: It would be better to have individual contracts specify which
 ;; modules should be required, but for now this is just all of them.
-(define (extra-requires)
-  (case (current-type-enforcement-mode)
+(define (extra-requires #:enforcement-mode [te-mode (current-type-enforcement-mode)])
+  (case te-mode
     ((guarded)
      #'(require
          (submod typed-racket/private/type-contract predicates)
@@ -303,21 +302,21 @@
 ;;                  -> (U Any (List (Listof Syntax) Syntax))
 (define (type->contract ty init-fail
                         #:typed-side [typed-side #t]
-                        #:kind [kind 'impersonator]
+                        #:kind [pre-kind 'impersonator]
                         #:cache [cache (make-hash)])
+                        #:enforcement-mode [te-mode (current-type-enforcement-mode)])
   (let/ec escape
     (define (fail #:reason [reason #f]) (escape (init-fail #:reason reason)))
     (define sc
       (type->static-contract ty fail
                              #:typed-side typed-side
-                             #:cache sc-cache))
-    (instantiate/optimize
-     (type->static-contract ty #:typed-side typed-side fail)
-     fail
-     kind
-     #:cache cache
-     #:trusted-positive typed-side
-     #:trusted-negative (not typed-side))))
+                             #:cache sc-cache
+                             #:enforcement-mode te-mode))
+    (define kind (if (eq? guarded te-mode) pre-kind 'flat))
+    (instantiate/optimize sc fail kind
+      #:cache cache
+      #:trusted-positive typed-side
+      #:trusted-negative (not typed-side))))
 
 (define any-wrap/sc (chaperone/sc #'any-wrap/c))
 
@@ -1032,6 +1031,8 @@
       ;; TODO why 2 rest cases?
       (t->sc (Rest->Type rst))]
      [(? Prop? rep) (prop->sc rep)]
+     [(Ephemeron: _)
+      (flat/sc #'ephemeron?)]
      [_
       (raise-arguments-error 'type->static-contract/transient "contract generation not supported for this type" "type" type)])))
 
