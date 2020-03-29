@@ -955,6 +955,8 @@
                #:msg "higher-order value passed as `Any`")
    (t/fail (make-Ephemeron -Symbol)
            "contract generation not supported for this type")
+   (t/fail (make-Future -Symbol)
+           "contract generation not supported for this type")
    )
 
   (test-suite
@@ -967,5 +969,6 @@
 
    (t (-Number . -> . -Number) #:transient)
    (t (make-Ephemeron -Symbol) #:transient)
+   (t (make-Future -Symbol) #:transient)
   )
 ))
