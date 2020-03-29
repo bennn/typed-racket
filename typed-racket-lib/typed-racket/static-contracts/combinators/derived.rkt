@@ -6,7 +6,7 @@
 
 (require "simple.rkt" "structural.rkt"
          (for-template racket/base racket/list racket/set racket/promise
-                       racket/class racket/unit racket/async-channel))
+                       racket/class racket/unit racket/async-channel racket/future))
 (provide (all-defined-out))
 
 (define identifier?/sc (flat/sc #'identifier?))
@@ -44,6 +44,8 @@
 (define sequence?/sc (flat/sc #'sequence?))
 (define evt?/sc (flat/sc #'evt?))
 (define parameter?/sc (flat/sc #'parameter?))
+(define ephemeron?/sc (flat/sc #'ephemeron?))
+(define future?/sc (flat/sc #'future?))
 
 (define class?/sc (flat/sc #'class?))
 (define unit?/sc (flat/sc #'unit?))

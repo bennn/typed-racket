@@ -1032,7 +1032,9 @@
       (t->sc (Rest->Type rst))]
      [(? Prop? rep) (prop->sc rep)]
      [(Ephemeron: _)
-      (flat/sc #'ephemeron?)]
+      ephemeron?/sc]
+     [(Future: _)
+      future?/sc]
      [_
       (raise-arguments-error 'type->static-contract/transient "contract generation not supported for this type" "type" type)])))
 
