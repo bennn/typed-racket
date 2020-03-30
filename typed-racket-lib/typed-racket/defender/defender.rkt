@@ -498,10 +498,10 @@
   (define t* (tc-results->type* cod-tc-res))
   (cond
    [(or (not cod-tc-res) (not t*))
-    app-stx]
+    (values '() app-stx)]
    [(null? t*)
     #;(raise-argument-error 'protect-codomain "non-empty tc-results" cod-tc-res)
-    app-stx]
+    (values '() app-stx)]
    [else
     (define-values [extra-def* ctc-stx*]
       (type->flat-contract* t* ctc-cache sc-cache))
