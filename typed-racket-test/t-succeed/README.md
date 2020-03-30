@@ -198,8 +198,8 @@ todo    lifting-top-level.rkt
 H0   list-dots.rkt
      list-ref-vec.rkt
      list-struct-sum.rkt
-H8   literal-char-gh-issue-434.rkt
-     literal-regexp-gh-issue-539.rkt
+     literal-char-gh-issue-434.rkt
+oH8   literal-regexp-gh-issue-539.rkt
      little-schemer.rkt
      logic.rkt
 H0   lots-o-bugs.rkt
