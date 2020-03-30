@@ -19,7 +19,6 @@
   (f1 (-> Symbol))
   (f2 (-> (Values Symbol Symbol))))
 
-;; TODO transient defender error
 (define-values [] (apply f0 '()))
 
 (: a Symbol)
@@ -29,6 +28,6 @@
 (: c Symbol)
 (define-values [b c] (apply f2 '()))
 
-;; One more apply
 
+;; One more apply
 (call-with-values (lambda () (apply values (ann '(x x x) (Listof Symbol)))) void)
