@@ -252,8 +252,6 @@
         (-> in -Void)]
        [else
         (raise-arguments-error 'stx->arrow-type "wrong number of arguments supplied to parameter" "type" ty "stx" stx "num-args" num-args)])]
-     [(Poly: _ b)
-      (loop b)]
      [(Fun: arrs)
       ;;bg; if case->, try combining the arrs to a union type
       ;;    this is possible when each `arr` has the same arity
@@ -269,6 +267,9 @@
       ;; TODO okay to pick arbitrary?
       ;;  example type: (U (-> (Array Integer) (values (Indexes : (Top | Bot) : (struct-ref (0 0) 0)) (Index : (Top | Bot) : (struct-ref (0 0) 1)) (Index : (Top | Bot) : (vector-length (struct-ref (0 0) 0))) (Indexes : (Top | Bot)) ((-> Indexes Integer) : (Top | Bot) : (struct-ref (0 0) 4)))) (All (A) (-> (Array A) (values (Indexes : (Top | Bot) : (Array-shape (0 0))) (Index : (Top | Bot) : (Array-size (0 0))) (Index : (Top | Bot) : (vector-length (Array-shape (0 0)))) (Indexes : (Top | Bot)) ((-> Indexes A) : (Top | Bot) : (Array-unsafe-proc (0 0)))))))
       (loop (car ts))]
+     [(or (Poly: _ b)
+          (PolyDots: _ b))
+      (loop b)]
      [_
       (raise-arguments-error 'stx->arrow-type "failed to parse arrow from type of syntax object"
         "e" (syntax->datum stx)
@@ -358,8 +359,7 @@
                     (make-Listof (car tys))
                     (raise-arguments-error 'type->domain-map "cannot handle rest type yet" "rest" tys "orig type" t))))]
              [(RestDots? rst)
-              (raise-arguments-error 'type->domain-map "type without rest-dots"
-                "type" t)]
+              (hash-set t# REST-KEY (RestDots-ty rst))]
              [else
               t#])]
            [t# ;; kwd args
