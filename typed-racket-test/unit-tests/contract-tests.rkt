@@ -1528,6 +1528,10 @@
    (t-sc (-val #"dd") (flat/sc #'(lambda (x) (equal? x '#"dd"))) #:transient)
    (t-sc (-val #\e) (flat/sc #'(lambda (x) (equal? x '#\e))) #:transient)
 
+   (t-sc (-ivec* -Symbol) (immutable-vector-length/sc 1) #:transient)
+   (t-sc (-mvec* -Symbol -Symbol -Symbol) (mutable-vector-length/sc 3) #:transient)
+   (t-sc (-lst* -Symbol -Symbol) (list-length/sc 2) #:transient)
+
    (t -Byte-Regexp #:transient)
 
    ;; (t-sc (-StructTop s-type))

@@ -12,6 +12,9 @@ Note: seems not-practical to auto-convert the lang
 o = fixed
 X = not worth testing, fully untyped or something
 H0 = failed to parse arrow type
+H1 = typed macro
+     ... damn, untyped rackunit does not work
+         probably need 3rd copy of macros for transient .. same types diff meaning
 H2 = error in guarded? wrong contract violation
 H3 = transient assert
 H4 = unbound id
@@ -21,7 +24,6 @@ H5 = contract generation not supported
 H6 = expected contract error, got transient assert
 H7 = no exception
 H8 = unexpected val-able
-H9 = typed macro
 H10 = value-contract missing
 H11 = type->domain-map: cannot handle rest type yet
 
@@ -39,8 +41,8 @@ X    annotation-syntax-override.rkt
      annotation-test.rkt
      any-hash.rkt
      any-wrap-list.rkt
-H0   apply-append.rkt
-H0   apply-dots-list.rkt
+oH0   apply-append.rkt
+oH0   apply-dots-list.rkt
      apply-dots.rkt
      area.rkt
      arrow-star-contracts.rkt
@@ -59,7 +61,7 @@ H0   case-lambda-rest.rkt
      case-lambda1.rkt
 H1   cast-mod.rkt
      cast-no-check.rkt
-H2 todo    cast-top-level.rkt
+oH2 todo    cast-top-level.rkt
 H3   check-expect.rkt
 H3   check-within.rkt
 H0   cl-bug.rkt
@@ -379,13 +381,13 @@ X    pr267-variation-0.rkt
      pr390-variation-1.rkt
      pr390-variation-2.rkt
      pr390-variation-3.rkt
-H9   pr390-variation-4.rkt
+H1   pr390-variation-4.rkt
 H10  pr390-variation-5.rkt
      pr390-variation-6.rkt
      pr390-variation-7.rkt
      pr403.rkt
      pr468-in-query.rkt
-H9   pr476-compile-time-images.rkt
+H1   pr476-compile-time-images.rkt
      pr575-variation-0.rkt
      pr575-variation-1.rkt
      pr575-variation-2.rkt
@@ -413,7 +415,7 @@ inexhaustive match defender.rkt:150     prompt-tag.rkt
      provide-struct.rkt
      provide-syntax.rkt
      racket-struct.rkt
-H9   rackunit-suite.rkt
+H1   rackunit-suite.rkt
      rackunit.rkt
      random-bits.rkt
      rec-het-vec-infer.rkt
