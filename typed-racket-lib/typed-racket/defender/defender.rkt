@@ -11,7 +11,6 @@
 (require
   (only-in racket/format ~a)
   racket/match
-  syntax/id-set
   syntax/parse
   typed-racket/rep/type-rep
   typed-racket/rep/values-rep
@@ -410,22 +409,36 @@
              (not (from-require/typed? stx))))
     (is-lambda? stx)))
 
-(define (cdr-list? f post*)
-  ;; TODO put this in optimizer?
-  ;; TODO bless cddr ..., but check for N-level pair type too
-  (and
-    (identifier? f)
-    (or (free-identifier=? f #'cdr)
-        (free-identifier=? f #'unsafe-cdr))
-    (let* ((e (syntax-e post*))
-           (t (and (pair? e) (tc-results->type1 (maybe-type-of (car e))))))
-      (match t
-       [(or (Listof: _)
-            (Pair: _ (Listof: _))
-            (Pair: _ (Pair: _ _)))
-        #true]
-       [_
-        #false]))))
+(define (cdr-list?  f post*)
+  ;; TODO put this in optimizer? / reuse optimizer?
+  (define f-depth
+    (and (identifier? f)
+         (cond
+           [(or (free-identifier=? f #'unsafe-cdr)
+                (free-identifier=? f #'cdr))
+            1]
+           [(free-identifier=? f #'cddr)
+            2]
+           [(free-identifier=? f #'cdddr)
+            3]
+           [(free-identifier=? f #'cddddr)
+            4]
+           [else #f])))
+  (define t
+    (and f-depth
+         (let ((e (syntax-e post*)))
+           (and (pair? e) (tc-results->type1 (maybe-type-of (car e)))))))
+  (and (Type? t)
+       (let loop ((t t)
+                  (d f-depth))
+         (or (zero? d)
+             (match t
+              [(Listof: _)
+               #true]
+              [(Pair: _ t-cdr)
+               (loop t-cdr (- d 1))]
+              [_
+               #false])))))
 
 ;; from-require/typed? : Identifier -> Boolean
 ;; Typed Racket adds this property to all require/typed identifiers,

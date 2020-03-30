@@ -916,12 +916,13 @@
       weak-box?/sc]
      [(Pair: _ t-cdr)
       ;; look ahead, try making list/sc
-      (let cdr-loop ((t t-cdr))
+      (let cdr-loop ((t t-cdr)
+                     (num-elems 1))
         (match t
          [(Pair: _ t-cdr)
-          (cdr-loop t-cdr)]
+          (cdr-loop t-cdr (+ num-elems 1))]
          [(== -Null)
-          list?/sc]
+          (list-length/sc num-elems)]
          [_
           cons?/sc]))]
      [(or (Async-Channel: _)
