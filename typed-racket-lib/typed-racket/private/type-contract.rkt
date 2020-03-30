@@ -436,24 +436,20 @@
        ;; This comes before Base-ctc to use the Value-style logic
        ;; for the singleton base types (e.g. -Null, 1, etc)
        [(Val-able: v)
-#|bg|#        (cond
-#|bg|#         [(eof-object? v)
-#|bg|#          (flat/sc #'eof-object?)]
-#|bg|#         [(void? v)
-#|bg|#          (flat/sc #'void?)]
-#|bg|#         [(or (symbol? v) (boolean? v) (keyword? v) (null? v))
-#|bg|#          (flat/sc #`(λ (x) (eq? '#,v x)))]
-#|bg|#         [else #;(or (number? v) (regexp? v) (string? v) (bytes? v) (char? v))
-#|bg|#          (flat/sc #`(λ (x) (equal? '#,v x)))])
-;; bg this is for performance tuning
-        #;(if (and (c:flat-contract? v)
-                 ;; numbers used as contracts compare with =, but TR
-                 ;; requires an equal? check
-                 (not (number? v))
-                 ;; regexps don't match themselves when used as contracts
-                 (not (or (regexp? v) (byte-regexp? v))))
-            (flat/sc #`(quote #,v))
-            (flat/sc #`(flat-named-contract '#,v (lambda (x) (equal? x '#,v))) v))]
+        (cond
+          [(eof-object? v)
+           (flat/sc #'eof-object?)]
+          [(void? v)
+           (flat/sc #'void?)]
+          [(and (c:flat-contract? v)
+                ;; numbers used as contracts compare with =, but TR
+                ;; requires an equal? check
+                (not (number? v))
+                ;; regexps don't match themselves when used as contracts
+                (not (or (regexp? v) (byte-regexp? v))))
+            (flat/sc #`(quote #,v))]
+          [else
+           (flat/sc #`(lambda (x) (equal? x '#,v)))])]
        [(Base-name/contract: sym ctc) (flat/sc ctc)]
        [(Distinction: _ _ t) ; from define-new-subtype
         (t->sc t)]
@@ -854,9 +850,9 @@
        [(void? v)
         (flat/sc #'void?)]
        [(or (symbol? v) (boolean? v) (keyword? v) (null? v))
-        (flat/sc #`(λ (x) (eq? '#,v x)))]
-       [(or (number? v) (regexp? v) (string? v) (bytes? v) (char? v))
-        (flat/sc #`(λ (x) (equal? '#,v x)))]
+        (flat/sc #`(lambda (x) (eq? x '#,v)))]
+       [(or (number? v) (regexp? v) (byte-regexp? v) (string? v) (bytes? v) (char? v))
+        (flat/sc #`(lambda (x) (equal? x '#,v)))]
        [else
          (raise-arguments-error 'type->static-contract/transient "unexpected Val-able value" "value" v "original type" type)])]
      [(Base-name/contract: sym ctc) (flat/sc ctc)]

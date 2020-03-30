@@ -927,42 +927,104 @@
 ;   (t (-prefab '(box-box #(0)) (-box -Number)))
 ;   (t (-prefab-top 'point 2))
 ;   (t (-prefab-top '(box-box #(0)) 1))
-   (t/fail (make-Ephemeron -Symbol)
-           "contract generation not supported for this type")
-   (t/fail (make-Future -Symbol)
-           "contract generation not supported for this type")
-   (t/fail (-mpair -Symbol -Symbol)
-           "contract generation not supported for this type")
-
-   ;; TODO whys the vector val always immutable???
-;   (t-int -SequenceTop (lambda (x) (vector-set! x 0 0)) (make-vector 2 'a) #:typed)
-;   (t-int -SequenceTop (lambda (x) (vector-set! x 0 0)) (make-vector 2 'a) #:untyped)
-;   (t-int -Mutable-VectorTop (lambda (x) (vector-set! x 0 0)) ((lambda (x) x) (vector 'a)) #:typed)
-;   (t-int -Mutable-VectorTop (lambda (x) (vector-set! x 0 0)) ((lambda (x) x) (vector 'a)) #:untyped)
-;   (t-int -BoxTop (lambda (x) (set-box! x 0)) (box 'x) #:typed)
-;   (t-int -BoxTop (lambda (x) (set-box! x 0)) (box 'x) #:untyped)
-
-;; TODO open pull request ....
-;   (t-int/fail -ChannelTop (λ (ch) (channel-get ch)) (let ([ch (make-channel)]) (thread (λ () (channel-put ch "ok"))) ch) #:typed #:msg #rx"promised: string?.*produced: 'bad")
-   (t-int -ChannelTop channel-get (let ([ch (make-channel)]) (thread (λ () (channel-put ch "ok"))) ch) #:untyped)
-
-;; TODO
-;   (t-int/fail -UnitTop unit?
-;               (let ()
-;                 (define-signature s ([a : Symbol]))
-;                 (unit (import) (export s) (define a 'a)))
+;   (t/fail (make-Ephemeron -Symbol)
+;           "contract generation not supported for this type")
+;   (t/fail (make-Future -Symbol)
+;           "contract generation not supported for this type")
+;   (t/fail (-mpair -Symbol -Symbol)
+;           "contract generation not supported for this type")
+;
+;   ;; TODO whys the vector val always immutable???
+;;   (t-int -SequenceTop (lambda (x) (vector-set! x 0 0)) (make-vector 2 'a) #:typed)
+;;   (t-int -SequenceTop (lambda (x) (vector-set! x 0 0)) (make-vector 2 'a) #:untyped)
+;;   (t-int -Mutable-VectorTop (lambda (x) (vector-set! x 0 0)) ((lambda (x) x) (vector 'a)) #:typed)
+;;   (t-int -Mutable-VectorTop (lambda (x) (vector-set! x 0 0)) ((lambda (x) x) (vector 'a)) #:untyped)
+;;   (t-int -BoxTop (lambda (x) (set-box! x 0)) (box 'x) #:typed)
+;;   (t-int -BoxTop (lambda (x) (set-box! x 0)) (box 'x) #:untyped)
+;
+;;; TODO open pull request ....
+;;   (t-int/fail -ChannelTop (λ (ch) (channel-get ch)) (let ([ch (make-channel)]) (thread (λ () (channel-put ch "ok"))) ch) #:typed #:msg #rx"promised: string?.*produced: 'bad")
+;   (t-int -ChannelTop channel-get (let ([ch (make-channel)]) (thread (λ () (channel-put ch "ok"))) ch) #:untyped)
+;
+;;; TODO
+;;   (t-int/fail -UnitTop unit?
+;;               (let ()
+;;                 (define-signature s ([a : Symbol]))
+;;                 (unit (import) (export s) (define a 'a)))
+;;               #:typed
+;;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;;   (t-int -UnitTop unit?
+;;               (let ()
+;;                 (define-signature s ((a : Symbol)))
+;;                 (unit (import) (export s) (define a 'a)))
+;;          #:untyped)
+;
+;;; TODO
+;;   (t-sc -StructTypeTop (struct-type/sc '()))
+;;   (t-sc -VectorTop vector?/sc)
+;;   (t-sc -Weak-BoxTop weak-box?/sc)
+;
+;   (t-int/fail -Async-ChannelTop async-channel-get (let ([ch (make-async-channel)]) (async-channel-put ch "ok") ch)
+;          #:typed
+;          #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -Async-ChannelTop async-channel-get (let ([ch (make-async-channel)]) (async-channel-put ch "ok") ch)
+;          #:untyped)
+;   (t-int/fail -MPairTop mcar (mcons 0 0)
+;          #:typed
+;          #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -MPairTop mcar (mcons 0 0)
+;          #:untyped)
+;   (t-int/fail -HashTableTop (lambda (h) (hash-set! h 'a 0)) (make-hash `((a . b)))
 ;               #:typed
 ;               #:msg "Attempted to use a higher-order value passed as `Any`")
-;   (t-int -UnitTop unit?
-;               (let ()
-;                 (define-signature s ((a : Symbol)))
-;                 (unit (import) (export s) (define a 'a)))
+;   (t-int -HashTableTop (lambda (h) (hash-set! h 'a 0)) (make-hash `((a . b)))
+;          #:untyped)
+;   (t-int/fail -Mutable-HashTableTop (lambda (h) (hash-set! h 'a 0)) (make-hash `((a . b)))
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -Mutable-HashTableTop (lambda (h) (hash-set! h 'a 0)) (make-hash `((a . b)))
+;          #:untyped)
+;   (t-int/fail -Weak-HashTableTop (lambda (h) (hash-set! h 'a 0)) (make-weak-hash `((a . b)))
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -Weak-HashTableTop (lambda (h) (hash-set! h 'a 0)) (make-weak-hash `((a . b)))
+;          #:untyped)
+;   (t-int/fail -ThreadCellTop (lambda (tc) (thread-cell-set! tc 42)) (make-thread-cell 'x)
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -ThreadCellTop (lambda (tc) (thread-cell-set! tc 42)) (make-thread-cell 'x)
+;          #:untyped)
+;   (t-int/fail -Prompt-TagTop continuation-prompt-available? (make-continuation-prompt-tag)
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -Prompt-TagTop continuation-prompt-available? (make-continuation-prompt-tag)
+;          #:untyped)
+;   (t-int/fail -Continuation-Mark-KeyTop (lambda (k) (continuation-mark-set-first #f k)) (make-continuation-mark-key)
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -Continuation-Mark-KeyTop (lambda (k) (continuation-mark-set-first #f k)) (make-continuation-mark-key)
+;          #:untyped)
+;   (t-int/fail -ClassTop class->interface object%
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -ClassTop class->interface object%
 ;          #:untyped)
 
-;; TODO
-;   (t-sc -StructTypeTop (struct-type/sc '()))
-;   (t-sc -VectorTop vector?/sc)
-;   (t-sc -Weak-BoxTop weak-box?/sc)
+   (t-sc (-val eof) (flat/sc #'eof-object?))
+   (t-sc (-val (void)) (flat/sc #'void?))
+   (t-sc (-val 'X) (flat/sc #''X))
+   (t-sc (-val #t) (flat/sc #''#t))
+   (t-sc (-val '#:kw) (flat/sc #''#:kw))
+   (t-sc (-val '()) (flat/sc #''()))
+   (t-sc (-val 3+3i) (flat/sc #'(lambda (x) (equal? x '3+3i))))
+   (t-sc (-val #rx"aa") (flat/sc #'(lambda (x) (equal? x '#rx"aa"))))
+   (t-sc (-val #rx#"bb") (flat/sc #'(lambda (x) (equal? x '#rx#"bb"))))
+   (t-sc (-val "cc") (flat/sc #''"cc"))
+   (t-sc (-val #"dd") (flat/sc #''#"dd"))
+   (t-sc (-val #\e) (flat/sc #''#\e))
+   (t-int (-val #rx"aa") void #rx"aa" #:untyped)
+   (t-int (-val #rx#"bb") void #rx#"bb" #:untyped)
+
 
    (t-int/fail -Async-ChannelTop async-channel-get (let ([ch (make-async-channel)]) (async-channel-put ch "ok") ch)
           #:typed
@@ -1119,6 +1181,21 @@
    (t-sc -ClassTop class?/sc #:transient)
    (t-sc -UnitTop unit?/sc #:transient)
    (t-sc -SequenceTop sequence?/sc #:transient)
+
+   (t-sc (-val eof) (flat/sc #'eof-object?) #:transient)
+   (t-sc (-val (void)) (flat/sc #'void?) #:transient)
+   (t-sc (-val 'X) (flat/sc #'(lambda (x) (eq? x 'X))) #:transient)
+   (t-sc (-val #t) (flat/sc #'(lambda (x) (eq? x '#t))) #:transient)
+   (t-sc (-val '#:kw) (flat/sc #'(lambda (x) (eq? x '#:kw))) #:transient)
+   (t-sc (-val '()) (flat/sc #'(lambda (x) (eq? x '()))) #:transient)
+   (t-sc (-val 3+3i) (flat/sc #'(lambda (x) (equal? x '3+3i))) #:transient)
+   (t-sc (-val #rx"aa") (flat/sc #'(lambda (x) (equal? x '#rx"aa"))) #:transient)
+   (t-sc (-val #rx#"bb") (flat/sc #'(lambda (x) (equal? x '#rx#"bb"))) #:transient)
+   (t-sc (-val "cc") (flat/sc #'(lambda (x) (equal? x '"cc"))) #:transient)
+   (t-sc (-val #"dd") (flat/sc #'(lambda (x) (equal? x '#"dd"))) #:transient)
+   (t-sc (-val #\e) (flat/sc #'(lambda (x) (equal? x '#\e))) #:transient)
+
+   (t -Byte-Regexp #:transient)
 
    ;; (t-sc (-StructTop s-type))
    ;; (t-sc (-PrefabTop p-key))
