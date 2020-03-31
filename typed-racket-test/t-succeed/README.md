@@ -55,7 +55,7 @@ oH0   apply-dots-list.rkt
      both-recursive-types.rkt
      box-num.rkt
      broken-let-syntax.rkt
-H0   call-comp.rkt
+oH0   call-comp.rkt
      case-arrow-cast-contract.rkt
 H0   case-lambda-rest.rkt
      case-lambda1.rkt
