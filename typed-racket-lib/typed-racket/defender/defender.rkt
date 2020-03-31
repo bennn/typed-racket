@@ -130,31 +130,22 @@
         (define stx+
           (syntax*->syntax stx
             (for/list ([x (in-list (syntax-e #'(x* ...)))])
-              (define x+ (loop x #f))
-              (readd-props! x+ x)
-              x+)))
-        (void
-          (readd-props! stx+ stx))
+              (loop x #f))))
+        (void (readd-props! stx+ stx))
         (define-values [pre* f post*] (split-application stx+))
-        (if (or (is-ignored? f)
-                (blessed-codomain? f)
-                (cdr-list? f post*))
-          stx+
-          (let ()
-            (define cod-tc-res (maybe-type-of stx))
-            (define stx/dom
-              (with-syntax ([(pre ...) pre*]
-                            [f f]
-                            [post* post*])
-                (syntax/loc stx+ (pre ... f . post*))))
-            (add-typeof-expr stx/dom (ret Univ)) ;; TODO we can do better!
-            (define stx/cod
-              (let-values ([(extra* cod+)
-                            (protect-codomain cod-tc-res stx/dom ctc-cache sc-cache)])
-                (register-extra-defs! extra*)
-                cod+))
-            (readd-props! stx/cod stx)
-            stx/cod))]
+        (cond
+          [(or (is-ignored? f)
+               (blessed-codomain? f)
+               (cdr-list? f post*))
+           stx+]
+          [else
+           (define cod-tc-res (maybe-type-of stx))
+           (define-values [extra* stx/cod]
+             (protect-codomain cod-tc-res stx+ ctc-cache sc-cache))
+           (void (register-extra-defs! extra*))
+           (if stx/cod
+             (readd-props stx/cod stx)
+             stx+)])]
        [((~and x (~literal #%expression)) _)
         #:when (type-inst-property #'x)
         stx]
@@ -191,6 +182,10 @@
   (maybe-add-typeof-expr new-stx old-stx)
   (maybe-add-test-position new-stx old-stx)
   (void))
+
+(define (readd-props new-stx old-stx)
+  (readd-props! new-stx old-stx)
+  new-stx)
 
 (define (maybe-add-typeof-expr new-stx old-stx)
   (let ((old-type (maybe-type-of old-stx)))
@@ -506,15 +501,14 @@
   ;;bg TODO test what happens if extra-def not returned when stx is #f
   (values extra-def* dom-stx+))
 
-;; protect-codomain : (U #f Tc-Results) (Syntaxof List) Hash Hash (Boxof Syntax) -> (Syntaxof List)
+;; protect-codomain : (U #f Tc-Results) (Syntaxof List) Hash Hash (Boxof Syntax) -> TODO
 (define (protect-codomain cod-tc-res app-stx ctc-cache sc-cache)
   (define t* (tc-results->type* cod-tc-res))
   (cond
    [(or (not cod-tc-res) (not t*))
-    (values '() app-stx)]
+    (values '() #f)]
    [(null? t*)
-    #;(raise-argument-error 'protect-codomain "non-empty tc-results" cod-tc-res)
-    (values '() app-stx)]
+    (values '() #f)]
    [else
     (define-values [extra-def* ctc-stx*]
       (type->flat-contract* t* ctc-cache sc-cache))
@@ -524,7 +518,7 @@
     (define cod-stx+
       (if (not (ormap values ctc-stx*))
         ;; Nothing to check
-        app-stx
+        #f
         ;; Assemble everything into a syntax object that:
         ;; - performs the application
         ;; - binds the result(s) to temporary variable(s)
@@ -628,7 +622,9 @@
    [_:id
     stx]
    [(x:id _)
-    (syntax/loc stx x)]))
+    (syntax/loc stx x)]
+   [_
+    (raise-argument-error 'formal->var "(or/c #'id #'(id _))" stx)]))
 
 ;; some-values->type* : (U Type SomeValues) -> (Listof Type)
 (define (some-values->type* sv)
@@ -640,7 +636,9 @@
    [(AnyValues: _)
     (raise-user-error 'some-values->type* "cannot generate contract for AnyValues type '~a'" sv)]
    [(ValuesDots: _ _ _)
-    (raise-user-error 'some-values->type* "cannot generate contract for ValuesDots type '~a'" sv)]))
+    (raise-user-error 'some-values->type* "cannot generate contract for ValuesDots type '~a'" sv)]
+   [_
+     (raise-argument-error 'some-values->type* "(or/c Type? SomeValues?)" sv)]))
 
 (define (is-lambda? x)
   (syntax-parse x
@@ -652,23 +650,8 @@
    [(tc-results: _ #f)
     ;; #f = don't handle rest dots
      #true]
-   [a
+   [_
      #false]))
-
-#;(define (needs-domain-check? t)
-  ;; TODO recursion is similar to `function-type?` in `type-contract.rkt`
-  (match t
-   [(Fun: arrs)
-    (ormap arr/non-empty-domain? arrs)]
-   [(Union: _ elems)
-    (ormap needs-domain-check? elems)]
-   [(Intersection: elems _)
-    (andmap needs-domain-check? elems)]
-   [(Poly: _ body)
-    (needs-domain-check? body)]
-   [(PolyDots: _ body)
-    (needs-domain-check? body)]
-   [_ #f]))
 
 (define (arr/non-empty-domain? arr)
   (match arr

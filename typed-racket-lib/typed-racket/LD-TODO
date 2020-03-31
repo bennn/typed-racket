@@ -274,11 +274,13 @@
   - [X] racket/contract allows opt -> mand conversion and now we do too
 - [X] static-contracts/combinators/derived.rkt docs + tests ... ditto object.rkt
 
-- [ ] typed-racket-test/t-succeed/README.md
+- [ ] typed-racket-test/t-succeed/README.md (long list!)
+
 
 - [ ] defend / optimize : share "escapes" more gracefully
 - [ ] type-contract: new tests + docs
 - [ ] defender : docs, tests, etc
+  - [ ] need 'maybe-type-of' fn?
 
 - [ ] cod check for/list etc, its always a list or void or sum
   (2020-02-28 still a problem, (check (#%app for-loop  ....)))
