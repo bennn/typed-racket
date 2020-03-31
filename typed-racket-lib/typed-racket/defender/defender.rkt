@@ -139,7 +139,7 @@
                (cdr-list? f post*))
            stx+]
           [else
-           (define cod-tc-res (maybe-type-of stx))
+           (define cod-tc-res (type-of stx))
            (define-values [extra* stx/cod]
              (protect-codomain cod-tc-res stx+ ctc-cache sc-cache))
            (void (register-extra-defs! extra*))
@@ -231,7 +231,7 @@
     (raise-argument-error 'split-application "(Syntaxof App)" stx)]))
 
 (define (stx->arrow-type stx [num-args #f])
-  (define raw-type (tc-results->type1 (maybe-type-of stx)))
+  (define raw-type (tc-results->type1 (type-of stx)))
   (let loop ([ty (and raw-type (normalize-type raw-type))])
     (match ty
      [(Fun: (list (? Arrow?)))
@@ -450,7 +450,7 @@
   (define t
     (and f-depth
          (let ((e (syntax-e post*)))
-           (and (pair? e) (tc-results->type1 (maybe-type-of (car e)))))))
+           (and (pair? e) (tc-results->type1 (type-of (car e)))))))
   (and (Type? t)
        (let loop ((t t)
                   (d f-depth))
