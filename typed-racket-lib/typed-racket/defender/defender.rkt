@@ -94,7 +94,9 @@
        [(~and _:opt-lambda^ ((~literal let-values) ([(f) fun]) body))
         stx
         #;(syntax/loc stx (let-values ([(f) fun]) body))]
+       ;; TODO case-lambda
        [(op:lambda-identifier formals . body)
+        ;; TODO remove stx->arrow ? maybe this can all be simpler
         (define dom-map (type->domain-map (stx->arrow-type stx)))
         (define body+ (loop #'body #f))
         (void (readd-props! body+ #'body))

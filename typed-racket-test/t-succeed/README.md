@@ -57,13 +57,13 @@ oH0   apply-dots-list.rkt
      broken-let-syntax.rkt
 oH0   call-comp.rkt
      case-arrow-cast-contract.rkt
-H0   case-lambda-rest.rkt
+oH0   case-lambda-rest.rkt
      case-lambda1.rkt
 H1   cast-mod.rkt
      cast-no-check.rkt
 oH2 todo    cast-top-level.rkt
-H3   check-expect.rkt
-H3   check-within.rkt
+oH3   check-expect.rkt
+oH3   check-within.rkt
 H0   cl-bug.rkt
      cl-tests.rkt
      cl.rkt

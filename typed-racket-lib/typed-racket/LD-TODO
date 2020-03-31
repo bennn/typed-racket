@@ -276,6 +276,9 @@
 
 - [ ] typed-racket-test/t-succeed/README.md (long list!)
 
+- [ ] defender: simpler stx->arrow type,
+      is there a built-in union function to combine arrows? (not `union`)
+      can the whole protect-formals code get simpler / fewer steps?
 
 - [ ] defend / optimize : share "escapes" more gracefully
 - [ ] type-contract: new tests + docs
@@ -343,3 +346,5 @@
 - [ ] enable #:with-refinements etc by looking for command-line arguments?
   - could make a #lang, but perhaps easier this way,
     try a pull request
+
+- [ ] support case-lambda in defender
