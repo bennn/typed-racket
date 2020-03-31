@@ -271,28 +271,46 @@
         "type" ty)])))
 
 ;; combine-arrs : (-> (Listof Arrow) (U #f Arrow))
+;; ... isn't there a helper for this?
 
 (module+ test
-  (check-equal?  ;;bg; not happy about ~a ....
-    (~a (combine-arrs (list
+  (require (only-in typed-racket/types/subtype subtype))
+
+  (define (type-equal? t0 t1)
+    ;; wtf equal? and sub-sub fails for my tests ... whats wrong?
+    #;(and (subtype t0 t1) (subtype t1 t0))
+    (equal? (~a t0) (~a t1)))
+
+  (check type-equal?
+    (combine-arrs
+      (list
         (make-Arrow (list -Symbol -True (make-Listof -Symbol) Univ) #f '() (-values (list -String)))
         (make-Arrow (list -False -False (make-Listof -Symbol) Univ) #f '() (-values (list -String)))
         (make-Arrow (list -Symbol Univ (make-Listof -Symbol) -True) #f '() (-values (list -String)))
-        (make-Arrow (list -Symbol Univ -False -False) #f '() (-values (list -String))))))
-    (~a (make-Arrow (list (Un -Symbol -False)
-                          (Un -True -False Univ)
-                          (Un (make-Listof -Symbol) -False)
-                          (Un Univ -True -False))
-                    #f '() (-values (list -String)))))
+        (make-Arrow (list -Symbol Univ -False -False) #f '() (-values (list -String)))))
+    (make-Arrow
+      (list (Un -Symbol -False)
+            (Un -True -False Univ)
+            (Un (make-Listof -Symbol) -False)
+            (Un Univ -True -False))
+      #f '() (-values (list -String))))
+  (check type-equal?
+    (combine-arrs
+      (list
+        (make-Arrow (list -Symbol -True) (make-Rest -False) '() (-values (list -Symbol)))
+        (make-Arrow (list -Symbol -True) (make-Rest -False) '() (-values (list -Symbol)))))
+    (make-Arrow (list -Symbol -True) (make-Rest -False) '() (-values (list -Symbol))))
 )
 
 (define (combine-arrs arrs)
   (match arrs
-   [(list (Arrow: t** #f '() rng*) ...)
+   [(list (Arrow: t** rst* kw* rng*) ...)
     #:when (same-length? t**)
     (define m+ (combine-dom* t**))
+    (define rst+ (combine-rst* rst*))
+    (define kw+ (combine-kw* kw*))
     (define rng+ (combine-rng* rng*))
-    (make-Arrow m+ #f '() rng+)]
+    (make-Arrow m+ rst+ kw+ rng+)]
    [_
     #f]))
 
@@ -312,6 +330,16 @@
   (and (same-length? t**)
        (let ([t* (combine-dom* t**)])
          (make-Values t*))))
+
+(define (combine-rst* rst*)
+  (for/fold ((acc (car rst*)))
+            ((r (in-list (cdr rst*))))
+    (and (equal? acc r) acc)))
+
+(define (combine-kw* kw*)
+  (for/fold ((acc (car kw*)))
+            ((k (in-list (cdr kw*))))
+    (and (equal? acc k) acc)))
 
 (define (tc-results->type* r)
   (match r
