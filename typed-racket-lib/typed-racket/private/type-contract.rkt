@@ -41,7 +41,7 @@
          include-extra-requires?)
 
 ;; submod for testing
-(module* test-exports #f (provide type->contract has-contract-def-property?))
+(module* test-exports #f (provide type->contract has-contract-def-property? make-procedure-arity-flat/sc))
 
 ;; has-contrat-def-property? : Syntax -> Boolean
 (define (has-contract-def-property? stx)
@@ -775,7 +775,7 @@
 (define (type->static-contract/transient type
                                          #:cache [sc-cache (make-hash)])
   (define typed-side 'both)
-  ;; TODO need recursive?
+  ;; TODO need recursive-values ? already know the type parses
   (let loop ([type type] [recursive-values (hash)])
     (define (t->sc t #:recursive-values (recursive-values recursive-values))
       (loop t recursive-values))
@@ -1081,6 +1081,8 @@
 (define arrow->sc/transient
   (let ((conv (match-lambda [(Keyword: kw _ _) kw])))
     (match-lambda
+      [(Arrow: _ (RestDots: _ _) _ _)
+       procedure?/sc]
       [(Arrow: dom _ kws _)
        (define num-mand-args (length dom))
        (define-values [mand-kws opt-kws]

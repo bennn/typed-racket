@@ -93,7 +93,7 @@ oH4   define-typed-untyped-identifier-syntax-properties.rkt
      discrete-dist.rkt
 oH0   do.rkt
      dot-intro.rkt
-H0   dotted-identity.rkt
+oH0   dotted-identity.rkt
 oH0   dotted-identity2.rkt
      dviu-infer-deps-ok.rkt
      dviu-infer-fact.rkt
