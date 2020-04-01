@@ -98,8 +98,8 @@ oH0   dotted-identity2.rkt
      dviu-infer-deps-ok.rkt
      dviu-infer-fact.rkt
      dviu-unit-from-context.rkt
-H4   empty-case-arrow.rkt
-H3   empty-or.rkt
+oH4   empty-case-arrow.rkt
+oH3   empty-or.rkt
 oH5   ephemerons.rkt
 H6   even-odd-recursive-type.rkt
      even-odd.rkt
