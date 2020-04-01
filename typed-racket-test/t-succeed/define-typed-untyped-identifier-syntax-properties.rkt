@@ -43,9 +43,12 @@
 (module test-typed-2 typed/racket #:transient
   (require (submod ".." t/u))
   (require typed/rackunit)
-  (require (typed/untyped ".." m))
-  (check-equal? test-value 'is-typed)
-  (check-equal? typed-test-value 'present))
+  (require/typed (typed/untyped ".." m)
+    ;; transient gets the untyped id
+    (test-value Symbol)
+    (untyped-test-value Symbol))
+  (check-equal? test-value 'is-untyped)
+  (check-equal? untyped-test-value 'present))
 
 (module test-typed-3 typed/racket #:transient
   (require (submod ".." t/u))
