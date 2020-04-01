@@ -188,10 +188,6 @@
           (λ (this)
             (and (object? this) (check-obj-shape this)))))))
 
-(provide
-  make-class-shape/sc
-  make-object-shape/sc)
-
 (provide/cond-contract
  [struct member-spec ([modifier symbol?] [id symbol?] [sc static-contract?])]
  [object/sc (boolean? (listof object-member-spec?) . -> . static-contract?)]

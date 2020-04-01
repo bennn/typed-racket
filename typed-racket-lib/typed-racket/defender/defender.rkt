@@ -238,22 +238,12 @@
     (match ty
      [(Fun: (list (? Arrow?)))
       ty]
-     [(Param: in out)
-      (cond
-       [(not num-args)
-        (raise-arguments-error 'stx->arrow-type "cannot coerce parameter to arrow type, number of arguments is unknown" "type" ty "stx" stx)]
-       [(= 0 num-args)
-        (-> out)]
-       [(= 1 num-args)
-        (-> in -Void)]
-       [else
-        (raise-arguments-error 'stx->arrow-type "wrong number of arguments supplied to parameter" "type" ty "stx" stx "num-args" num-args)])]
      [(Fun: arrs)
       ;;bg; if case->, try combining the arrs to a union type
       ;;    this is possible when each `arr` has the same arity
       (define arr (combine-arrs arrs))
       (if arr
-        (loop (make-Fun (list arr)))
+        (make-Fun (list arr))
         (raise-arguments-error 'stx->arrow-type "failed to parse arrow from case->"
           "type" ty
           "e" (syntax->datum stx)
@@ -266,6 +256,16 @@
      [(or (Poly: _ b)
           (PolyDots: _ b))
       (loop b)]
+     [(Param: in out)
+      (cond
+       [(not num-args)
+        (raise-arguments-error 'stx->arrow-type "cannot coerce parameter to arrow type, number of arguments is unknown" "type" ty "stx" stx)]
+       [(= 0 num-args)
+        (-> out)]
+       [(= 1 num-args)
+        (-> in -Void)]
+       [else
+        (raise-arguments-error 'stx->arrow-type "wrong number of arguments supplied to parameter" "type" ty "stx" stx "num-args" num-args)])]
      [_
       (raise-arguments-error 'stx->arrow-type "failed to parse arrow from type of syntax object"
         "e" (syntax->datum stx)
@@ -331,12 +331,29 @@
   (define t** (map some-values->type* rng*))
   (and (same-length? t**)
        (let ([t* (combine-dom* t**)])
-         (make-Values t*))))
+         (-values t*))))
 
 (define (combine-rst* rst*)
   (for/fold ((acc (car rst*)))
             ((r (in-list (cdr rst*))))
-    (and (equal? acc r) acc)))
+    (match r
+     [(Rest: ty*)
+      (match acc
+       [(Rest: ty-acc*)
+        (make-Rest (map Un ty* ty-acc*))]
+       [(RestDots: _ _)
+        (raise-argument-error 'combine-rst* "merge-able types" rst*)]
+       [#f r])]
+     [(RestDots: ty nm)
+      (match acc
+       [(Rest: _)
+        (raise-argument-error 'combine-rst* "merge-able types" rst*)]
+       [(RestDots: ty-acc nm-acc)
+        (if (equal? nm nm-acc)
+          (make-RestDots (Un ty ty-acc) nm-acc)
+          (raise-argument-error 'combine-rst* "merge-able types" rst*))]
+       [#f r])]
+     [#f acc])))
 
 (define (combine-kw* kw*)
   (for/fold ((acc (car kw*)))
