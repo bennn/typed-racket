@@ -47,6 +47,7 @@
 (define parameter?/sc (flat/sc #'parameter?))
 (define ephemeron?/sc (flat/sc #'ephemeron?))
 (define future?/sc (flat/sc #'future?))
+(define procedure?/sc (flat/sc #'procedure?))
 
 (define class?/sc (flat/sc #'class?))
 (define unit?/sc (flat/sc #'unit?))
