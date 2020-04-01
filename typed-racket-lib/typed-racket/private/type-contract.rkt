@@ -773,10 +773,8 @@
 (define (type->static-contract/transient type
                                          #:cache [sc-cache (make-hash)])
   (define typed-side 'both)
-  ;; TODO need recursive-values ? already know the type parses
-  (let loop ([type type] [recursive-values (hash)])
-    (define (t->sc t #:recursive-values (recursive-values recursive-values))
-      (loop t recursive-values))
+  (let loop ([type type])
+    (define t->sc loop)
     (define (prop->sc p)
       ;;bg copied from above, but uses different t->sc
       (match p
@@ -798,40 +796,9 @@
          (or-prop/sc (map prop->sc ps))]))
     (cached-match
      sc-cache type typed-side
-     ;; Applications of implicit recursive type aliases
-     ;;
-     ;; We special case this rather than just resorting to standard
-     ;; App resolution (see case below) because the resolution process
-     ;; will make type->static-contract infinite loop.
-     [(App: (Name: name _ #f) _)
-      ;; Key with (cons name 'app) instead of just name because the
-      ;; application of the Name is not necessarily the same as the
-      ;; Name type alone
-      (cond [(hash-ref recursive-values (cons name 'app) #f)]
-            [else
-             (define name* (generate-temporary name))
-             (recursive-sc (list name*)
-                           (list
-                            (t->sc (resolve-once type)
-                                   #:recursive-values
-                                   (hash-set recursive-values
-                                             (cons name 'app)
-                                             (recursive-sc-use name*))))
-                           (recursive-sc-use name*))])]
      ;; Implicit recursive aliases
      [(Name: name-id args #f)
-      (cond [;; recursive references are looked up in a special table
-             ;; that's handled differently by sc instantiation
-             (lookup-name-sc type typed-side)]
-            [else
-             (define rv recursive-values)
-             (define resolved-name (resolve-once type))
-             (define resolved-sc (t->sc resolved-name #:recursive-values rv))
-             (register-name-sc type
-                               (λ () resolved-sc)
-                               (λ () resolved-sc)
-                               (λ () resolved-sc))
-             (lookup-name-sc type typed-side)])]
+      any/sc]
      ;; Ordinary type applications or struct type names, just resolve
      [(or (App: _ _)
           (Name/struct:))
@@ -852,7 +819,7 @@
        [(or (number? v) (regexp? v) (byte-regexp? v) (string? v) (bytes? v) (char? v))
         (flat/sc #`(lambda (x) (equal? x '#,v)))]
        [else
-         (raise-arguments-error 'type->static-contract/transient "unexpected Val-able value" "value" v "original type" type)])]
+        (raise-arguments-error 'type->static-contract/transient "unexpected Val-able value" "value" v "original type" type)])]
      [(Base-name/contract: sym ctc) (flat/sc ctc)]
      [(Distinction: _ _ t) ; from define-new-subtype
       (t->sc t)]
@@ -937,12 +904,6 @@
           (Prompt-TagTop:))
       prompt-tag?/sc]
      [(F: v)
-      ;;bg TODO need to check anything???
-      ;(triple-lookup
-      ; (hash-ref recursive-values v
-      ;           (λ () (error 'type->static-contract
-      ;                        "Recursive value lookup failed. ~a ~a" recursive-values v)))
-      ; typed-side)
       any/sc]
      [(or (MPair: _ _)
           (MPairTop:))
@@ -952,39 +913,16 @@
       thread-cell?/sc]
      [(ClassTop:) class?/sc]
      [(UnitTop:) unit?/sc]
-     [(Poly: vs b)
-      ;;bg: for tag checks, poly-vars don't matter ... types inside better have a shape
-      (let ((recursive-values (for/fold ([rv recursive-values]) ([v vs])
-                                (hash-set rv v (same any/sc)))))
-        (t->sc b #:recursive-values recursive-values))]
-     [(PolyDots: (list vs ... dotted-v) b)
-      (let ((recursive-values (for/fold ([rv recursive-values]) ([v vs])
-                                (hash-set rv v (same any/sc)))))
-        (t->sc b #:recursive-values recursive-values))]
-     [(PolyRow: vs constraints body)
-      (let ((recursive-values (for/fold ([rv recursive-values]) ([v vs])
-                                (hash-set rv v (same any/sc)))))
-        (extend-row-constraints vs (list constraints)
-          (t->sc body #:recursive-values recursive-values)))]
+     [(Poly: _ b)
+      (t->sc b)]
+     [(PolyDots: _ b)
+      (t->sc b)]
+     [(PolyRow: _ _ body)
+      (t->sc body)]
      [(Mu: n b)
-      ;;bg: should not hit the name, but leave it at any/sc
-      (define rv (hash-set recursive-values n (same any/sc)))
-      (t->sc b #:recursive-values rv)]
-     ;; Don't directly use the class static contract generated for Name,
-     ;; because that will get an #:opaque class contract. This will do the
-     ;; wrong thing for object types since it errors too eagerly.
+      (t->sc b)]
      [(Instance: (? Name? t))
-      #:when (Class? (resolve-once t))
-      (cond [(lookup-name-sc type typed-side)]
-            [else
-             (define rv recursive-values)
-             (define resolved (make-Instance (resolve-once t)))
-             (define resolved-sc (t->sc resolved #:recursive-values rv))
-             (register-name-sc type
-                               (λ () resolved-sc)
-                               (λ () resolved-sc)
-                               (λ () resolved-sc))
-             (lookup-name-sc type typed-side)])]
+      (t->sc (make-Instance (resolve-once t)))]
      [(Instance: (Class: _ _ fields methods _ _))
       (make-object-shape/sc (map car fields) (map car methods))]
      [(Class: row-var inits fields publics augments _)
@@ -1008,7 +946,8 @@
       (flat/sc #`(struct-type-make-predicate
                   (prefab-key->struct-type (quote #,(abbreviate-prefab-key key))
                                            #,(prefab-key->field-count key))))]
-     [(Syntax: (? Base:Symbol?)) identifier?/sc]
+     [(Syntax: (? Base:Symbol?))
+      identifier?/sc]
      [(Syntax: t)
       syntax?/sc]
      [(Param: in out)
@@ -1026,11 +965,6 @@
       channel?/sc]
      [(Evt: t)
       evt?/sc]
-     [(Rest: (list _))
-      list?/sc]
-     [(? Rest? rst)
-      ;; TODO why 2 rest cases?
-      (t->sc (Rest->Type rst))]
      [(? Prop? rep) (prop->sc rep)]
      [(Ephemeron: _)
       ephemeron?/sc]
