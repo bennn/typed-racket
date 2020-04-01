@@ -64,7 +64,7 @@ H1   cast-mod.rkt
 oH2 todo    cast-top-level.rkt
 oH3   check-expect.rkt
 oH3   check-within.rkt
-H0   cl-bug.rkt
+oH0   cl-bug.rkt
      cl-tests.rkt
      cl.rkt
      class-contract.rkt
