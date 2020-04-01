@@ -26,6 +26,7 @@
     make-CyclicListof
     make-Listof)
   (only-in typed-racket/types/abbrev
+    -Bottom
     -Void
     -String
     -Symbol
@@ -236,7 +237,8 @@
   (define raw-type (tc-results->type1 (type-of stx)))
   (let loop ([ty (and raw-type (normalize-type raw-type))])
     (match ty
-     [(Fun: (list (? Arrow?)))
+     [(or (Fun: (list))
+          (Fun: (list (? Arrow?))))
       ty]
      [(Fun: arrs)
       ;;bg; if case->, try combining the arrs to a union type
@@ -381,6 +383,8 @@
 ;; Build a TypeMap from the domain of an arrow type.
 (define (type->domain-map t)
   (match t
+   [(Fun: (list))
+    (make-immutable-hash)]
    [(or (Fun: (list (Arrow: mand rst kws _)))
         (Arrow: mand rst kws _))
     (let* ([t# (make-immutable-hash)]
@@ -417,7 +421,8 @@
 
 (define (type-map-ref map key)
   (define (fail-thunk)
-    (raise-arguments-error 'type-map-ref "unbound key" "key" key "map" map))
+    #;(raise-arguments-error 'type-map-ref "unbound key" "key" key "map" map)
+    -Bottom)
   (cond
    [(fixnum? key)
     (hash-ref map key (λ () (hash-ref map REST-KEY fail-thunk)))]
@@ -723,8 +728,7 @@
   (for-each register-ignored! defs)
   (values
     defs
-    (if (or (free-identifier=? ctc #'any/c)
-            (free-identifier=? ctc #'none/c))
+    (if (free-identifier=? ctc #'any/c)
       #f
       ctc)))
 
