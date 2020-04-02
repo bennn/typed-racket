@@ -807,7 +807,6 @@
       (t->sc (resolve-once type))]
      [(Univ:) any/sc]
      [(Bottom:) (or/sc)]
-     [(Listof: _) list?/sc]
      ;; This comes before Base-ctc to use the Value-style logic
      ;; for the singleton base types (e.g. -Null, 1, etc)
      [(Val-able: v)
@@ -864,7 +863,8 @@
       (make-procedure-arity-flat/sc num-mand-args '() '())]
      [(Set: _) set?/sc]
      [(or (Sequence: _)
-          (SequenceTop:))
+          (SequenceTop:)
+          (SequenceDots: _ _ _))
       sequence?/sc]
      [(Immutable-HeterogeneousVector: ts)
       (immutable-vector-length/sc (length ts))]
@@ -881,6 +881,9 @@
      [(or (Weak-Box: _)
           (Weak-BoxTop:))
       weak-box?/sc]
+     [(or (Listof: _)
+          (ListDots: _ _))
+      list?/sc]
      [(Pair: _ t-cdr)
       ;; look ahead, try making list/sc
       (let cdr-loop ((t t-cdr)

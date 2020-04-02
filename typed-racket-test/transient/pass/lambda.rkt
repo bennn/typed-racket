@@ -121,3 +121,9 @@
 (: make-call (-> Exp Exp * Exp))
 (define (make-call fun . args)
   (Call (new-label) fun args))
+
+;; -----------------------------------------------------------------------------
+;; --- polydots
+
+;; Do NOT want to see "error transient-assert expected Nothing"
+((plambda: (x ...) [xs : x ... x] xs) 3 4 5)
