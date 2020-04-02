@@ -101,12 +101,12 @@ oH0   dotted-identity2.rkt
 oH4   empty-case-arrow.rkt
 oH3   empty-or.rkt
 oH5   ephemerons.rkt
-H6   even-odd-recursive-type.rkt
+oH6   even-odd-recursive-type.rkt
      even-odd.rkt
      events-with-async-channel.rkt
      events.rkt
      exceptions.rkt
-H7   exn-any-mutation.rkt
+oH7   exn-any-mutation.rkt
      fix.rkt
      fixnum.rkt
      float-internal-err.rkt

@@ -13,9 +13,7 @@
   (define s3 (f s2))
   (check-equal? (s-i s1) 42)
   (check-equal? (s-i s3) 42)
-  (check-exn #rx"Attempted to use a higher-order value passed as `Any`"
-             (λ () (set-s-i! s3 "hi")))
-  (check-equal? (s-i s1) 42
-                "if the previous test hadn't errored, this would be \"hi\" with type Integer")
+  (check-not-exn (λ () (set-s-i! s3 "hi")))
+  (check-exn #rx"transient-assert" (lambda () (s-i s1)))
   )
 (require 'typed)
