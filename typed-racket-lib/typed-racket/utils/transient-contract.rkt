@@ -1,9 +1,10 @@
 #lang racket/base
 
-;; Extra flat contracts for the Transient runtime
+;; Extra contracts and tools for the Transient runtime
 
 (provide
-  procedure-arity-includes-keywords?)
+  procedure-arity-includes-keywords?
+  raise-transient-error)
 
 ;; ---------------------------------------------------------------------------------------------------
 
@@ -40,4 +41,7 @@
            (loop (cdr expected-kw*) (cdr actual-kw*)))
           (else ;#(keyword<? actual expected)
            (loop expected-kw* (cdr actual-kw*)))))))
+
+(define (raise-transient-error val ctx-message c-marks)
+  (raise (exn:fail:contract (format "transient-assert: got ~s in ~a" val ctx-message) c-marks)))
 

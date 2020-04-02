@@ -56,7 +56,8 @@
   (for-template
     racket
     racket/unsafe/ops
-    typed-racket/types/numeric-predicates))
+    typed-racket/types/numeric-predicates
+    typed-racket/utils/transient-contract))
  
 (provide defend-top)
 
@@ -547,7 +548,7 @@
           (syntax/loc dom-stx
             (if (#%plain-app ctc dom)
               '#true
-              (#%plain-app error 'transient-assert (#%plain-app format #;'"die" '"got ~s in ~a" dom 'err)))))
+              (#%plain-app raise-transient-error dom 'err (#%plain-app current-continuation-marks)))))
         (register-ignored! new-stx)
         new-stx)]))
   ;; must return extra, could contain a def for any/c that we use later
@@ -590,7 +591,7 @@
                     (let-values ([(v) app])
                       (if (#%plain-app ctc v)
                         v
-                        (#%plain-app error 'transient-assert (#%plain-app format #;'"die" '"got ~s in ~a" v 'err)))))))
+                        (#%plain-app raise-transient-error v 'err (#%plain-app current-continuation-marks)))))))
               (define if-stx (caddr (syntax-e new-stx)))
               (register-ignored! if-stx)
               (define chk-stx (syntax-e (cadr (syntax-e if-stx))))
@@ -622,7 +623,7 @@
                                   (test-position-add-false ctc-stx)
                                   (quasisyntax/loc app-stx (#%plain-app #,ctc-stx #,v))))
                         (#%plain-app values . v*)
-                        (#%plain-app error 'transient-assert 'err))))))
+                        (#%plain-app raise-transient-error v* 'err (#%plain-app current-continuation-marks)))))))
               (register-ignored! (caddr (syntax-e new-stx)))
               new-stx)))))
     (values extra-def* cod-stx+)]))
