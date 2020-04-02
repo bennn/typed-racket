@@ -46,9 +46,9 @@
               (change-provide-fixups forms ctc-cache sc-cache))
             (define (defend/cache body-stx)
               (define-values [extra-def* body+] (maybe-defend body-stx ctc-cache sc-cache))
-              (unless (null? extra-def*)
+              (when extra-def*
                 (set-box! include-extra-requires? #t))
-              (cons extra-def* body+))
+              (cons (or extra-def* '()) body+))
             (with-syntax*
              (;; pmb = #%plain-module-begin
               [(pmb . body2) new-mod]

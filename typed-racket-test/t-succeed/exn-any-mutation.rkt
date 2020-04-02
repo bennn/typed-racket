@@ -14,6 +14,6 @@
   (check-equal? (s-i s1) 42)
   (check-equal? (s-i s3) 42)
   (check-not-exn (λ () (set-s-i! s3 "hi")))
-  (check-exn #rx"transient-assert" (lambda () (s-i s1)))
+  (check-exn exn:fail:contract? (lambda () (s-i s1)))
   )
 (require 'typed)

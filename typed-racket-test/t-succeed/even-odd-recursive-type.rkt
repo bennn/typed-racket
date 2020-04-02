@@ -68,7 +68,7 @@
 ;; make sure contract generation on even/odd* worked
 (cons 3 d:odd-lst)
 (check-equal? (d:even->odd "c" d:even-lst) '("c" 1 "b" 3 "a"))
-(check-exn #rx"transient-assert" (λ () (d:even->odd 1 d:even-lst)))
+(check-exn exn:fail:contract? (λ () (d:even->odd 1 d:even-lst)))
 
 (b:even->odd "c" b:even-lst)
 (check-not-exn (λ () (b:even->odd "c" b:odd-lst)))

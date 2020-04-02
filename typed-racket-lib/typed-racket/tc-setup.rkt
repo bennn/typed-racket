@@ -47,7 +47,7 @@
      (do-time "End defender")
      (values extra-def* body+)]
     [else
-     (values '() body-stx)]))
+     (values #f body-stx)]))
 
 ;; -> Promise<Dict<Name, Type>>
 ;; initialize the type names for printing
