@@ -1536,8 +1536,21 @@
 ;
 ;   (t-sc (-polydots (a) (-> (->... (list) (a a) -Symbol) (->... (list) (a a) -Symbol)))
 ;         (make-procedure-arity-flat/sc 1 '() '()) #:transient)
-   (t-sc (-polydots (a) (->... (list) (a a) -Symbol))
-         procedure?/sc #:transient)
+;   (t-sc (-polydots (a) (->... (list) (a a) -Symbol))
+;         procedure?/sc #:transient)
+
+  (t-sc
+    (-polydots (a b)
+               (->... (list) ((-lst* (->... (list) (a a) b)) b) Univ))
+    procedure?/sc
+    ;; TODO better yet = (make-procedure-arity-flat/sc 1 '() '())
+    #:transient)
+  (t-sc (-polydots (a) (-lst* (->... (list) (a a) Univ)))
+        (list-length/sc 1) #:transient)
+  (t-sc (make-ListDots Univ 'x)
+        list?/sc #:transient)
+  (t-sc (make-SequenceDots (list) Univ 'x)
+        sequence?/sc #:transient)
 
 ;; TODO ?
    ;; (t-sc (-StructTop s-type))

@@ -112,8 +112,8 @@ oH7   exn-any-mutation.rkt
      float-internal-err.rkt
      flonum.rkt
      flvector.rkt
-H0   fold-left-inst.rkt
-H0   fold-left.rkt
+oH0   fold-left-inst.rkt
+oH0   fold-left.rkt
 X    foldo.rkt ... needed for metrics.rkt
      for-ann.rkt
      for-hash.rkt
@@ -145,7 +145,7 @@ X    foldo.rkt ... needed for metrics.rkt
      gh-issue-26.rkt
      gh-issue-291.rkt
      gh-issue-304.rkt
-H0   gh-issue-336.rkt
+oH0   gh-issue-336.rkt
      gh-issue-343.rkt
      gh-issue-366.rkt
      gh-issue-38.rkt

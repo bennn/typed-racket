@@ -406,7 +406,8 @@
              [(RestDots? rst)
               (hash-set t# REST-KEY (RestDots-ty rst))]
              [else
-              t#])]
+              ;; need default for `((plambda: (x ...) [xs : x ... x] xs) 3 4 5)` because poly type is gone (inst'd away)
+              (hash-set t# REST-KEY (make-Listof Univ))])]
            [t# ;; kwd args
             (for/fold ([acc t#])
                       ([k (in-list kws)])
