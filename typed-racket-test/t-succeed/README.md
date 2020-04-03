@@ -26,6 +26,8 @@ H7 = no exception
 H8 = unexpected val-able
 H10 = value-contract missing
 H11 = type->domain-map: cannot handle rest type yet
+H12 = internal typecheck error
+      maybe from rackunit
 
 WH = "what happened"
 
@@ -197,14 +199,14 @@ oH7   issue-625.rkt
      let-values-tests.rkt
 todo    lifting-top-level.rkt
      linear-integer-simple.rkt
-H0   list-dots.rkt
+oH0   list-dots.rkt
      list-ref-vec.rkt
      list-struct-sum.rkt
      literal-char-gh-issue-434.rkt
 oH8   literal-regexp-gh-issue-539.rkt
      little-schemer.rkt
      logic.rkt
-H0   lots-o-bugs.rkt
+oH0   lots-o-bugs.rkt
      macro-in-unit.rkt
      make-predicate-mod.rkt
 todo    make-predicate-top-level.rkt
@@ -233,9 +235,9 @@ todo    module-lang.rkt
      mutable-poly-struct.rkt
      mutable-struct-pred.rkt
      namespace-anchor.rkt
-H0   nested-poly.rkt
-H0   new-metrics.rkt
-H0   no-bound-fl.rkt
+oH0   nested-poly.rkt
+oH0   new-metrics.rkt
+oH0   no-bound-fl.rkt
      non-recursive-and-recursive-type-aliases.rkt
      nonnegative-float.rkt
      null-program.rkt
@@ -260,11 +262,11 @@ X    opaque-object-stronger.rkt
 X    patch.rkt
      paths.rkt
      pathstrings.rkt
-H3   pict.rkt
+H3   pict.rkt TODO PR923
 X    places-helper.rkt
      places.rkt
-H0   poly-apply.rkt
-H0   poly-dots.rkt
+oH0   poly-apply.rkt
+oH0   poly-dots.rkt
      poly-ret-ann.rkt
      poly-same-annotation.rkt
      poly-simple-contract.rkt
@@ -299,7 +301,7 @@ H0   poly-dots.rkt
      pr11504.rkt
      pr11509.rkt
      pr11532.rkt
-H0   pr11545+11776.rkt
+oH0   pr11545+11776.rkt
      pr11560.rkt
      pr11578.rkt
      pr11617.rkt
@@ -337,7 +339,7 @@ todo    pr12913.rkt
      pr13464.rkt
      pr13490.rkt
 todo    pr13503.rkt
-H0   pr13576.rkt
+oH0   pr13576.rkt
      pr13584.rkt
      pr13646.rkt
      pr13691.rkt
@@ -347,7 +349,7 @@ todo    pr13747.rkt
      pr13870.rkt
      pr13901.rkt
      pr13937.rkt
-??   pr14138.rkt
+H12  pr14138.rkt
      pr14217.rkt
      pr14355.rkt
      pr14364.rkt
@@ -542,7 +544,7 @@ X    unsafe-require-top-level.rkt
      unsafe-struct.rkt
      untyped-submod.rkt
      user-defined-sp.rkt
-H0   values-dots-result.rkt
+oH0   values-dots-result.rkt
 H0   values-dots.rkt
      values-dots2.rkt
      values-object.rkt
@@ -560,7 +562,7 @@ X    vector-contract.rkt
      with-handlers.rkt
 "that's impossible!"    with-linear-integer-arith.rkt
      with-linear-integer-arith2.rkt
-H0   with-syntax.rkt
+H12  with-syntax.rkt
 todo    with-type-lift.rkt
 todo    with-type-typed-context-flag.rkt
 todo cannot use in typed module    with-type.rkt
