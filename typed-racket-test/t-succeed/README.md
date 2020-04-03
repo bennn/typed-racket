@@ -178,12 +178,12 @@ X    hash-contract.rkt
      integer-contracts.rkt
      internal-scoped-tvar.rkt
      intersect-no-intersections.rkt
-H3   intersection1.rkt
+oH3   intersection1.rkt
 X    issue-166.rkt
      issue-33.rkt
      issue-447.rkt
-H7+  issue-598.rkt
-H7   issue-625.rkt
+H7+  issue-598.rkt (TODO module+ needs defense)
+oH7   issue-625.rkt
      issue-628.rkt
      issue-807.rkt
      issue-823.rkt

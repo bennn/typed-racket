@@ -11,12 +11,10 @@
 
 (require 't rackunit)
 
-(define err-regexp #rx"hash-equal\\?.*key contract is not a flat contract")
-
-(check-exn err-regexp
+(check-not-exn
   (λ () (give-me-a-hash (hasheqv))))
 
-(check-exn err-regexp
+(check-not-exn
   (λ () (give-me-a-hash (hasheq))))
 
 (check-not-exn

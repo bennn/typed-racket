@@ -348,3 +348,6 @@
     try a pull request
 
 - [ ] support case-lambda in defender
+
+- [ ] issue-625 test, check for nonsense hash keys when contract applied
+      ... or not, not sure if this is transient or not to check
