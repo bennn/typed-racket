@@ -47,14 +47,15 @@
     kw-lambda^)
   (only-in racket/syntax
     format-id
-    generate-temporary)
+    generate-temporary
+    with-syntax*)
   (only-in (submod typed-racket/private/type-contract test-exports)
     has-contract-def-property?
     type->contract)
   (for-syntax
     racket/base)
   (for-template
-    racket
+    racket/base
     racket/unsafe/ops
     typed-racket/types/numeric-predicates
     typed-racket/utils/transient-contract))
@@ -566,9 +567,6 @@
    [else
     (define-values [extra-def* ctc-stx*]
       (type->flat-contract* t* ctc-cache sc-cache))
-    (define err-msg
-      (parameterize ([error-print-width 20])
-        (format "~e : ~a" (#%plain-app syntax->datum app-stx) t*)))
     (define cod-stx+
       (if (not (ormap values ctc-stx*))
         ;; Nothing to check
@@ -577,13 +575,14 @@
         ;; - performs the application
         ;; - binds the result(s) to temporary variable(s)
         ;; - checks the tag of each temporary
-        (with-syntax ([app app-stx]
-                      [err err-msg])
+        (with-syntax ([app app-stx])
           (define var-name 'dyn-cod)
           (if (null? (cdr t*))
             ;; -- application returns 1 result, just bind it and check it
             (with-syntax ([(ctc) ctc-stx*]
-                          [v (generate-temporary var-name)])
+                          [v (generate-temporary var-name)]
+                          [err (parameterize ([error-print-width 20])
+                                 (format "~e : ~a" (syntax->datum app-stx) t*))])
               (define new-stx
                 (with-type
                   cod-tc-res
@@ -592,47 +591,52 @@
                       (if (#%plain-app ctc v)
                         v
                         (#%plain-app raise-transient-error v 'err (#%plain-app current-continuation-marks)))))))
-              (define if-stx (caddr (syntax-e new-stx)))
-              (register-ignored! if-stx)
-              (define chk-stx (syntax-e (cadr (syntax-e if-stx))))
-              (register-ignored! chk-stx)
-              (test-position-add-true chk-stx)
-              (test-position-add-false chk-stx)
-              (register-ignored! (caddr (syntax-e if-stx)))
-              (register-ignored! (cadddr (syntax-e if-stx)))
+              (ignore-if-expr! (caddr (syntax-e new-stx)))
               new-stx)
             ;; - application returns +1 results:
             ;;   - bind all,
             ;;   - check the ones with matching contracts,
             ;;   - return all
-            (with-syntax ([v* (for/list ([_t (in-list t*)])
-                                 ;; should be OK to do this instead of `generate-temporaries`, right?
-                                 (generate-temporary var-name))])
+            (with-syntax* ([v*
+                            (for/list ([_t (in-list t*)])
+                              (generate-temporary var-name))]
+                           [check-v*
+                            (for/list ((ctc-stx (in-list ctc-stx*))
+                                       (type (in-list t*))
+                                       (v-stx (in-list (syntax-e #'v*)))
+                                       (i (in-naturals))
+                                       #:when ctc-stx)
+                              (define if-stx
+                                (with-syntax ([ctc ctc-stx]
+                                              [v v-stx]
+                                              [err (parameterize ([error-print-width 20])
+                                                     (format "value ~a : ~e : ~a" i (syntax->datum app-stx) type))])
+                                  #'(if (#%plain-app ctc v)
+                                      '#true
+                                      (#%plain-app raise-transient-error v 'err (#%plain-app current-continuation-marks)))))
+                              (ignore-if-expr! if-stx)
+                              if-stx)])
               (define new-stx
                 (with-type
                   cod-tc-res
                   (quasisyntax/loc app-stx
                     (let-values ([v* app])
-                      (if #,(make-and-stx
-                              app-stx
-                              (for/list ([ctc-stx (in-list ctc-stx*)]
-                                         [v (in-list (syntax-e #'v*))]
-                                         #:when ctc-stx)
-                                  (register-ignored! ctc-stx)
-                                  (test-position-add-true ctc-stx)
-                                  (test-position-add-false ctc-stx)
-                                  (quasisyntax/loc app-stx (#%plain-app #,ctc-stx #,v))))
-                        (#%plain-app values . v*)
-                        (#%plain-app raise-transient-error v* 'err (#%plain-app current-continuation-marks)))))))
+                      (begin
+                        (begin . check-v*)
+                        (#%plain-app values . v*))))))
               (register-ignored! (caddr (syntax-e new-stx)))
               new-stx)))))
     (values extra-def* cod-stx+)]))
 
-(define (make-and-stx loc stx*)
-  ;; TODO awkward, remove?
-  (for/fold ((acc (syntax/loc loc '#true)))
-            ((stx (in-list stx*)))
-    (quasisyntax/loc loc (if #,stx #,acc '#false))))
+(define (ignore-if-expr! if-stx)
+  (register-ignored! if-stx)
+  (register-ignored! (caddr (syntax-e if-stx)))
+  (register-ignored! (cadddr (syntax-e if-stx)))
+  (let ((chk-stx (syntax-e (cadr (syntax-e if-stx)))))
+    (register-ignored! chk-stx)
+    (test-position-add-true chk-stx)
+    (test-position-add-false chk-stx))
+  (void))
 
 (define-syntax-rule (with-type t e)
   (let ((v e))
