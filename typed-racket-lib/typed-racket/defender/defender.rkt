@@ -173,8 +173,7 @@
               (define x+ (loop x #f))
               (readd-props! x+ x)
               x+)))
-        (readd-props! stx+ stx)
-        stx+]
+        (readd-props stx+ stx)]
        [_
         stx])))
   (values (reverse (unbox rev-extra-def*)) defended-stx))

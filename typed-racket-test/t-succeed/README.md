@@ -349,7 +349,7 @@ todo    pr13747.rkt
      pr13870.rkt
      pr13901.rkt
      pr13937.rkt
-H12  pr14138.rkt
+H12  pr14138.rkt wow, guarded optimizer fails if dead code pass doesn't run! dead-code must come first, and it matches to avoid a fall-through
      pr14217.rkt
      pr14355.rkt
      pr14364.rkt
