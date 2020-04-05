@@ -16,5 +16,6 @@
 (define (fail-if-called)
   (error 'pr226 "Untyped code invoked a higher-order value passed as 'Any'"))
 
-(with-handlers ([exn:fail:contract? (lambda (e) 'success)])
-  (s? fail-if-called))
+(require typed/rackunit)
+(check-exn #rx"Untyped code invoked a higher-order value"
+  (lambda () (s? fail-if-called)))

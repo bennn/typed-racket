@@ -21,5 +21,6 @@
   (s? suitcase)
   (void))
 
-(unless (and (eq? '$$$ (unbox suitcase)))
-  (error 'pr226 "THEY SLIPPED US A RINGER"))
+(require typed/rackunit)
+(check-exn exn:fail:contract?
+  (lambda () (unbox suitcase)))
