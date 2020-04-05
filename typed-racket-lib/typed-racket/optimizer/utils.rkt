@@ -37,11 +37,11 @@
 
 ;; is the syntax object s's type a subtype of t?
 (define (subtypeof? s t)
-  (match (type-of s)
+  (match (maybe-type-of s)
     [(tc-result1: (== t (lambda (x y) (subtype y x)))) #t] [_ #f]))
 ;; similar, but with type equality
 (define (isoftype? s t)
-  (match (type-of s)
+  (match (maybe-type-of s)
          [(tc-result1: (== t)) #t] [_ #f]))
 
 ;; generates a table matching safe to unsafe promitives
@@ -116,7 +116,7 @@
 (define-syntax-class (typed-expr predicate)
   #:attributes (opt)
   (pattern (~and e :opt-expr)
-           #:when (match (type-of #'e)
+           #:when (match (maybe-type-of #'e)
                     [(tc-result1: (? predicate)) #t]
                     [_ #f])))
 
@@ -130,11 +130,11 @@
     #:attr val (syntax-e #'v)
     #:with opt this-syntax)
   (pattern (~and e :opt-expr)
-    #:when (match (type-of #'e)
+    #:when (match (maybe-type-of #'e)
              [(tc-result1: (Val-able: _))
               #t]
              [_ #f])
-    #:attr val (match (type-of #'e)
+    #:attr val (match (maybe-type-of #'e)
                  [(tc-result1: (Val-able: v)) v]
                  [_ #f])))
 
