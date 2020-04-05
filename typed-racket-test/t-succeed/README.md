@@ -349,7 +349,7 @@ todo    pr13747.rkt
      pr13870.rkt
      pr13901.rkt
      pr13937.rkt
-H12  pr14138.rkt wow, guarded optimizer fails if dead code pass doesn't run! dead-code must come first, and it matches to avoid a fall-through
+oH12  pr14138.rkt wow, guarded optimizer fails if dead code pass doesn't run! dead-code must come first, and it matches to avoid a fall-through
      pr14217.rkt
      pr14355.rkt
      pr14364.rkt
@@ -372,8 +372,8 @@ todo    pr14829.rkt
      pr15144.rkt
      pr15330.rkt
      pr226-variation-1.rkt
-Untyped code invoked a higher-order value passed as 'Any'     pr226-variation-2.rkt
-H3   pr226-variation-3.rkt
+oUntyped code invoked a higher-order value passed as 'Any'     pr226-variation-2.rkt
+oH3   pr226-variation-3.rkt
      pr241-variation-0.rkt
 H3   pr241-variation-1.rkt
      pr241-variation-2.rkt
