@@ -240,7 +240,9 @@
        (or (direct-child-of? v #'(rands ...)) ; used as an argument, escapes
            (ormap rec (syntax->list #'(rator rands ...))))]
       [e:kernel-expression
-       (look-at #'(e.sub-exprs ...))]))
+       (look-at #'(e.sub-exprs ...))]
+      [_
+       (raise-argument-error 'escapes? "kernel-expression" exp)]))
 
 
   ;; if the given var is the _only_ element of the body and we're in a
