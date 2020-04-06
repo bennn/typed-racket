@@ -1,6 +1,6 @@
 #lang racket/base
 
-;; #:opaque predicates should not change the type of their arguments
+;; #:opaque predicates may change the type of their arguments in transient
 
 (module untyped racket/base
  (define (bad x)
@@ -9,13 +9,12 @@
  (provide bad))
 
 (module typed typed/racket/base #:transient
+ (require typed/rackunit)
  (require/typed (submod ".." untyped)
    [#:opaque T bad])
  (: b (Boxof String))
  (define b (box "hi"))
- (with-handlers ([exn:fail:contract? (lambda (e) (void))])
-   (bad b)
-   (void))
- (string-append (unbox b) ""))
+ (bad b)
+ (check-exn exn:fail:contract? (lambda () (unbox b))))
 
 (require 'typed)

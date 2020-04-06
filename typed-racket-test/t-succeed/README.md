@@ -262,7 +262,7 @@ X    opaque-object-stronger.rkt
 X    patch.rkt
      paths.rkt
      pathstrings.rkt
-H3   pict.rkt TODO PR923
+oH3   pict.rkt TODO PR923
 X    places-helper.rkt
      places.rkt
 oH0   poly-apply.rkt
@@ -375,7 +375,7 @@ todo    pr14829.rkt
 oUntyped code invoked a higher-order value passed as 'Any'     pr226-variation-2.rkt
 oH3   pr226-variation-3.rkt
      pr241-variation-0.rkt
-H3   pr241-variation-1.rkt
+oH3   pr241-variation-1.rkt
      pr241-variation-2.rkt
      pr241-variation-3.rkt
 todo    pr241-variation-5.rkt
@@ -384,7 +384,7 @@ X    pr267-variation-0.rkt
      pr390-variation-2.rkt
      pr390-variation-3.rkt
 H1   pr390-variation-4.rkt
-H10  pr390-variation-5.rkt
+X  pr390-variation-5.rkt
      pr390-variation-6.rkt
      pr390-variation-7.rkt
      pr403.rkt
