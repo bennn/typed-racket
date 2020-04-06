@@ -15,32 +15,32 @@
 
 (check-equal? ((cast pos-fx-sub1 (Number -> Number)) 5) 4)
 
-(check-exn #rx"expected: fixnum\\?\n *given: 0.5"
+(check-exn #rx"transient-assert"
            (λ () ((cast pos-fx-sub1 (Number -> Number)) 0.5) 4))
 
-(check-exn #rx"expected: fixnum\\?\n *given: \"hello\""
+(check-exn #rx"transient-assert"
            (λ () ((cast pos-fx-sub1 (String -> String)) "hello")))
 
-(check-exn #rx"expected: fixnum\\?\n *given: \"hello\""
+(check-exn #rx"transient-assert"
            (λ () ((cast pos-fx-sub1 (Any -> Any)) "hello")))
 
-(test-case "cast on mutator functions"
+(let ()
   (: v : Boolean)
   (define v #f)
   (: f : Boolean -> Boolean)
   (define (f x)
     (set! v x)
     x)
+  (test-case "cast on mutator functions"
+   (check-equal? v #f)
+   (check-equal? ((cast f (Boolean -> Boolean)) #t) #t)
+   (check-equal? v #t)
+   (check-exn #rx"transient-assert"
+              (λ () ((cast f (String -> String)) "hello")))
+   (check-equal? v #t
+                 "if the previous test hadn't errored, this would be \"hello\" with type Boolean")))
 
-  (check-equal? v #f)
-  (check-equal? ((cast f (Boolean -> Boolean)) #t) #t)
-  (check-equal? v #t)
-  (check-exn #rx"expected: boolean\\?\n *given: \"hello\""
-             (λ () ((cast f (String -> String)) "hello")))
-  (check-equal? v #t
-                "if the previous test hadn't errored, this would be \"hello\" with type Boolean"))
-
-(test-case "cast on mutable boxes"
+(let () "cast on mutable boxes" ;; TODO should be test-case
   (: b1 : (Boxof Integer))
   (define b1 (box 42))
   (define b2 (cast b1 (Boxof String)))
@@ -48,15 +48,12 @@
   (define b4 (cast b3 (Boxof (U Integer String))))
   (check-equal? (unbox b1) 42)
   (check-equal? (unbox b4) 42)
-  (check-exn #rx"expected: exact-integer\\?\n *given: \"hi\""
-             (λ () (set-box! b2 "hi")))
-  (check-equal? (unbox b1) 42
-                "if the previous test hadn't errored, this would be \"hi\" with type Integer")
-  (check-exn #rx"Attempted to use a higher-order value passed as `Any`"
-             (λ () (set-box! b4 "hello")))
-  (check-equal? (unbox b1) 42))
+  (check-not-exn (λ () (set-box! b2 "hi")))
+  (check-exn #rx"transient-assert" (lambda () (unbox b1)))
+  (check-not-exn (λ () (set-box! b4 "hello")))
+  (check-exn #rx"transient-assert" (lambda () (unbox b1))))
 
-(test-case "cast on mutable vectors"
+(let () "cast on mutable vectors" ;; TODO test-case
   (: v1 : (Vectorof Integer))
   (define v1 (vector 42))
   (define v2 (cast v1 (Vectorof String)))
@@ -64,17 +61,14 @@
   (define v4 (cast v3 (Vectorof (U Integer String))))
   (check-equal? (vector-ref v1 0) 42)
   (check-equal? (vector-ref v4 0) 42)
-  (check-exn #rx"expected: exact-integer\\?\n *given: \"hi\""
-             (λ () (vector-set! v2 0 "hi")))
-  (check-equal? (vector-ref v1 0) 42
-                "if the previous test hadn't errored, this would be \"hi\" with type Integer")
-  (check-exn #rx"Attempted to use a higher-order value passed as `Any`"
-             (λ () (vector-set! v4 0 "hello")))
-  (check-equal? (vector-ref v1 0) 42))
+  (check-not-exn (λ () (vector-set! v2 0 "hi")))
+  (check-exn #rx"transient-assert" (lambda () (vector-ref v1 0)))
+  (check-not-exn (λ () (vector-set! v4 0 "hello")))
+  (check-exn #rx"transient-assert" (lambda () (vector-ref v1 0))))
 
 ;; Struct definitions need to be at the module level for some reason.
 (struct (X) s ([i : X]) #:mutable #:transparent)
-(test-case "cast on mutable structs"
+(let () "cast on mutable structs" ;; TODO test-case
   (: s1 : (s Integer))
   (define s1 (s 42))
   (define s2 (cast s1 (s String)))
@@ -82,13 +76,10 @@
   (define s4 (cast s3 (s (U Integer String))))
   (check-equal? (s-i s1) 42)
   (check-equal? (s-i s4) 42)
-  (check-exn #rx"expected: exact-integer\\?\n *given: \"hi\""
-             (λ () (set-s-i! s2 "hi")))
-  (check-equal? (s-i s1) 42
-                "if the previous test hadn't errored, this would be \"hi\" with type Integer")
-  (check-exn #rx"Attempted to use a higher-order value passed as `Any`"
-             (λ () (set-s-i! s4 "hello")))
-  (check-equal? (s-i s1) 42))
+  (check-not-exn (λ () (set-s-i! s2 "hi")))
+  (check-exn #rx"transient-assert" (lambda () (s-i s1)))
+  (check-not-exn (λ () (set-s-i! s4 "hello")))
+  (check-exn #rx"transient-assert" (lambda () (s-i s1))))
 
 (test-case "cast on intersections involving recursive types"
   (define-type T

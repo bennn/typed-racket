@@ -61,7 +61,7 @@ oH0   call-comp.rkt
      case-arrow-cast-contract.rkt
 oH0   case-lambda-rest.rkt
      case-lambda1.rkt
-H1   cast-mod.rkt
+oH1   cast-mod.rkt
      cast-no-check.rkt
 oH2 todo    cast-top-level.rkt
 oH3   check-expect.rkt
@@ -383,7 +383,7 @@ X    pr267-variation-0.rkt
      pr390-variation-1.rkt
      pr390-variation-2.rkt
      pr390-variation-3.rkt
-H1   pr390-variation-4.rkt
+oH1   pr390-variation-4.rkt
 X  pr390-variation-5.rkt
      pr390-variation-6.rkt
      pr390-variation-7.rkt
