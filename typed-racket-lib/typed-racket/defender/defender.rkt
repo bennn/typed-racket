@@ -67,7 +67,7 @@
 
 ;; =============================================================================
 
-(define (defend-top stx ctc-cache sc-cache)
+(define (defend-top stx ctc-cache)
   (define rev-extra-def* (box '()))
   (define (register-extra-defs! ex*)
     (unless (null? ex*)
@@ -107,7 +107,7 @@
           (let-values ([(extra* formals+)
                         (if skip-dom?
                           (values '() '())
-                          (protect-formals dom-map #'formals ctc-cache sc-cache))])
+                          (protect-formals dom-map #'formals ctc-cache))])
             (register-extra-defs! extra*)
             formals+))
         (define stx+
@@ -146,7 +146,7 @@
           [else
            (define cod-tc-res (type-of stx))
            (define-values [extra* stx/cod]
-             (protect-codomain cod-tc-res stx+ ctc-cache sc-cache))
+             (protect-codomain cod-tc-res stx+ ctc-cache))
            (void (register-extra-defs! extra*))
            (if stx/cod
              (readd-props stx/cod stx)
@@ -528,10 +528,10 @@
                      (dynamic-require mpi+ #f)
                      #t)))))))))
 
-(define (protect-domain dom-type dom-stx ctc-cache sc-cache)
+(define (protect-domain dom-type dom-stx ctc-cache)
   (define-values [extra-def* ctc-stx]
     (if dom-type
-      (type->flat-contract dom-type ctc-cache sc-cache)
+      (type->flat-contract dom-type ctc-cache)
       (values '() #f)))
   (define dom-stx+
     (cond
@@ -556,7 +556,7 @@
   (values extra-def* dom-stx+))
 
 ;; protect-codomain : (U #f Tc-Results) (Syntaxof List) Hash Hash (Boxof Syntax) -> TODO
-(define (protect-codomain cod-tc-res app-stx ctc-cache sc-cache)
+(define (protect-codomain cod-tc-res app-stx ctc-cache)
   (define t* (tc-results->type* cod-tc-res))
   (cond
    [(or (not cod-tc-res) (not t*))
@@ -565,7 +565,7 @@
     (values '() #f)]
    [else
     (define-values [extra-def* ctc-stx*]
-      (type->flat-contract* t* ctc-cache sc-cache))
+      (type->flat-contract* t* ctc-cache))
     (define cod-stx+
       (if (not (ormap values ctc-stx*))
         ;; Nothing to check
@@ -643,7 +643,7 @@
     v))
 
 ;; protect-formals : TypeMap (Syntaxof List) Hash Hash (Boxof Syntax) -> (Syntaxof List)
-(define (protect-formals dom-map formals ctc-cache sc-cache)
+(define (protect-formals dom-map formals ctc-cache)
   (let loop ([dom* formals] [position 0])
     ;; may be called with (a b (c . d))
     (cond
@@ -654,7 +654,7 @@
        [(identifier? dom*)
         (define t (type-map-ref dom-map REST-KEY))
         (define-values [ex* dom-stx]
-          (protect-domain t (datum->syntax formals dom*) ctc-cache sc-cache))
+          (protect-domain t (datum->syntax formals dom*) ctc-cache))
         (values ex* (list dom-stx))]
        [(syntax? dom*)
         (loop (syntax-e dom*) position)]
@@ -669,7 +669,7 @@
      [else
       (define var (formal->var (car dom*)))
       (define t (type-map-ref dom-map position))
-      (define-values [ex0* dom-first] (protect-domain t var ctc-cache sc-cache))
+      (define-values [ex0* dom-first] (protect-domain t var ctc-cache))
       (define-values [ex1* dom-rest] (loop (cdr dom*) (+ position 1)))
       (values (append ex0* ex1*)
               (if dom-first (cons dom-first dom-rest) dom-rest))])))
@@ -725,11 +725,11 @@
       '()
       (cons (car stx*) (syntax*->syntax ctx (cdr stx*))))))
 
-(define (type->flat-contract t ctc-cache sc-cache)
+(define (type->flat-contract t ctc-cache)
   (define (fail #:reason r)
     (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" t r))
   (match-define (list defs ctc)
-    (type->contract t fail #:typed-side #false #:cache ctc-cache #:sc-cache sc-cache))
+    (type->contract t fail #:typed-side #false #:cache ctc-cache))
   (for-each register-ignored! defs)
   (values
     defs
@@ -737,12 +737,12 @@
       #f
       ctc)))
 
-(define (type->flat-contract* t* ctc-cache sc-cache)
+(define (type->flat-contract* t* ctc-cache)
   (for/fold ((extra-def* '())
              (ctc-stx* '())
              #:result (values (reverse extra-def*) (reverse ctc-stx*)))
             ((t (in-list t*)))
-    (define-values [ex* ctc-stx] (type->flat-contract t ctc-cache sc-cache))
+    (define-values [ex* ctc-stx] (type->flat-contract t ctc-cache))
     (values (rev-append ex* extra-def*) (cons ctc-stx ctc-stx*))))
 
 (define (rev-append a* b*)

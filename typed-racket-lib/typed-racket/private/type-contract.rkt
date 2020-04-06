@@ -209,7 +209,7 @@
 ;;   submodule, which always has the above `require`s.
 (define include-extra-requires? (box #f))
 
-(define (change-contract-fixups forms [ctc-cache (make-hash)] [sc-cache (make-hash)])
+(define (change-contract-fixups forms [ctc-cache (make-hash)])
   (with-new-name-tables
    (for/list ((e (in-list forms)))
      (if (not (has-contract-def-property? e))
@@ -303,14 +303,13 @@
 (define (type->contract ty init-fail
                         #:typed-side [typed-side #t]
                         #:kind [pre-kind 'impersonator]
-                        #:cache [cache (make-hash)])
+                        #:cache [cache (make-hash)]
                         #:enforcement-mode [te-mode (current-type-enforcement-mode)])
   (let/ec escape
     (define (fail #:reason [reason #f]) (escape (init-fail #:reason reason)))
     (define sc
       (type->static-contract ty fail
                              #:typed-side typed-side
-                             #:cache sc-cache
                              #:enforcement-mode te-mode))
     (define kind (if (eq? guarded te-mode) pre-kind 'flat))
     (instantiate/optimize sc fail kind
@@ -333,31 +332,19 @@
 (define (same sc)
   (triple sc sc sc))
 
-;; Macro to simplify (and avoid reindentation) of the match below
-;;
-;; The sc-cache hashtable is used to memoize static contracts. The keys are
-;; a pair of the Type-seq number for a type and 'untyped or 'typed
-(define-syntax (cached-match stx)
-  (syntax-case stx ()
-    [(_ sc-cache type-expr typed-side-expr match-clause ...)
-     #'(let ([type type-expr]
-             [typed-side typed-side-expr])
-         (define key (cons type typed-side))
-         (cond [(hash-ref sc-cache key #f)]
-               [else
-                (define sc (match type match-clause ...))
-                (define fvs (fv type))
-                ;; Only cache closed terms, otherwise open terms may show up
-                ;; out of context.
-                (unless (or (not (null? fv))
-                            ;; Don't cache types with applications of Name types because
-                            ;; it does the wrong thing for recursive references
-                            (has-name-app? type))
-                  (hash-set! sc-cache key sc))
-                sc]))]))
-
 (define (type->static-contract type init-fail
-                               #:typed-side [typed-side #t])
+                               #:typed-side [typed-side #t]
+                               #:enforcement-mode [te-mode (current-type-enforcement-mode)])
+  (case te-mode
+    [(guarded)
+     (type->static-contract/guarded type init-fail #:typed-side typed-side)]
+    [(transient)
+     (type->static-contract/transient type)]
+    [else
+     any/sc]))
+
+(define (type->static-contract/guarded type init-fail
+                                       #:typed-side [typed-side #t])
   (let/ec return
     (define (fail #:reason reason) (return (init-fail #:reason reason)))
     (let loop ([type type] [typed-side (if typed-side 'typed 'untyped)] [recursive-values (hash)])
@@ -558,7 +545,6 @@
        [(Promise: t)
         (promise/sc (t->sc t))]
        [(Opaque: p?)
-        ;; bg performance
         (flat/sc p?)]
        [(Continuation-Mark-Keyof: t)
         (continuation-mark-key/sc (t->sc t))]
@@ -772,8 +758,7 @@
         (fail #:reason "contract generation not supported for this type")]))))
 
 ;; TODO full tests
-(define (type->static-contract/transient type
-                                         #:cache [sc-cache (make-hash)])
+(define (type->static-contract/transient type)
   (define typed-side 'both)
   (let loop ([type type])
     (define t->sc loop)
@@ -796,8 +781,7 @@
          (and-prop/sc (map prop->sc ps))]
         [(OrProp: ps)
          (or-prop/sc (map prop->sc ps))]))
-    (cached-match
-     sc-cache type typed-side
+    (match type
      ;; Implicit recursive aliases
      [(Name: name-id args #f)
       any/sc]

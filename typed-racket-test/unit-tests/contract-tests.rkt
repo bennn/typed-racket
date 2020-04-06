@@ -1025,6 +1025,113 @@
 ;   (t-int (-val #rx"aa") void #rx"aa" #:untyped)
 ;   (t-int (-val #rx#"bb") void #rx#"bb" #:untyped)
 
+;   (t-int/fail -Async-ChannelTop async-channel-get (let ([ch (make-async-channel)]) (async-channel-put ch "ok") ch)
+;          #:typed
+;          #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -Async-ChannelTop async-channel-get (let ([ch (make-async-channel)]) (async-channel-put ch "ok") ch)
+;          #:untyped)
+;   (t-int/fail -MPairTop mcar (mcons 0 0)
+;          #:typed
+;          #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -MPairTop mcar (mcons 0 0)
+;          #:untyped)
+;   (t-int/fail -HashTableTop (lambda (h) (hash-set! h 'a 0)) (make-hash `((a . b)))
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -HashTableTop (lambda (h) (hash-set! h 'a 0)) (make-hash `((a . b)))
+;          #:untyped)
+;   (t-int/fail -Mutable-HashTableTop (lambda (h) (hash-set! h 'a 0)) (make-hash `((a . b)))
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -Mutable-HashTableTop (lambda (h) (hash-set! h 'a 0)) (make-hash `((a . b)))
+;          #:untyped)
+;   (t-int/fail -Weak-HashTableTop (lambda (h) (hash-set! h 'a 0)) (make-weak-hash `((a . b)))
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -Weak-HashTableTop (lambda (h) (hash-set! h 'a 0)) (make-weak-hash `((a . b)))
+;          #:untyped)
+;   (t-int/fail -ThreadCellTop (lambda (tc) (thread-cell-set! tc 42)) (make-thread-cell 'x)
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -ThreadCellTop (lambda (tc) (thread-cell-set! tc 42)) (make-thread-cell 'x)
+;          #:untyped)
+;   (t-int/fail -Prompt-TagTop continuation-prompt-available? (make-continuation-prompt-tag)
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -Prompt-TagTop continuation-prompt-available? (make-continuation-prompt-tag)
+;          #:untyped)
+;   (t-int/fail -Continuation-Mark-KeyTop (lambda (k) (continuation-mark-set-first #f k)) (make-continuation-mark-key)
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -Continuation-Mark-KeyTop (lambda (k) (continuation-mark-set-first #f k)) (make-continuation-mark-key)
+;          #:untyped)
+;   (t-int/fail -ClassTop class->interface object%
+;               #:typed
+;               #:msg "Attempted to use a higher-order value passed as `Any`")
+;   (t-int -ClassTop class->interface object%
+;          #:untyped)
+;   (t-int (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;          (λ (c) (c 0 0 'zero 0 'zero))
+;          (case-lambda
+;            [(zero) #t]
+;            [(zero . rst) #f])
+;          #:typed)
+;   ;; shouldn't error since we should trust the typed side, right?
+;   ;(t-int/fail (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;   ;       (λ (c) (c 'zero 'zero))
+;   ;       (case-lambda
+;   ;         [(zero) #t]
+;   ;         [(zero . rst) #f])
+;   ;       #:untyped
+;   ;       #:msg #rx"given: '(zero)")
+;   (t-int/fail (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;               (λ (c) (c 0))
+;               (case-lambda
+;                 [(zero) 'true]
+;                 [(zero . rst) 'false])
+;               #:untyped
+;               #:msg #rx"produced: 'true")
+;   (t-int/fail (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;               (λ (c) (c 0))
+;               (case-lambda
+;                 [(zero) 'true]
+;                 [(zero . rst) 'false])
+;               #:untyped
+;               #:msg #rx"produced: 'true")
+;   (t-int/fail (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;          (λ (c) (c 0 'zero))
+;          (case-lambda
+;            [(zero) #t]
+;            [(zero . rst) #f])
+;          #:typed
+;          #:msg #rx"contract violation")
+;   (t-int/fail (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;          (λ (c) (c 0 0 0))
+;          (case-lambda
+;            [(zero) #t]
+;            [(zero . rst) #f])
+;          #:typed
+;          #:msg #rx"contract violation")
+;   (t-int/fail (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;          (λ (c) (c 0 0 'zero 0))
+;          (case-lambda
+;            [(zero) #t]
+;            [(zero . rst) #f])
+;          #:typed
+;          #:msg #rx"contract violation")
+;   ;; prefab contracts
+;   (t (-prefab 'point -Zero -Zero))
+;   (t (-prefab 'point (-prefab 'point -Zero -Zero) (-prefab 'point -Zero -Zero)))
+;   (t (-prefab 'fun (-Number . -> . -Number)))
+;   (t (-prefab '(box-box #(0)) (-box -Number)))
+;   (t (-prefab-top 'point 2))
+;   (t (-prefab-top '(box-box #(0)) 1))
+;   (t-int (-val #rx"aa") void #rx"aa" #:untyped)
+;   (t-int (-val #rx#"bb") void #rx#"bb" #:untyped)
+;   (t/fail (make-Ephemeron -Symbol)
+;           "contract generation not supported for this type")
+;   (t/fail (make-Future -Symbol)
+;           "contract generation not supported for this type")
 
    (t-int/fail -Async-ChannelTop async-channel-get (let ([ch (make-async-channel)]) (async-channel-put ch "ok") ch)
           #:typed
