@@ -283,7 +283,7 @@
 - [ ] defend / optimize : share "escapes" more gracefully
 - [ ] type-contract: new tests + docs
 - [ ] defender : docs, tests, etc
-  - [ ] need 'maybe-type-of' fn?
+  - [X] need 'maybe-type-of' fn? yes optimizer needs it, cannot rely on dead-code to avoid untyped code
 
 - [ ] cod check for/list etc, its always a list or void or sum
   (2020-02-28 still a problem, (check (#%app for-loop  ....)))
@@ -363,6 +363,9 @@
     try a pull request
 
 - [ ] support case-lambda in defender
+- [ ] defend holes, nothing protected in here (`struct` may have same holes)
+  - [ ] module+
+  - [ ] (test-case ....) and other macros?
 
 - [ ] issue-625 test, check for nonsense hash keys when contract applied
       ... or not, not sure if this is transient or not to check
