@@ -369,3 +369,8 @@
 
 - [ ] issue-625 test, check for nonsense hash keys when contract applied
       ... or not, not sure if this is transient or not to check
+
+- [ ] outstanding branches
+  - rackunit, unsafe-provide macro
+  - 2htdp-typed, unsafe-provide macro
+  - 
