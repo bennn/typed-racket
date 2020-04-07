@@ -394,7 +394,7 @@ oH1   pr476-compile-time-images.rkt
      pr575-variation-1.rkt
      pr575-variation-2.rkt
      pr575-variation-3.rkt
-H10  pr575-variation-4.rkt
+XH10  pr575-variation-4.rkt
      pr575-variation-5.rkt
      pr9043.rkt
      pr9046.rkt
@@ -402,12 +402,12 @@ H10  pr575-variation-4.rkt
      pr9053-2.rkt
      pr9053.rkt
      pr9054.rkt
-WH   prefab-field-provide.rkt
-is-num-tuple? broken!  prefab.rkt
+oWH   prefab-field-provide.rkt
+ois-num-tuple? broken!  prefab.rkt
      procedure-top.rkt
      promise-provide-generate-contract.rkt
      promise.rkt
-inexhaustive match defender.rkt:150     prompt-tag.rkt
+oinexhaustive match defender.rkt:150     prompt-tag.rkt
      provide-alias-omit-define.rkt
      provide-case-rest.rkt
      provide-for-meta.rkt
