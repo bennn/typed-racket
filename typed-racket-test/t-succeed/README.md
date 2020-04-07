@@ -417,7 +417,7 @@ oinexhaustive match defender.rkt:150     prompt-tag.rkt
      provide-struct.rkt
      provide-syntax.rkt
      racket-struct.rkt
-H1   rackunit-suite.rkt
+oH1   rackunit-suite.rkt
      rackunit.rkt
      random-bits.rkt
      rec-het-vec-infer.rkt
@@ -427,7 +427,7 @@ H1   rackunit-suite.rkt
 todo    recursive-type-alias-top-level.rkt
      refinement-even.rkt
      refinements-and-aliases.rkt
-H0   refinements-expected-type1.rkt
+oH0   refinements-expected-type1.rkt
 H0   refinements-quicksort.rkt
      regexp-match-kw.rkt
      req-type-sub.rkt
