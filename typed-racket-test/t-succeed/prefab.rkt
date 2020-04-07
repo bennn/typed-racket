@@ -2,7 +2,7 @@
 
 ;; Test prefab struct declarations
 
-
+(require typed/rackunit)
 (provide (all-defined-out))
 
 (struct foo ([x : Symbol]) #:prefab)
@@ -241,17 +241,17 @@
 (define bad-point1 (tuple "1" 2))
 (define bad-point2 (tuple 1 "2"))
 
+(check-not-exn (lambda ()
 (unless (is-tuple? (if (zero? (random 1)) good-point "other value"))
-  (error "is-tuple? broken!"))
+  (error "is-tuple? broken!"))))
 
-(unless (is-num-tuple? (if (zero? (random 1)) good-point "other value"))
-  (error "is-tuple? broken!"))
-
+(check-exn #rx"broken" (lambda ()
 (when (is-num-tuple? (if (zero? (random 1)) bad-point1 good-point))
-  (error "is-num-tuple? broken!"))
+  (error "is-num-tuple? broken!"))))
 
+(check-exn #rx"broken" (lambda ()
 (when (is-num-tuple? (if (zero? (random 1)) bad-point2 good-point))
-  (error "is-num-tuple? broken!"))
+  (error "is-num-tuple? broken!"))))
 
 
 (struct num-num ([n1 : Number] [n2 : Number]) #:prefab)
