@@ -389,7 +389,7 @@ X  pr390-variation-5.rkt
      pr390-variation-7.rkt
      pr403.rkt
      pr468-in-query.rkt
-H1   pr476-compile-time-images.rkt
+oH1   pr476-compile-time-images.rkt
      pr575-variation-0.rkt
      pr575-variation-1.rkt
      pr575-variation-2.rkt
