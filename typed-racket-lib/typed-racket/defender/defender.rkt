@@ -269,6 +269,10 @@
         (-> in -Void)]
        [else
         (raise-arguments-error 'stx->arrow-type "wrong number of arguments supplied to parameter" "type" ty "stx" stx "num-args" num-args)])]
+     [(Refinement: parent pred)
+      (raise-user-error 'refine "~s~n ~s~n ~s~n" ty parent pred)]
+     [(DepFun: _ _ _)
+      ty]
      [_
       (raise-arguments-error 'stx->arrow-type "failed to parse arrow from type of syntax object"
         "e" (syntax->datum stx)
@@ -387,7 +391,8 @@
    [(Fun: (list))
     (make-immutable-hash)]
    [(or (Fun: (list (Arrow: mand rst kws _)))
-        (Arrow: mand rst kws _))
+        (Arrow: mand rst kws _)
+        (app (lambda (tt) (match tt ((DepFun: mand _ _) (list mand #f '())))) (list mand rst kws)))
     (let* ([t# (make-immutable-hash)]
            [t# ;; positional arguments
             (for/fold ([acc t#])
@@ -403,7 +408,7 @@
                 (let ([tys (Rest-tys rst)])
                   (if (and (not (null? tys)) (null? (cdr tys)))
                     (make-Listof (car tys))
-                    (raise-arguments-error 'type->domain-map "cannot handle rest type yet" "rest" tys "orig type" t))))]
+                    (raise-arguments-error 'type->domain-map "cannot handle this rest type yet" "rest" tys "orig type" t))))]
              [(RestDots? rst)
               (hash-set t# REST-KEY (RestDots-ty rst))]
              [else
