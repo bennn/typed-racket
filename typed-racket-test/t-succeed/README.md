@@ -28,6 +28,7 @@ H10 = value-contract missing
 H11 = type->domain-map: cannot handle rest type yet
 H12 = internal typecheck error
       maybe from rackunit
+H13 = identifier used out of context (!!)
 
 WH = "what happened"
 
@@ -428,7 +429,7 @@ todo    recursive-type-alias-top-level.rkt
      refinement-even.rkt
      refinements-and-aliases.rkt
 oH0   refinements-expected-type1.rkt
-H0   refinements-quicksort.rkt
+H13  refinements-quicksort.rkt
      regexp-match-kw.rkt
      req-type-sub.rkt
      require-poly.rkt
@@ -443,7 +444,7 @@ X    require-typed-no-check.rkt
      require-typed-parse.rkt
      require-typed-rename.rkt
      require-typed-struct-custom-type.rkt
-H11  rest-star-hash-examples.rkt
+oH11  rest-star-hash-examples.rkt
      richard-bugs.rkt
      runtime-path.rkt
      safe-letrec.rkt
