@@ -586,7 +586,7 @@
             (with-syntax ([(ctc) ctc-stx*]
                           [v (generate-temporary var-name)]
                           [err (parameterize ([error-print-width 20])
-                                 (format "~e : ~a" (syntax->datum app-stx) t*))])
+                                 (format "~e : ~a" (syntax->datum app-stx) (car t*)))])
               (define new-stx
                 (with-type
                   cod-tc-res
