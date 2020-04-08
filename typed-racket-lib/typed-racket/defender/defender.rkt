@@ -404,11 +404,7 @@
              [(Type? rst)
               (hash-set t# REST-KEY (make-Listof rst))]
              [(Rest? rst)
-              (hash-set t# REST-KEY
-                (let ([tys (Rest-tys rst)])
-                  (if (and (not (null? tys)) (null? (cdr tys)))
-                    (make-Listof (car tys))
-                    (raise-arguments-error 'type->domain-map "cannot handle this rest type yet" "rest" tys "orig type" t))))]
+              (hash-set t# REST-KEY (make-Listof Univ))]
              [(RestDots? rst)
               (hash-set t# REST-KEY (RestDots-ty rst))]
              [else
