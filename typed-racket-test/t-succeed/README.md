@@ -27,7 +27,6 @@ H8 = unexpected val-able
 H10 = value-contract missing
 H11 = type->domain-map: cannot handle rest type yet
 H12 = internal typecheck error
-      maybe from rackunit
 H13 = identifier used out of context (!!)
 
 WH = "what happened"
@@ -429,7 +428,7 @@ todo    recursive-type-alias-top-level.rkt
      refinement-even.rkt
      refinements-and-aliases.rkt
 oH0   refinements-expected-type1.rkt
-H13  refinements-quicksort.rkt
+!! H13  refinements-quicksort.rkt
      regexp-match-kw.rkt
      req-type-sub.rkt
      require-poly.rkt
@@ -450,8 +449,8 @@ oH11  rest-star-hash-examples.rkt
      safe-letrec.rkt
      safe-vector-base.rkt
 X    safe-vector-untyped.rkt
-H0   safe-vector.rkt
-H0   scoped-type-vars.rkt
+!! H13  safe-vector.rkt
+oH0   scoped-type-vars.rkt
      scratch.rkt
      sealing-contract-1.rkt
      sealing-contract-2.rkt
@@ -459,8 +458,8 @@ H0   scoped-type-vars.rkt
      seasoned-schemer.rkt
      send.rkt
      sequence-cnt.rkt
-H7   sequenceof-integer.rkt
-H3   sequences.rkt
+oH7   sequenceof-integer.rkt
+!! H3   sequences.rkt yikes pos->vals might return bad thing! (for ... (open-input-string ...) ....)
      set-contract.rkt
      set.rkt
      simple-fake-or.rkt
@@ -505,13 +504,13 @@ X    standard-features-no-check.rkt
      structs-across-modules.rkt
      structs-variance.rkt
      structs-variance2.rkt
-H0   stx.rkt
+!! H12  stx.rkt
      submod-vector.rkt
      submodules.rkt
-H0   subst-poly-dots.rkt
+oH0   subst-poly-dots.rkt
      test-child-field.rkt
      test.rkt
-H0   test2.rkt
+!! H12  test2.rkt
      threads-and-async-channels.rkt
      threads-and-channels.rkt
      time.rkt
@@ -546,7 +545,7 @@ X    unsafe-require-top-level.rkt
      untyped-submod.rkt
      user-defined-sp.rkt
 oH0   values-dots-result.rkt
-H0   values-dots.rkt
+!! H0   values-dots.rkt
      values-dots2.rkt
      values-object.rkt
      varargs-tests.rkt
@@ -561,7 +560,7 @@ X    vector-contract.rkt
      with-handlers-rest-arg.rkt
      with-handlers-star.rkt
      with-handlers.rkt
-"that's impossible!"    with-linear-integer-arith.rkt
+o"that's impossible!"    with-linear-integer-arith.rkt gee that was the expected guarded output wtf
      with-linear-integer-arith2.rkt
 H12  with-syntax.rkt
 todo    with-type-lift.rkt
