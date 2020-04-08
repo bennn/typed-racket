@@ -99,26 +99,30 @@
         #;(syntax/loc stx (let-values ([(f) fun]) body))]
        ;; TODO case-lambda
        [(op:lambda-identifier formals . body)
-        ;; TODO remove stx->arrow ? maybe this can all be simpler
-        (define dom-map (type->domain-map (stx->arrow-type stx)))
-        (define body+ (loop #'body #f))
-        (void (readd-props! body+ #'body))
-        (define formals+
-          (let-values ([(extra* formals+)
-                        (if skip-dom?
-                          (values '() '())
-                          (protect-formals dom-map #'formals ctc-cache))])
-            (register-extra-defs! extra*)
-            formals+))
-        (define stx+
-          (with-syntax ([body+ body+])
-            (if (null? formals+)
-              (syntax/loc stx (op formals . body+))
-              (let ((stx (quasisyntax/loc stx (op formals (#%plain-app void . #,formals+) . body+))))
-                (register-ignored! (caddr (syntax-e stx)))
-                stx))))
-        (void (readd-props! stx+ stx))
-        stx+]
+        (cond
+          [(maybe-type-of stx)
+           ;; TODO remove stx->arrow ? maybe this can all be simpler
+           (define dom-map (type->domain-map (stx->arrow-type stx)))
+           (define body+ (loop #'body #f))
+           (void (readd-props! body+ #'body))
+           (define formals+
+             (let-values ([(extra* formals+)
+                           (if skip-dom?
+                             (values '() '())
+                             (protect-formals dom-map #'formals ctc-cache))])
+               (register-extra-defs! extra*)
+               formals+))
+           (define stx+
+             (with-syntax ([body+ body+])
+               (if (null? formals+)
+                 (syntax/loc stx (op formals . body+))
+                 (let ((stx (quasisyntax/loc stx (op formals (#%plain-app void . #,formals+) . body+))))
+                   (register-ignored! (caddr (syntax-e stx)))
+                   stx))))
+           (void (readd-props! stx+ stx))
+           stx+]
+          [else
+            stx])]
        [(#%plain-app (letrec-values (((a:id) e0)) b:id) e1* ...)
         #:when (free-identifier=? #'a #'b)
         ;; (for ....) combinators expand to a recursive function that does not escape,

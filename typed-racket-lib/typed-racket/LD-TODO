@@ -294,6 +294,7 @@
    ... so pos->vals gets a blessed type
    ... and this means, I guess, that transient-env is the wrong choice; instead
     should key on types rather than identifiers
+  turns out this is ESSENTIAL for (for ((c (open-input-string "yolo"))) ....)
 
 - [ ] merge TR PR hash-contract-only-untyped, adjust transient
 

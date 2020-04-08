@@ -23,5 +23,7 @@
          rackunit)
 (check-equal? (foo 0) "I got an integer: 0")
 (check-equal? (bar) "I got an integer: 0")
-(check-exn exn:fail:contract?
+(check-not-exn
   (λ () (set-box! (car b*) 'NaN)))
+(check-not-exn ;; untyped context
+  (λ () (unbox (car b*))))
