@@ -504,13 +504,13 @@ X    standard-features-no-check.rkt
      structs-across-modules.rkt
      structs-variance.rkt
      structs-variance2.rkt
-!! H12  stx.rkt
+!! H12  stx.rkt  see ben.rkt & aaa.rkt ... at a loss
      submod-vector.rkt
      submodules.rkt
 oH0   subst-poly-dots.rkt
      test-child-field.rkt
      test.rkt
-!! H12  test2.rkt
+oH12  test2.rkt
      threads-and-async-channels.rkt
      threads-and-channels.rkt
      time.rkt
@@ -562,7 +562,7 @@ X    vector-contract.rkt
      with-handlers.rkt
 o"that's impossible!"    with-linear-integer-arith.rkt gee that was the expected guarded output wtf
      with-linear-integer-arith2.rkt
-H12  with-syntax.rkt
+oH12  with-syntax.rkt
 todo    with-type-lift.rkt
 todo    with-type-typed-context-flag.rkt
 todo cannot use in typed module    with-type.rkt
