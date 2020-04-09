@@ -1,6 +1,7 @@
 #lang racket/base
 
-(require typed-racket/utils/tc-utils)
+(require typed-racket/utils/tc-utils
+         racket/struct-info)
 
 (provide make-typed-renaming un-rename)
 
@@ -23,7 +24,9 @@
   ;; expansion time when the typed context flag is set correctly
   #:property prop:rename-transformer
   (λ (obj)
-    (if (eq? (current-type-enforcement-mode) (typed-renaming-enforcement-mode obj))
+    (if (or (eq? (current-type-enforcement-mode) (typed-renaming-enforcement-mode obj))
+            (struct-info?  ;; HACK ... but what TODO?
+              (syntax-local-value (typed-renaming-target obj) (lambda () #f))))
         (typed-renaming-target obj)
         (typed-renaming-alternate obj))))
 
