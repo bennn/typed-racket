@@ -66,7 +66,7 @@
     [t:typed-struct (attribute t.tvars)]
     [t:typed-struct/exec null]))
 
-;; syntax? -> (listof def-binding?)
+;; syntax? -> (listof binding?)
 (define (tc-toplevel/pass1 form)
   (parameterize ([current-orig-stx form])
     (syntax-parse form

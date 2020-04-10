@@ -24,9 +24,7 @@
   ;; expansion time when the typed context flag is set correctly
   #:property prop:rename-transformer
   (λ (obj)
-    (if (or (eq? (current-type-enforcement-mode) (typed-renaming-enforcement-mode obj))
-            (struct-info?  ;; HACK ... but what TODO?
-              (syntax-local-value (typed-renaming-target obj) (lambda () #f))))
+    (if (eq? (current-type-enforcement-mode) (typed-renaming-enforcement-mode obj))
         (typed-renaming-target obj)
         (typed-renaming-alternate obj))))
 
