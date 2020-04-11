@@ -731,16 +731,20 @@
       (cons (car stx*) (syntax*->syntax ctx (cdr stx*))))))
 
 (define (type->flat-contract t ctc-cache)
-  (define (fail #:reason r)
-    (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" t r))
-  (match-define (list defs ctc)
-    (type->contract t fail #:typed-side #false #:cache ctc-cache))
-  (for-each register-ignored! defs)
-  (values
-    defs
-    (if (free-identifier=? ctc #'any/c)
-      #f
-      ctc)))
+  (cond
+    [(eq? t Univ)
+     (values '() #f)]
+    [else
+     (define (fail #:reason r)
+       (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" t r))
+     (match-define (list defs ctc)
+       (type->contract t fail #:typed-side #false #:cache ctc-cache))
+     (for-each register-ignored! defs)
+     (values
+       defs
+       (if (free-identifier=? ctc #'any/c) ;; TODO need this?
+         #f
+         ctc))]))
 
 (define (type->flat-contract* t* ctc-cache)
   (for/fold ((extra-def* '())
