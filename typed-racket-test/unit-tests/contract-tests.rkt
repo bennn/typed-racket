@@ -153,6 +153,7 @@
                                #:typed-side typed-side
                                (λ (#:reason [reason #f])
                                  (fail-check (or reason "Type could not be converted to contract")))
+                               #:cache #f
                                #:enforcement-mode 'te-flag.value))
              (match-define (list extra-stxs ctc-stx) ctc-result)
              (define namespace (ctc-namespace))
@@ -1024,7 +1025,7 @@
 ;   (t-sc (-val #\e) (flat/sc #''#\e))
 ;   (t-int (-val #rx"aa") void #rx"aa" #:untyped)
 ;   (t-int (-val #rx#"bb") void #rx#"bb" #:untyped)
-
+;
 ;   (t-int/fail -Async-ChannelTop async-channel-get (let ([ch (make-async-channel)]) (async-channel-put ch "ok") ch)
 ;          #:typed
 ;          #:msg "Attempted to use a higher-order value passed as `Any`")
@@ -1589,15 +1590,93 @@
    (t/fail (make-Future -Symbol)
            "contract generation not supported for this type")
    )
+;
+;   (t-int (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;          (λ (c) (c 0 0 'zero 0 'zero))
+;          (case-lambda
+;            [(zero) #t]
+;            [(zero . rst) #f])
+;          #:typed)
+;   ;; shouldn't error since we should trust the typed side, right?
+;   ;(t-int/fail (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;   ;       (λ (c) (c 'zero 'zero))
+;   ;       (case-lambda
+;   ;         [(zero) #t]
+;   ;         [(zero . rst) #f])
+;   ;       #:untyped
+;   ;       #:msg #rx"given: '(zero)")
+;   (t-int/fail (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;               (λ (c) (c 0))
+;               (case-lambda
+;                 [(zero) 'true]
+;                 [(zero . rst) 'false])
+;               #:untyped
+;               #:msg #rx"produced: 'true")
+;   (t-int/fail (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;               (λ (c) (c 0))
+;               (case-lambda
+;                 [(zero) 'true]
+;                 [(zero . rst) 'false])
+;               #:untyped
+;               #:msg #rx"produced: 'true")
+;   (t-int/fail (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;          (λ (c) (c 0 'zero))
+;          (case-lambda
+;            [(zero) #t]
+;            [(zero . rst) #f])
+;          #:typed
+;          #:msg #rx"contract violation")
+;   (t-int/fail (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;          (λ (c) (c 0 0 0))
+;          (case-lambda
+;            [(zero) #t]
+;            [(zero . rst) #f])
+;          #:typed
+;          #:msg #rx"contract violation")
+;   (t-int/fail (->* (list -Zero) (make-Rest (list -Zero -Symbol)) -Boolean)
+;          (λ (c) (c 0 0 'zero 0))
+;          (case-lambda
+;            [(zero) #t]
+;            [(zero . rst) #f])
+;          #:typed
+;          #:msg #rx"contract violation")
+;   ;; prefab contracts
+;   (t (-prefab 'point -Zero -Zero))
+;   (t (-prefab 'point (-prefab 'point -Zero -Zero) (-prefab 'point -Zero -Zero)))
+;   (t (-prefab 'fun (-Number . -> . -Number)))
+;   (t (-prefab '(box-box #(0)) (-box -Number)))
+;   (t (-prefab-top 'point 2))
+;   (t (-prefab-top '(box-box #(0)) 1))
+;   (t-int (-val #rx"aa") void #rx"aa" #:untyped)
+;   (t-int (-val #rx#"bb") void #rx#"bb" #:untyped)
+;
+;   (t-int -ChannelTop
+;          channel-get
+;          (let ((ch (make-channel))) (thread (λ () (channel-put ch "ok"))) ch)
+;          #:typed)
+;   (t-int -ChannelTop
+;          channel-get
+;          (let ((ch (make-channel))) (thread (λ () (channel-put ch "ok"))) ch)
+;          #:untyped)
+;   (t-int/fail -ChannelTop
+;               (lambda (ch)
+;                 (channel-put ch 'error))
+;               (make-channel)
+;               #:typed
+;               #:msg "higher-order value passed as `Any`")
+  )
 
   (test-suite
    "Transient Tests"
-   ;; OK these all work, can use
-   #;(t/fail ((-poly (a) (-vec a)) . -> . -Symbol) "cannot generate contract for non-function polymorphic type" #:transient)
-   #;(t-sc -Number number/sc #:transient)
-   #;(t-int Any-Syntax syntax? #'#'A #:typed #:transient)
-   #;(t-int/fail (-poly (a) (-> a a)) (λ (f) (f 1)) (λ (x) 1) #:untyped #:transient #:msg #rx"produced: 1.*blaming: untyped")
-
+;   (t-sc ((-poly (a) (-vec a)) . -> . -Symbol)
+;         (make-procedure-arity-flat/sc 1 '() '()) #:transient)
+;   (t-sc -Number number/sc #:transient)
+;   (t-int Any-Syntax syntax? #'#'A #:typed #:transient)
+;   (t-int (-poly (a) (-> a a))
+;          (λ (f) (f 1))
+;          (λ (x) 1)
+;          #:untyped #:transient)
+;
 ;   (t (-Number . -> . -Number) #:transient)
 ;
 ;   (t-sc (make-Ephemeron -Symbol) ephemeron?/sc #:transient)
@@ -1645,22 +1724,32 @@
 ;         (make-procedure-arity-flat/sc 1 '() '()) #:transient)
 ;   (t-sc (-polydots (a) (->... (list) (a a) -Symbol))
 ;         procedure?/sc #:transient)
+;
+;  (t-sc
+;    (-polydots (a b)
+;               (->... (list) ((-lst* (->... (list) (a a) b)) b) Univ))
+;    procedure?/sc
+;    ;; TODO better yet = (make-procedure-arity-flat/sc 1 '() '())
+;    #:transient)
+;  (t-sc (-polydots (a) (-lst* (->... (list) (a a) Univ)))
+;        (list-length/sc 1) #:transient)
+;  (t-sc (make-ListDots Univ 'x)
+;        list?/sc #:transient)
+;  (t-sc (make-SequenceDots (list) Univ 'x)
+;        sequence?/sc #:transient)
+;  (t-int/fail (make-Value 3.0)
+;              values
+;              3
+;              #:untyped #:transient
+;              #:msg #rx"produced: 3")
+;  (t-int/fail (make-Value 3)
+;              values
+;              3.0
+;              #:untyped #:transient
+;              #:msg #rx"produced: 3.0")
 
-  (t-sc
-    (-polydots (a b)
-               (->... (list) ((-lst* (->... (list) (a a) b)) b) Univ))
-    procedure?/sc
-    ;; TODO better yet = (make-procedure-arity-flat/sc 1 '() '())
-    #:transient)
-  (t-sc (-polydots (a) (-lst* (->... (list) (a a) Univ)))
-        (list-length/sc 1) #:transient)
-  (t-sc (make-ListDots Univ 'x)
-        list?/sc #:transient)
-  (t-sc (make-SequenceDots (list) Univ 'x)
-        sequence?/sc #:transient)
-
-;; TODO ?
-   ;; (t-sc (-StructTop s-type))
-   ;; (t-sc (-PrefabTop p-key))
+;   ;; TODO ?
+;   ;; (t-sc (-StructTop s-type))
+;   ;; (t-sc (-PrefabTop p-key))
   )
 ))

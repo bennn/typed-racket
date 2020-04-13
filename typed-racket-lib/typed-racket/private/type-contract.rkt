@@ -434,7 +434,7 @@
                 (not (or (regexp? v) (byte-regexp? v))))
             (flat/sc #`(quote #,v))]
           [else
-           (flat/sc #`(lambda (x) (equal? x '#,v)))])]
+           (flat/sc #`(flat-named-contract '#,v (lambda (x) (equal? x '#,v))))])]
        [(Base-name/contract: sym ctc) (flat/sc ctc)]
        [(Distinction: _ _ t) ; from define-new-subtype
         (t->sc t)]
