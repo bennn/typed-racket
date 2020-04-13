@@ -310,6 +310,25 @@
   - [X] why untyped FSM so slow? 4sec untyped, 1sec transient
         #:no-optimize down to 4 sec, wow
         ok but this does not help find guarded + transient mixtures
+- [X] pos->vals appears in for loop expansion, gets a cod check, but doesn't need one why
+  "pos->vals" is only a variable name, used to describe the first result of `make-sequence`, great
+  one fix: give `make-sequence` a deeper type and in the defender check for "deeper"
+   ... so pos->vals gets a blessed type
+   ... and this means, I guess, that transient-env is the wrong choice; instead
+    should key on types rather than identifiers
+  turns out this is ESSENTIAL for (for ((c (open-input-string "yolo"))) ....)
+  - [X] fixed with better type for `make-sequence` long live occurrence typing
+  - don't want to add trust to types because:
+    1. need to change def-rep to have new keywords, that means EVERYTHING
+       thats a rep --- props, objects ... --- needs transient-trusted
+    2. need to propagate transient-trust outside the initial env,
+       so now every operation on types that might lead to the type the
+       defender sees must reason about trust, yikes
+- [X] merge TR PR hash-contract-only-untyped, adjust transient
+
+- [ ] unhygienic S require T identifier
+      use contract-def/provide-property ?
+      ... need changes to provide-handling.rkt
 
 - [ ] typed-racket-test/t-succeed/README.md (long list!)
   - [X] one pass
@@ -327,22 +346,6 @@
 - [ ] cod check for/list etc, its always a list or void or sum
   (2020-02-28 still a problem, (check (#%app for-loop  ....)))
 
-- [ ] pos->vals appears in for loop expansion, gets a cod check, but doesn't need one why
-  "pos->vals" is only a variable name, used to describe the first result of `make-sequence`, great
-  one fix: give `make-sequence` a deeper type and in the defender check for "deeper"
-   ... so pos->vals gets a blessed type
-   ... and this means, I guess, that transient-env is the wrong choice; instead
-    should key on types rather than identifiers
-  turns out this is ESSENTIAL for (for ((c (open-input-string "yolo"))) ....)
-
-- [ ] merge TR PR hash-contract-only-untyped, adjust transient
-
-
-
-- [ ] unhygienic S require T identifier
-      use contract-def/provide-property ?
-      ... need changes to provide-handling.rkt
-
 - [ ] transient breaks tail calls? or does typed-id? check make it okay?
   - Herman or Disney might have a (workshop?) paper about this,
     moving contracts into continuation marks
@@ -357,12 +360,12 @@
       tc-app ditto
 
 - [ ] private/with-type ... allow transient as well as guarded
+  - [ ] with-type, add te-mode param and update docs
 
 - [ ] for way later ... mutable things get a proxy, tracks "correct" indexes
   who knows if that will pay off
 
 - [ ] add defend to typecheck/toplevel-trampoline + tests
-- [ ] with-type, add te-mode param and update docs
 - [ ] define-typed/untyped-id ... adapt to E T
 
 - [ ] enable #:with-refinements etc by looking for command-line arguments?
@@ -380,4 +383,4 @@
 - [ ] outstanding branches
   - rackunit, unsafe-provide macro
   - 2htdp-typed, unsafe-provide macro
-  - 
+
