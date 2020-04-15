@@ -511,9 +511,9 @@
                          typed-racket/types/struct-table typed-racket/types/abbrev
                          (rename-in racket/private/sort [sort raw-sort]))
                 #,@(make-env-init-codes)
-                #,@(for/list ((rt (in-list rts)))
-                     ;; 2020-03 : rts = ids + types,  extra types to register to help typed -> transient interaction, not sure if helpful
-                     (make-register-type-code (car rt) (cadr rt)))
+                ;;#,@(for/list ((rt (in-list rts)))
+                ;;     ;; 2020-03 : rts = ids + types,  extra types to register to help typed -> transient interaction, not sure if helpful
+                ;;     (make-register-type-code (car rt) (cadr rt)))
                 #,@(for/list ([a (in-list aliases)])
                      (match-define (list from to) a)
                      #`(add-alias (quote-syntax #,from) (quote-syntax #,to))))))

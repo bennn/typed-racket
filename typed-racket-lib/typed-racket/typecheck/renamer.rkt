@@ -14,6 +14,7 @@
 
 ;; target : identifier
 ;; alternate : identifier
+;; enforcement-mode : type-enforcement-mode?
 (struct typed-renaming (target alternate enforcement-mode)
   ;; prevent the rename transformer from expanding in
   ;; module-begin context because the typed context flag
