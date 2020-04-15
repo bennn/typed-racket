@@ -325,10 +325,18 @@
        so now every operation on types that might lead to the type the
        defender sees must reason about trust, yikes
 - [X] merge TR PR hash-contract-only-untyped, adjust transient
+- [X] unhygienic S require T identifier
+  - notes:
+    use contract-def/provide-property ?
+    ... need changes to typecheck/provide-handling.rkt
+  - problem:
+    typed rename + contract def leads to id without type,
+    see test/transient/succeed/guarded-transient-id.rkt
+  - [ ] remove `make-register-type-code`
+  - [ ] cleanup impl for `maybe-type-of`
+  - [ ] remove rtss in provide-handling.rkt
 
-- [ ] unhygienic S require T identifier
-      use contract-def/provide-property ?
-      ... need changes to provide-handling.rkt
+- [ ] max_zordoz config type error ... what is wrong?
 
 - [ ] typed-racket-test/t-succeed/README.md (long list!)
   - [X] one pass

@@ -17,7 +17,11 @@
          (utils tc-utils)
          (only-in (rep type-rep) Type?)
          (typecheck renamer)
-         (except-in (types utils abbrev kw-types) -> ->* one-of/c))
+         (except-in (types utils abbrev kw-types) -> ->* one-of/c)
+         (for-template
+           (only-in racket/contract/private/provide
+             provide/contract-info?
+             provide/contract-info-original-id)))
 
 (require-for-cond-contract (rep object-rep core-rep))
 
@@ -96,11 +100,22 @@
                                                  Err))
                                    (register-type i t)
                                    t)]
-                             [(unhygienic-lookup-type i #f)
-                              ;; TODO i should be a T-redirected identifier
-                              ;;  used in S code. Make this hygienic.
-                              => values]
+                             [(and (eq? transient (current-type-enforcement-mode))
+                                   (lookup-type/undo-contract-redirect i))
+                              => (lambda (t)
+                                   (register-type i t)
+                                   t)]
                              [else ((or fail lookup-fail) i)]))))))
+
+;; lookup-type/undo-contract-redirect : identifier -> (or/c Type? #f)
+;; If the input came from a typed module via its #%contract-defs submodule,
+;; return the type of the original identifier.
+(define (lookup-type/undo-contract-redirect id)
+  (let* ((v (syntax-local-value id (lambda () #f)))
+         (orig (and (provide/contract-info? v)
+                    (provide/contract-info-original-id v))))
+    (and (identifier? orig)
+         (lookup-type orig (lambda () #f)))))
 
 (define (lookup-obj-type/lexical obj [env (lexical-env)] #:fail [fail #f])
   (match obj

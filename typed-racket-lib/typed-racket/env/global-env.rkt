@@ -19,8 +19,7 @@
          unregister-type
          check-all-registered-types
          type-env-map
-         type-env-for-each
-         unhygienic-lookup-type)
+         type-env-for-each)
 
 ;; free-id-table from id -> type or Box[type]
 ;; where id is a variable, and type is the type of the variable
@@ -65,22 +64,6 @@
 (define (lookup-type id [fail-handler (λ () (lookup-fail id))])
   (define v (free-id-table-ref the-mapping id fail-handler))
   (post-lookup-type id v))
-
-(define (unhygienic-lookup-type id [fail-handler (λ () (lookup-fail id))])
-  (define v
-    (or
-      (for/first (((kk vv) (in-free-id-table the-mapping))
-                  #:when (unhygienic-eq? id kk))
-        vv)
-      (and (procedure? fail-handler) (fail-handler))
-      fail-handler))
-  (post-lookup-type id v))
-
-(define (unhygienic-eq? id0 id1)
-  (and (eq? (syntax->datum id0) (syntax->datum id1))
-       (equal? (syntax-source id0) (syntax-source id1))
-       (equal? (syntax-line id0) (syntax-line id1))
-       (equal? (syntax-column id0) (syntax-column id1))))
 
 (define (post-lookup-type id v)
   (cond [(box? v) (unbox v)]
