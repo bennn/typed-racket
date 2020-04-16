@@ -74,8 +74,7 @@
 (define (lookup-id-type/lexical i [env (lexical-env)] #:fail [fail #f])
   (env-lookup-id
    env i
-   (λ (i)
-      (lookup-type i (λ ()
+   (λ (i) (lookup-type i (λ ()
                            (cond
                              [(syntax-property i 'constructor-for)
                               => (λ (prop)
@@ -101,21 +100,16 @@
                                    (register-type i t)
                                    t)]
                              [(and (eq? transient (current-type-enforcement-mode))
-                                   (lookup-type/undo-contract-redirect i))
-                              => (lambda (t)
-                                   (register-type i t)
-                                   t)]
+                                   (let* ([fail (λ () #f)]
+                                          [v (syntax-local-value i fail)]
+                                          [orig-id (and (provide/contract-info? v)
+                                                        (provide/contract-info-original-id v))])
+                                     (and (identifier? orig-id)
+                                          (lookup-type orig-id fail))))
+                              => (λ (orig-t)
+                                   (register-type i orig-t)
+                                   orig-t)]
                              [else ((or fail lookup-fail) i)]))))))
-
-;; lookup-type/undo-contract-redirect : identifier -> (or/c Type? #f)
-;; If the input came from a typed module via its #%contract-defs submodule,
-;; return the type of the original identifier.
-(define (lookup-type/undo-contract-redirect id)
-  (let* ((v (syntax-local-value id (lambda () #f)))
-         (orig (and (provide/contract-info? v)
-                    (provide/contract-info-original-id v))))
-    (and (identifier? orig)
-         (lookup-type orig (lambda () #f)))))
 
 (define (lookup-obj-type/lexical obj [env (lexical-env)] #:fail [fail #f])
   (match obj

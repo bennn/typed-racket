@@ -28,8 +28,7 @@
          initialize-type-env
          type->sexp ; for types/printer.rkt
          object->sexp ; for testing
-         make-env-init-codes
-         make-register-type-code)
+         make-env-init-codes)
 
 (define-syntax (define-initial-env stx)
   (syntax-parse stx

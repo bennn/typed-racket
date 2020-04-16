@@ -176,8 +176,8 @@
 
 ;; TODO: It would be better to have individual contracts specify which
 ;; modules should be required, but for now this is just all of them.
-(define (extra-requires #:enforcement-mode [te-mode (current-type-enforcement-mode)])
-  (case te-mode
+(define (extra-requires #:enforcement-mode [te-mode #f])
+  (case (or te-mode (current-type-enforcement-mode))
     ((guarded)
      #'(require
          (submod typed-racket/private/type-contract predicates)
