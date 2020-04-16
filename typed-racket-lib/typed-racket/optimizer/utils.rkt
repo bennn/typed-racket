@@ -163,3 +163,7 @@
   (define msg
     (format "cannot optimize in ~s context" (if te-mode "erasure" "untyped")))
   (raise-arguments-error 'optimize-top msg))
+
+(define maybe-type-of
+  (let ((fail (lambda () #false)))
+    (lambda (e) (type-of e fail))))
