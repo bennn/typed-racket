@@ -349,8 +349,11 @@
 - [X] cod check for/list etc, its always a list or void or sum
   (2020-02-28 still a problem, (check (#%app for-loop  ....)))
   fixed with very special case check ... hack
-
-- [ ] bless require/typed struct predicates
+- [X] bless require/typed struct predicates
+  NO nevermind, its gotta be checked
+   suppose allowed non-bool value, then (if (? (struct? x)) ... ...)
+   might go down a branch that should be dead if the returned val
+   was a boolean
 
 - [ ] dungeon, cell.rkt, why 3 copies of same recursive-contract ?
 
