@@ -145,7 +145,8 @@
         (cond
           [(or (is-ignored? f)
                (blessed-codomain? f)
-               (cdr-list? f post*))
+               (cdr-list? f post*)
+               (for:pos->vals? f))
            stx+]
           [else
            (define cod-tc-res (type-of stx))
@@ -497,6 +498,23 @@
                (loop t-cdr (- d 1))]
               [_
                #false])))))
+
+;; Special case: no cod-check on for loop index functions
+;; This may lead to unsoundness, but I don't know how else to allow
+;;  (for ((x (open-input-port "aaa"))) ....)
+;; Changing the type of `make-sequence` does not seem promising because the
+;;  interesting parts are the return types.
+(define for:pos->vals?
+  (let ((for:mpi (module-path-index-join* "for.rkt" "pre-base.rkt" "private/base.rkt" 'racket/base)))
+    (lambda (stx)
+      (and (eq? (syntax-e stx) 'pos->vals)
+           (equal? (syntax-source-module stx) for:mpi)))))
+
+(define (module-path-index-join* . x*)
+  (let loop ((x* x*))
+    (if (null? (cdr x*))
+      (module-path-index-join (car x*) #f)
+      (module-path-index-join (car x*) (loop (cdr x*))))))
 
 ;; from-require/typed? : Identifier -> Boolean
 ;; Typed Racket adds this property to all require/typed identifiers,
