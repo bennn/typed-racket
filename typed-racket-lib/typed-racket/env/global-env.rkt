@@ -63,9 +63,6 @@
 ;; identifier -> type
 (define (lookup-type id [fail-handler (λ () (lookup-fail id))])
   (define v (free-id-table-ref the-mapping id fail-handler))
-  (post-lookup-type id v))
-
-(define (post-lookup-type id v)
   (cond [(box? v) (unbox v)]
         [(procedure? v) (define t (v)) (register-type id t) t]
         [else v]))
@@ -109,4 +106,3 @@
 
 (define (type-env-for-each f)
   (sorted-free-id-table-map the-mapping f))
-

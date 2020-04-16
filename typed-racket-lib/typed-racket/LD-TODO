@@ -332,11 +332,39 @@
   - problem:
     typed rename + contract def leads to id without type,
     see test/transient/succeed/guarded-transient-id.rkt
-  - [ ] remove `make-register-type-code`
-  - [ ] cleanup impl for `maybe-type-of`
-  - [ ] remove rtss in provide-handling.rkt
+  - extra challenge, where to fix?
+    register just like normal ids, by changing provide-handling.rkt or the standard-inits?
+     turns out, #%contract-defs is not accessible to standard-inits
+    during typecheck/renamer expansion? during utils/redirect-contract? neither seems to have type info
+    finally fixed at the last second, when we find the id during typechecking
+  - [X] remove `make-register-type-code`
+  - [X] cleanup impl for `maybe-type-of`
+  - [X] remove rtss in provide-handling.rkt
+- [X] tc-app-helper see bg comment
+      tc-app ditto
+
+- [ ] bless require/typed struct predicates
+
+- [ ] dungeon, cell.rkt, why 3 copies of same recursive-contract ?
+
+- [ ] cod check for/list etc, its always a list or void or sum
+  (2020-02-28 still a problem, (check (#%app for-loop  ....)))
+
+- [ ] transient breaks tail calls? or does typed-id? check make it okay?
+  - Herman or Disney might have a (workshop?) paper about this,
+    moving contracts into continuation marks
+
+- [ ] issue-625 test, check for nonsense hash keys when contract applied
+      ... or not, not sure if this is transient or not to check
 
 - [ ] max_zordoz config type error ... what is wrong?
+
+- - - MEASURE the rest won't affect performance - - -
+
+- [ ] support case-lambda in defender
+- [ ] defend holes, nothing protected in here (`struct` may have same holes)
+  - [ ] module+
+  - [ ] (test-case ....) and other macros?
 
 - [ ] typed-racket-test/t-succeed/README.md (long list!)
   - [X] one pass
@@ -351,27 +379,13 @@
 - [ ] defender : docs, tests, etc
   - [X] need 'maybe-type-of' fn? yes optimizer needs it, cannot rely on dead-code to avoid untyped code
 
-- [ ] cod check for/list etc, its always a list or void or sum
-  (2020-02-28 still a problem, (check (#%app for-loop  ....)))
-
-- [ ] transient breaks tail calls? or does typed-id? check make it okay?
-  - Herman or Disney might have a (workshop?) paper about this,
-    moving contracts into continuation marks
-
 - [ ] low priority: change extra-env-lang to accept transient blessing,
       plot-lib is the only user I know of
-- [ ] bless require/typed struct predicates
-
-- [ ] dungeon, cell.rkt, why 3 copies of same recursive-contract ?
-
-- [ ] tc-app-helper see bg comment
-      tc-app ditto
 
 - [ ] private/with-type ... allow transient as well as guarded
   - [ ] with-type, add te-mode param and update docs
 
-- [ ] for way later ... mutable things get a proxy, tracks "correct" indexes
-  who knows if that will pay off
+- [ ] blame, simple POPL'17
 
 - [ ] add defend to typecheck/toplevel-trampoline + tests
 - [ ] define-typed/untyped-id ... adapt to E T
@@ -379,14 +393,6 @@
 - [ ] enable #:with-refinements etc by looking for command-line arguments?
   - could make a #lang, but perhaps easier this way,
     try a pull request
-
-- [ ] support case-lambda in defender
-- [ ] defend holes, nothing protected in here (`struct` may have same holes)
-  - [ ] module+
-  - [ ] (test-case ....) and other macros?
-
-- [ ] issue-625 test, check for nonsense hash keys when contract applied
-      ... or not, not sure if this is transient or not to check
 
 - [ ] outstanding branches
   - rackunit, unsafe-provide macro

@@ -49,18 +49,17 @@
   (define mapping (make-free-id-table))
 
   ;; quad/c in the signatures corresponds to four values:
-  ;; (values syntax? syntax? identifier? (listof (list/c identifier? identifier?)) (listof (list/c identifier? type?)))
+  ;; (values syntax? syntax? identifier? (listof (list/c identifier? identifier?)))
   ;; First return value is a syntax object of definitions, which will go in
   ;;    the #%contract-defs submodule
   ;; Second is a syntax object of definitions to go in the main module, including 
   ;;    the defintion to be exported
   ;; Third is the id to export
   ;; Fourth is a list of two element lists representing type aliases
-  ;; FIFTH added by Ben for S -- T interaction, experiment
 
 
   ;; mk-ignored-quad : identifier -> quad/c
-  (define (mk-ignored-quad i) (values #'(begin) #'(begin) i null null))
+  (define (mk-ignored-quad i) (values #'(begin) #'(begin) i null))
 
   ;; mk : id -> quad/c
   ;;
@@ -98,18 +97,18 @@
   (define (mk-struct-syntax-quad internal-id new-id si constr-type)
     (define type-is-constructor? #t) ;Conservative estimate (provide/contract does the same)
     (match-define (list type-desc constr pred (list accs ...) muts super) (extract-struct-info si))
-    (define-values (defns export-defns new-ids aliases rtss)
-      (for/lists (defns export-defns new-ids aliases rtss)
+    (define-values (defns export-defns new-ids aliases)
+      (for/lists (defns export-defns new-ids aliases)
         ([e (in-list (list* type-desc pred super accs))])
         (if (identifier? e)
             (mk e)
             (mk-ignored-quad e))))
     ;; Here, we recursively handle all of the identifiers referenced
     ;; in this static struct info.
-    (define-values (constr-defn constr-export-defn constr-new-id constr-aliases constr-rts)
+    (define-values (constr-defn constr-export-defn constr-new-id constr-aliases)
       (cond
        [(not (identifier? constr))
-        (values #'(begin) #'(begin) #f null null)]
+        (values #'(begin) #'(begin) #f null)]
        [(free-identifier=? constr internal-id)
         (mk-value-quad constr (generate-temporary constr) constr-type)]
        [else
@@ -149,14 +148,12 @@
               (make-rename-transformer #'protected-id)))
         #'export-id
         (cons (list #'export-id internal-id)
-              (apply append constr-aliases aliases))
-        (cons (list new-id constr-type)
-              (apply append constr-rts rtss)))))
+              (apply append constr-aliases aliases)))))
 
   ;; mk-syntax-quad : identifier? identifier? -> quad/c
   (define (mk-syntax-quad internal-id new-id)
     (case (current-type-enforcement-mode)
-      [(#true guarded)
+      [(guarded)
        (with-syntax* ([id internal-id]
                       [export-id new-id]
                       [untyped-id (freshen-id #'id)])
@@ -170,13 +167,10 @@
               (define-syntax export-id
                 (make-typed-renaming #'id #'untyped-id '#,(current-type-enforcement-mode))))
           new-id
-          (list (list #'export-id #'id))
-          null))]
-      [(transient erasure)
+          (list (list #'export-id #'id))))]
+      [else ;(transient erasure)
        ;; export the syntax
-       (mk-ignored-quad internal-id)]
-      [else
-       (error 'mk-syntax-quad "(unbox typed-context?) is #false")]))
+       (mk-ignored-quad internal-id)]))
 
   ;; mk-value-quad : identifier? identifier? (or/c Type #f) -> quad/c
   (define (mk-value-quad internal-id new-id ty)
@@ -198,19 +192,17 @@
                 (define-syntax export-id
                   (make-typed-renaming #'id #'local-untyped-id '#,(current-type-enforcement-mode))))
        new-id
-       null
-       (list (list new-id ty))
-       )))
+       null)))
 
   ;; Build the final provide with auxilliary definitions
-  (for/lists (defs export-defs provides aliases rts)
+  (for/lists (defs export-defs provides aliases)
     ;; sort provs to generate deterministic output
     ([(internal-id external-ids) (in-sorted-free-id-table provs)])
-    (define-values (defs export-def id alias rt) (mk internal-id))
+    (define-values (defs export-def id alias) (mk internal-id))
     (define provide-forms
       (for/list ([external-id (in-list external-ids)])
         #`(rename-out [#,id #,external-id])))
     (values #`(begin #,defs)
             export-def
             #`(provide #,@provide-forms)
-            alias rt)))
+            alias)))

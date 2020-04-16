@@ -17,10 +17,6 @@
 
 (provide/cond-contract
  [add-typeof-expr (syntax? tc-results/c . -> . any/c)]
- ;; need this to forget type information, because the 1st typechecking pass
- ;; optimistically assumes everything is well typed, and the 2nd pass needs
- ;; to pessimisitcally assume "Any" about things from untyped code
-
  [type-of ([syntax?] [(or/c #f (-> any))]  . ->* . tc-results/c)]
  [reset-type-table (-> any/c)]
  [type-table->tooltips

@@ -160,7 +160,8 @@
 
 (define (static-type->dynamic-type type)
   ;; simple: forget all type structure except list spines
-  (case (current-type-enforcement-mode)
+  (define te-mode (current-type-enforcement-mode))
+  (case te-mode
     ((guarded)
      type)
     ((transient)
@@ -178,4 +179,4 @@
        (-pair Univ Univ)]
       [_
         Univ]))
-    (else (raise-optimizer-context-error (current-type-enforcement-mode)))))
+    (else (raise-optimizer-context-error te-mode))))
