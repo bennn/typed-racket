@@ -21,7 +21,7 @@
  ;; optimistically assumes everything is well typed, and the 2nd pass needs
  ;; to pessimisitcally assume "Any" about things from untyped code
 
- [type-of (syntax? . -> . tc-results/c)]
+ [type-of ([syntax?] [(or/c #f (-> any))]  . ->* . tc-results/c)]
  [reset-type-table (-> any/c)]
  [type-table->tooltips
   (-> (listof (vector/c any/c integer? integer? (or/c string? (-> string?)))))]
@@ -81,19 +81,14 @@
                             [else t]))
                 #f))
 
-;; Need to define/provide this, because `type-of` doesnt actually raise an exception, just delays an int-err
-;; TODO though, probably an issue with missing type and argument happesn to be a format string
-(provide maybe-type-of)
-(define (maybe-type-of e)
-  (hash-ref type-table e #false))
-
-(define (type-of e)
+(define (type-of e [fail-thunk #f])
   (hash-ref type-table e
-            (lambda () (int-err (format "no type for ~a at: ~a line ~a col ~a"
-                                        (syntax->datum e)
-                                        (syntax-source e)
-                                        (syntax-line e)
-                                        (syntax-column e))))))
+            (or fail-thunk
+                (lambda () (int-err (format "no type for ~a at: ~a line ~a col ~a"
+                                            (syntax->datum e)
+                                            (syntax-source e)
+                                            (syntax-line e)
+                                            (syntax-column e)))))))
 
 ;; This macro is used to create a thunk that closes over the type
 ;; names that should be used to print the type. This is needed to ensure that

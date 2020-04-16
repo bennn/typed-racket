@@ -195,6 +195,10 @@
   (readd-props! new-stx old-stx)
   new-stx)
 
+(define maybe-type-of
+  (let ((fail (lambda () #false)))
+    (lambda (e) (type-of e fail))))
+
 (define (maybe-add-typeof-expr new-stx old-stx)
   (let ((old-type (maybe-type-of old-stx)))
     (when old-type
