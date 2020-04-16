@@ -342,13 +342,17 @@
   - [X] remove rtss in provide-handling.rkt
 - [X] tc-app-helper see bg comment
       tc-app ditto
+- [X] max_zordoz config type error ... what is wrong?
+  my new types for for-loops, really make-sequence, were shadowing the old
+   ones because the interesting parts of the type are on the RETURN type,
+   no way to statically tell which way to go
+- [X] cod check for/list etc, its always a list or void or sum
+  (2020-02-28 still a problem, (check (#%app for-loop  ....)))
+  fixed with very special case check ... hack
 
 - [ ] bless require/typed struct predicates
 
 - [ ] dungeon, cell.rkt, why 3 copies of same recursive-contract ?
-
-- [ ] cod check for/list etc, its always a list or void or sum
-  (2020-02-28 still a problem, (check (#%app for-loop  ....)))
 
 - [ ] transient breaks tail calls? or does typed-id? check make it okay?
   - Herman or Disney might have a (workshop?) paper about this,
@@ -356,8 +360,6 @@
 
 - [ ] issue-625 test, check for nonsense hash keys when contract applied
       ... or not, not sure if this is transient or not to check
-
-- [ ] max_zordoz config type error ... what is wrong?
 
 - - - MEASURE the rest won't affect performance - - -
 

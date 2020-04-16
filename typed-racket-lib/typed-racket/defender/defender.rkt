@@ -146,7 +146,7 @@
           [(or (is-ignored? f)
                (blessed-codomain? f)
                (cdr-list? f post*)
-               (for:pos->vals? f))
+               (blessed-for-function? f))
            stx+]
           [else
            (define cod-tc-res (type-of stx))
@@ -504,11 +504,13 @@
 ;;  (for ((x (open-input-port "aaa"))) ....)
 ;; Changing the type of `make-sequence` does not seem promising because the
 ;;  interesting parts are the return types.
-(define for:pos->vals?
+(define blessed-for-function?
   (let ((for:mpi (module-path-index-join* "for.rkt" "pre-base.rkt" "private/base.rkt" 'racket/base)))
     (lambda (stx)
-      (and (eq? (syntax-e stx) 'pos->vals)
-           (equal? (syntax-source-module stx) for:mpi)))))
+      (and (equal? (syntax-source-module stx) for:mpi)
+           (let ((id (syntax-e stx)))
+             (or (eq? id 'pos->vals)
+                 (eq? id 'for-loop)))))))
 
 (define (module-path-index-join* . x*)
   (let loop ((x* x*))
