@@ -79,7 +79,7 @@
   ;; make-sequence
   [(make-template-identifier 'make-sequence 'racket/private/for)
    (-poly (a b)
-          (let ([seq-vals
+          (let ([seq-vals3
                  (lambda (a)
                    (define pre-a (list Univ))
                    (-values (list
@@ -99,21 +99,33 @@
                              Univ
                              (Un (-> Univ Univ) (-val #f))
                              (-val #f)
-                             (Un (->* (cons Univ a) Univ) (-val #f)))))])
-            ( cl->*
+                             (Un (->* (cons Univ a) Univ) (-val #f)))))]
+                [seq-vals
+                 (lambda (a)
+                   (-values (list
+                             (-> Univ (-values a))
+                             (Un (-> Univ Univ) (-val #f))
+                             (-> Univ Univ)
+                             Univ
+                             (Un (-> Univ Univ) (-val #f))
+                             (Un (->* a Univ Univ) (-val #f))
+                             (Un (->* (cons Univ a) Univ) (-val #f)))))]
+                )
+            (cl->*
              (-> Univ -Byte         (seq-vals (list -Byte)))
-              (-> Univ -Byte         (seq-vals2 (list -Byte)))
+            ;  (-> Univ -Byte         (seq-vals2 (list -Byte)))
              (-> Univ -Index        (seq-vals (list -Index)))
-              (-> Univ -Index        (seq-vals2 (list -Index)))
+            ;  (-> Univ -Index        (seq-vals2 (list -Index)))
              ;; Generous. Negative numbers aren't allowed.
              (-> Univ -Fixnum       (seq-vals (list -NonNegFixnum)))
-              (-> Univ -Fixnum       (seq-vals2 (list -NonNegFixnum)))
+            ;  (-> Univ -Fixnum       (seq-vals2 (list -NonNegFixnum)))
              (-> Univ -Int          (seq-vals (list -Nat)))
-              (-> Univ -Int          (seq-vals2 (list -Nat)))
+            ;  (-> Univ -Int          (seq-vals2 (list -Nat)))
              (-> Univ (-seq a) (seq-vals (list a)))
-              (-> Univ (-seq a) (seq-vals2 (list a)))
+            ;  (-> Univ (-seq a) (seq-vals2 (list a)))
              (-> Univ (-seq a b) (seq-vals (list a b)))
-              (-> Univ (-seq a b) (seq-vals2 (list a b))))))]
+            ;  (-> Univ (-seq a b) (seq-vals2 (list a b)))
+            )))]
   ;; check-range
   [(make-template-identifier 'check-range 'racket/private/for)
    (-> Univ Univ Univ -Void)]
