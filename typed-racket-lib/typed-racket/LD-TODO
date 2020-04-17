@@ -361,6 +361,27 @@
     rather than the outer shape --- need the key, but the key is not part
     of the type soundness guarantee
 
+- [ ] 2020-04-17 yikes, huge number of type errors on T/S lattice, examples:
+  WELL NOW its a funny issue with require/typed ... a regular 'require' from
+   S to T gets the #%type-decl registers, but a no-check require does not
+   so my `require-typed-check` library cannot keep using no-check ... or
+   needs to add the type-decl
+  AH part of the problem is S -> T too, because T gets a contract identifier
+   from S without the type-decl ... need to remove the (current-te-mode)
+   guard from env/lexical-env
+  - acquire 0+ 1+01
+  - morsecode 0010 0100
+  - quadT 10+1110
+  - dungeon 00100
+  - forth 0010 0100 1000
+  - fsm 0010 0100
+  - fsmoo 0000
+  - gregor 10+1001
+  - jpeg 00001
+  - kcfa 0+
+  - lnm 0+
+  - mbta 0001
+
 - [ ] transient breaks tail calls? or does typed-id? check make it okay?
   - Herman or Disney might have a (workshop?) paper about this,
     moving contracts into continuation marks

@@ -99,8 +99,7 @@
                                                  Err))
                                    (register-type i t)
                                    t)]
-                             [(and (eq? transient (current-type-enforcement-mode))
-                                   (let* ([fail (λ () #f)]
+                             [(and (let* ([fail (λ () #f)]
                                           [v (syntax-local-value i fail)]
                                           [orig-id (and (provide/contract-info? v)
                                                         (provide/contract-info-original-id v))])
