@@ -379,8 +379,8 @@
   - cannot find the paper on Disney or Flanagan's dblp
   - save for later, way later ... its not clear now whether there IS a concrete
     problem, only a hunch; looking for typed ids may be good enough
+- [X] support case-lambda in defender
 
-- [ ] support case-lambda in defender
 - [ ] defend holes, nothing protected in here (`struct` may have same holes)
   - [ ] module+
   - [ ] (test-case ....) and other macros?
@@ -413,7 +413,7 @@
   - could make a #lang, but perhaps easier this way,
     try a pull request
 
-- [ ] outstanding branches
+- [ ] outstanding 'transient' branches
   - rackunit, unsafe-provide macro
   - 2htdp-typed, unsafe-provide macro
 
