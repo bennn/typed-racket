@@ -2,7 +2,7 @@
 
 ;; TODO
 ;;  - [X] build + test occurrence-type optimizer
-;;  - [ ] build/test erasure-racket
+;;  - [ ] build/test erasure-racket, check T S E interactions + share types
 ;;
 ;; TODO
 ;; - [ ] need with-new-name-tables here?
@@ -76,7 +76,7 @@
   (define defended-stx
     (let loop ([stx stx] [skip-dom? #f])
       (syntax-parse stx
-       #:literals (values define-values #%plain-app begin define-syntaxes letrec-values)
+       #:literals (values define-values #%plain-app begin define-syntaxes letrec-values case-lambda)
        [_
         #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"
                    (has-contract-def-property? stx))
@@ -92,35 +92,58 @@
         ;; ignore the same things the optimizer ignores
         stx]
        [(~and _:kw-lambda^ ((~literal let-values) ([(f) fun]) body))
-        stx
-        #;(syntax/loc stx (let-values ([(f) fun]) body))]
+        stx]
        [(~and _:opt-lambda^ ((~literal let-values) ([(f) fun]) body))
-        stx
-        #;(syntax/loc stx (let-values ([(f) fun]) body))]
-       ;; TODO case-lambda
+        stx]
        [(op:lambda-identifier formals . body)
         (cond
           [(maybe-type-of stx)
            ;; TODO remove stx->arrow ? maybe this can all be simpler
            (define dom-map (type->domain-map (stx->arrow-type stx)))
-           (define body+ (loop #'body #f))
-           (void (readd-props! body+ #'body))
-           (define formals+
-             (let-values ([(extra* formals+)
+           (define f+
+             (let-values ([(extra* f+)
                            (if skip-dom?
                              (values '() '())
                              (protect-formals dom-map #'formals ctc-cache))])
                (register-extra-defs! extra*)
-               formals+))
+               f+))
            (define stx+
-             (with-syntax ([body+ body+])
-               (if (null? formals+)
+             (with-syntax ([body+ (readd-props (loop #'body #f) #'body)])
+               (if (null? f+)
                  (syntax/loc stx (op formals . body+))
-                 (let ((stx (quasisyntax/loc stx (op formals (#%plain-app void . #,formals+) . body+))))
-                   (register-ignored! (caddr (syntax-e stx)))
-                   stx))))
-           (void (readd-props! stx+ stx))
-           stx+]
+                 (let ([stx+ (quasisyntax/loc stx (op formals (#%plain-app void . #,f+) . body+))])
+                   (register-ignored! (caddr (syntax-e stx+)))
+                   stx+))))
+           (readd-props stx+ stx)]
+          [else
+            stx])]
+       [((~and op case-lambda) [formals* . body*] ...)
+        ;; NOTE similar to the lambda case, but cannot easily share helper functions
+        ;;  because risk `identifier used out of context' errors
+        (cond
+          [(maybe-type-of stx)
+           (define dom-map* (map type->domain-map (stx->arrow-type* stx)))
+           (define stx+
+             (quasisyntax/loc stx
+               (op .
+                   #,(for/list ([formals (in-list (syntax-e #'(formals* ...)))]
+                                [body (in-list (syntax-e #'(body* ...)))]
+                                [dom-map (in-list dom-map*)])
+                       (define f+
+                         (let-values ([(extra* f+)
+                                       (if skip-dom?
+                                         (values '() '())
+                                         (protect-formals dom-map formals ctc-cache))])
+                           (register-extra-defs! extra*)
+                           f+))
+                       (with-syntax ([formals formals]
+                                     [body+ (readd-props (loop body #f) body)])
+                         (if (null? f+)
+                           (syntax/loc stx [formals . body+])
+                           (let ([stx+ (quasisyntax/loc stx [formals (#%plain-app void . #,f+) . body+])])
+                             (register-ignored! (cadr (syntax-e stx+)))
+                             stx+)))))))
+           (readd-props stx+ stx)]
           [else
             stx])]
        [(#%plain-app (letrec-values (((a:id) e0)) b:id) e1* ...)
@@ -242,6 +265,25 @@
     (values #'(a) #'f #'arg*)]
    [_
     (raise-argument-error 'split-application "(Syntaxof App)" stx)]))
+
+(define (stx->arrow-type* stx)
+  (define raw-type (tc-results->type1 (type-of stx)))
+  (let loop ([ty (and raw-type (normalize-type raw-type))])
+    (match ty
+     [(Fun: arr*)
+      arr*]
+     [(or (Poly: _ b)
+          (PolyDots: _ b))
+      (loop b)]
+     [(Refinement: parent pred)
+      (raise-user-error 'refine "~s~n ~s~n ~s~n" ty parent pred)]
+     [(DepFun: _ _ _)
+      (list ty)]
+     [_
+      (raise-arguments-error 'stx->arrow-type* "failed to parse arrow from type of syntax object"
+        "e" (syntax->datum stx)
+        "stx" stx
+        "type" ty)])))
 
 (define (stx->arrow-type stx [num-args #f])
   (define raw-type (tc-results->type1 (type-of stx)))
@@ -444,19 +486,6 @@
     (hash-ref map key fail-thunk)]
    [else
     (raise-argument-error 'type-map-ref "(or/c fixnum? 'rest keyword?)" 1 map key)]))
-
-;;; type->codomain-type : Type Syntax -> (U #f SomeValues)
-;;; Get the codomain from an arrow type,
-;;;  use `stx` to decide whether we can skip the codomain check.
-;;; 2020-03 : unused!
-;(define (type->codomain-type t stx)
-;  (match t
-;   [(Fun: (list (Arrow: _ _ _ cod)))
-;    (if (blessed-codomain? stx)
-;      #f
-;      cod)]
-;   [_
-;    (raise-argument-error 'type->cod-type "arrow type" t)]))
 
 (define (blessed-codomain? stx)
   (if (identifier? stx)
@@ -728,7 +757,9 @@
 
 (define (is-lambda? x)
   (syntax-parse x
-   [((~or (~literal lambda) (~literal #%plain-lambda)) . _) #true]
+   [((~or (~literal lambda)
+          (~literal #%plain-lambda)
+          (~literal case-lambda)) . _) #true]
    [_ #false]))
 
 (define (has-type-annotation? x)
