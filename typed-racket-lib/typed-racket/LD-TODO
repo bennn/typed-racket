@@ -354,8 +354,7 @@
    suppose allowed non-bool value, then (if (? (struct? x)) ... ...)
    might go down a branch that should be dead if the returned val
    was a boolean
-
-- [ ] dungeon, cell.rkt, why 3 copies of same recursive-contract ?
+- [X] dungeon, cell.rkt, why 3 copies of same recursive-contract ?
 
 - [ ] transient breaks tail calls? or does typed-id? check make it okay?
   - Herman or Disney might have a (workshop?) paper about this,
