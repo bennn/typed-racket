@@ -87,65 +87,59 @@
               (~literal #%require)
               (~literal begin-for-syntax)
               (~literal define-syntaxes)
-              (~literal module)
-              (~literal module*)) . _)
-        ;; ignore the same things the optimizer ignores
+              (~literal module*)
+              (~literal module)) . _ )
         stx]
-       [(~and _:kw-lambda^ ((~literal let-values) ([(f) fun]) body))
+       [(~and (~or :kw-lambda^ :opt-lambda^)
+              ((~literal let-values) ([(f) fun]) body))
         stx]
-       [(~and _:opt-lambda^ ((~literal let-values) ([(f) fun]) body))
+       [((~or :lambda-identifier
+              case-lambda) . _)
+        #:when (not (maybe-type-of stx))
         stx]
        [(op:lambda-identifier formals . body)
-        (cond
-          [(maybe-type-of stx)
-           ;; TODO remove stx->arrow ? maybe this can all be simpler
-           (define dom-map (type->domain-map (stx->arrow-type stx)))
-           (define f+
-             (let-values ([(extra* f+)
-                           (if skip-dom?
-                             (values '() '())
-                             (protect-formals dom-map #'formals ctc-cache))])
-               (register-extra-defs! extra*)
-               f+))
-           (define stx+
-             (with-syntax ([body+ (readd-props (loop #'body #f) #'body)])
-               (if (null? f+)
-                 (syntax/loc stx (op formals . body+))
-                 (let ([stx+ (quasisyntax/loc stx (op formals (#%plain-app void . #,f+) . body+))])
-                   (register-ignored! (caddr (syntax-e stx+)))
-                   stx+))))
-           (readd-props stx+ stx)]
-          [else
-            stx])]
+        ;; TODO remove stx->arrow ? maybe this can all be simpler
+        (define dom-map (type->domain-map (stx->arrow-type stx)))
+        (define f+
+          (let-values ([(extra* f+)
+                        (if skip-dom?
+                          (values '() '())
+                          (protect-formals dom-map #'formals ctc-cache))])
+            (register-extra-defs! extra*)
+            f+))
+        (define stx+
+          (with-syntax ([body+ (readd-props (loop #'body #f) #'body)])
+            (if (null? f+)
+              (syntax/loc stx (op formals . body+))
+              (let ([stx+ (quasisyntax/loc stx (op formals (#%plain-app void . #,f+) . body+))])
+                (register-ignored! (caddr (syntax-e stx+)))
+                stx+))))
+        (readd-props stx+ stx)]
        [((~and op case-lambda) [formals* . body*] ...)
         ;; NOTE similar to the lambda case, but cannot easily share helper functions
         ;;  because risk `identifier used out of context' errors
-        (cond
-          [(maybe-type-of stx)
-           (define dom-map* (map type->domain-map (stx->arrow-type* stx)))
-           (define stx+
-             (quasisyntax/loc stx
-               (op .
-                   #,(for/list ([formals (in-list (syntax-e #'(formals* ...)))]
-                                [body (in-list (syntax-e #'(body* ...)))]
-                                [dom-map (in-list dom-map*)])
-                       (define f+
-                         (let-values ([(extra* f+)
-                                       (if skip-dom?
-                                         (values '() '())
-                                         (protect-formals dom-map formals ctc-cache))])
-                           (register-extra-defs! extra*)
-                           f+))
-                       (with-syntax ([formals formals]
-                                     [body+ (readd-props (loop body #f) body)])
-                         (if (null? f+)
-                           (syntax/loc stx [formals . body+])
-                           (let ([stx+ (quasisyntax/loc stx [formals (#%plain-app void . #,f+) . body+])])
-                             (register-ignored! (cadr (syntax-e stx+)))
-                             stx+)))))))
-           (readd-props stx+ stx)]
-          [else
-            stx])]
+        (define dom-map* (map type->domain-map (stx->arrow-type* stx)))
+        (define stx+
+          (quasisyntax/loc stx
+            (op .
+                #,(for/list ([formals (in-list (syntax-e #'(formals* ...)))]
+                             [body (in-list (syntax-e #'(body* ...)))]
+                             [dom-map (in-list dom-map*)])
+                    (define f+
+                      (let-values ([(extra* f+)
+                                    (if skip-dom?
+                                      (values '() '())
+                                      (protect-formals dom-map formals ctc-cache))])
+                        (register-extra-defs! extra*)
+                        f+))
+                    (with-syntax ([formals formals]
+                                  [body+ (readd-props (loop body #f) body)])
+                      (if (null? f+)
+                        (syntax/loc stx [formals . body+])
+                        (let ([stx+ (quasisyntax/loc stx [formals (#%plain-app void . #,f+) . body+])])
+                          (register-ignored! (cadr (syntax-e stx+)))
+                          stx+)))))))
+        (readd-props stx+ stx)]
        [(#%plain-app (letrec-values (((a:id) e0)) b:id) e1* ...)
         #:when (free-identifier=? #'a #'b)
         ;; (for ....) combinators expand to a recursive function that does not escape,
