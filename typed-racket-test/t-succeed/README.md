@@ -184,7 +184,7 @@ oH3   intersection1.rkt
 X    issue-166.rkt
      issue-33.rkt
      issue-447.rkt
-H7+  issue-598.rkt (TODO module+ needs defense)
+oH7+  issue-598.rkt (TODO module+ needs defense)
 oH7   issue-625.rkt
      issue-628.rkt
      issue-807.rkt
@@ -459,7 +459,7 @@ oH0   scoped-type-vars.rkt
      send.rkt
      sequence-cnt.rkt
 oH7   sequenceof-integer.rkt
-!! H3   sequences.rkt yikes pos->vals might return bad thing! (for ... (open-input-string ...) ....)
+H3   sequences.rkt yikes pos->vals might return bad thing! (for ... (open-input-string ...) ....)
      set-contract.rkt
      set.rkt
      simple-fake-or.rkt
