@@ -25,13 +25,13 @@
               (~optional
                (~and #:with-refinements refinement-reasoning?))
               (~optional
-               (~or (~and #:guarded   (~bind [te-strat #'guarded]))
-                    (~and #:transient (~bind [te-strat #'transient]))
-                    (~and #:erasure   (~bind [te-strat #'erasure])))))
+               (~or (~and #:guarded   (~bind [te-mode #'guarded]))
+                    (~and #:transient (~bind [te-mode #'transient]))
+                    (~and #:erasure   (~bind [te-mode #'erasure])))))
          ...
          forms ...)
      (let ([pmb-form (syntax/loc stx (#%plain-module-begin forms ...))]
-           [te-mode (if (attribute te-strat) (syntax-e #'te-strat) 'guarded)])
+           [te-mode (if (attribute te-mode) (syntax-e #'te-mode) 'guarded)])
        (parameterize ([optimize? (and (memq te-mode (list guarded transient))
                                       (if (attribute opt?) (syntax-e (attribute opt?)) (optimize?)))]
                       [with-refinements? (or (attribute refinement-reasoning?)

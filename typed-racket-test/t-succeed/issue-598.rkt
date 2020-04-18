@@ -11,12 +11,11 @@
 
 (define b : Maybe-Box (box 4))
 
-(module+ test
+(module+ test #:transient
   (require typed/rackunit)
 
-  (check-exn exn:fail:contract?
+  (check-not-exn
     (λ () (f b)))
 
-  (check-equal?
-    (if (box? b) (+ 1 (unbox b)) (error 'deadcode))
-    5))
+  (check-exn exn:fail:contract?
+    (lambda () (if (box? b) (unbox b) (error 'deadcode)))))

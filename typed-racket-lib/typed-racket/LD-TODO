@@ -382,7 +382,9 @@
 - [X] support case-lambda in defender
 
 - [ ] defend holes, nothing protected in here (`struct` may have same holes)
-  - [ ] module+
+  - [X] module+
+        can hack-around the problem by adding #:transient to submodules,
+        adding #lang tr/transient may enable a proper fix ... not sure
   - [ ] (test-case ....) and other macros?
 
 - [ ] typed-racket-test/t-succeed/README.md (long list!)
