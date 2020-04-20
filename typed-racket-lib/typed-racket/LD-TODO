@@ -381,11 +381,15 @@
     problem, only a hunch; looking for typed ids may be good enough
 - [X] support case-lambda in defender
 
+- [ ] quadT 01001101010011 #hash() higher-order value passed as Any, yikes
+
 - [ ] defend holes, nothing protected in here (`struct` may have same holes)
   - [X] module+
         can hack-around the problem by adding #:transient to submodules,
         adding #lang tr/transient may enable a proper fix ... not sure
   - [ ] (test-case ....) and other macros?
+    something is stopping the defender on the way down ... need to look through
+     cases and find the exception!
 
 - [ ] typed-racket-test/t-succeed/README.md (long list!)
   - [X] one pass
