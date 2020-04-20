@@ -382,6 +382,11 @@
 - [X] support case-lambda in defender
 
 - [ ] quadT 01001101010011 #hash() higher-order value passed as Any, yikes
+  - my PR for HashTableTop caused this 
+    its a Typed / Untyped issue, nothing doing for transient
+  - fixed by changing to (HashTable Any Any)
+  - ... need to run transient/typed sample to check
+  - need to run lattices for normal gtp-benchmarks to see effects
 
 - [ ] defend holes, nothing protected in here (`struct` may have same holes)
   - [X] module+
@@ -390,6 +395,11 @@
   - [ ] (test-case ....) and other macros?
     something is stopping the defender on the way down ... need to look through
      cases and find the exception!
+    - two problems
+      - register-ignored! on the let-values, not sure why
+      - untyped function around the key parts
+        ... so, need to recur under both those, but then
+      - transient-assert was failing on exn-handler pred. ... why? is there a type bug somewhere?
 
 - [ ] typed-racket-test/t-succeed/README.md (long list!)
   - [X] one pass
