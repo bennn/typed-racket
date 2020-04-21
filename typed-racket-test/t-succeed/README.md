@@ -545,7 +545,7 @@ X    unsafe-require-top-level.rkt
      untyped-submod.rkt
      user-defined-sp.rkt
 oH0   values-dots-result.rkt
-!! H0   values-dots.rkt
+oH0   values-dots.rkt
      values-dots2.rkt
      values-object.rkt
      varargs-tests.rkt

@@ -453,7 +453,7 @@
              [(Rest? rst)
               (hash-set t# REST-KEY (make-Listof Univ))]
              [(RestDots? rst)
-              (hash-set t# REST-KEY (RestDots-ty rst))]
+              (hash-set t# REST-KEY (make-Listof (RestDots-ty rst)))]
              [else
               ;; need default for `((plambda: (x ...) [xs : x ... x] xs) 3 4 5)` because poly type is gone (inst'd away)
               (hash-set t# REST-KEY (make-Listof Univ))])]
