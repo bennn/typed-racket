@@ -88,7 +88,9 @@
               (~literal begin-for-syntax)
               (~literal define-syntaxes)
               (~literal module*)
-              (~literal module)) . _ )
+              (~literal module)
+              (~literal quote)
+              (~literal quote-syntax)) . _ )
         stx]
        [(~and (~or :kw-lambda^ :opt-lambda^)
               ((~literal let-values) ([(f) fun]) body))
@@ -759,7 +761,7 @@
 (define (has-type-annotation? x)
   (match (maybe-type-of x)
    [(tc-results: _ #f)
-    ;; #f = don't handle rest dots
+    ;; #f = don't handle rest dots TODO wait why not???? ... use  maybe-type-of only?
      #true]
    [_
      #false]))
@@ -774,6 +776,7 @@
     (raise-argument-error 'arr/non-empty-domain "Arrow?" arr)]))
 
 (define (syntax*->syntax ctx stx*)
+  ;; TODO this may be breaking structure of input stx objects
   (datum->syntax ctx
     (if (null? stx*)
       '()

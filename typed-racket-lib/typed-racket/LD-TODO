@@ -387,6 +387,9 @@
   - fixed by changing to (HashTable Any Any)
   - ... need to run transient/typed sample to check
   - need to run lattices for normal gtp-benchmarks to see effects
+  --> run other PR tests first, if we need NSA
+- [X] zordoz 00001 10000 etc have type errors
+  - fixed, remove tagged-zo-structs ... only use typed ... consequences?
 
 - [ ] defend holes, nothing protected in here (`struct` may have same holes)
   - [X] module+

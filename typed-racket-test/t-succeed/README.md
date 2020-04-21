@@ -27,7 +27,7 @@ H8 = unexpected val-able
 H10 = value-contract missing
 H11 = type->domain-map: cannot handle rest type yet
 H12 = internal typecheck error
-H13 = identifier used out of context (!!)
+H13 = identifier used out of context (yikes)
 
 WH = "what happened"
 
@@ -504,7 +504,7 @@ X    standard-features-no-check.rkt
      structs-across-modules.rkt
      structs-variance.rkt
      structs-variance2.rkt
-!! H12  stx.rkt  see ben.rkt & aaa.rkt ... at a loss
+oH12  stx.rkt  see ben.rkt & aaa.rkt ... at a loss
      submod-vector.rkt
      submodules.rkt
 oH0   subst-poly-dots.rkt
