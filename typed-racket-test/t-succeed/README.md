@@ -428,7 +428,7 @@ todo    recursive-type-alias-top-level.rkt
      refinement-even.rkt
      refinements-and-aliases.rkt
 oH0   refinements-expected-type1.rkt
-!! H13  refinements-quicksort.rkt
+oH13  refinements-quicksort.rkt
      regexp-match-kw.rkt
      req-type-sub.rkt
      require-poly.rkt
@@ -449,7 +449,7 @@ oH11  rest-star-hash-examples.rkt
      safe-letrec.rkt
      safe-vector-base.rkt
 X    safe-vector-untyped.rkt
-!! H13  safe-vector.rkt
+oH13  safe-vector.rkt
 oH0   scoped-type-vars.rkt
      scratch.rkt
      sealing-contract-1.rkt
