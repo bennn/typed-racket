@@ -90,12 +90,12 @@
               (~literal module*)
               (~literal module)
               (~literal quote)
-              (~literal quote-syntax)) . _ )
+              (~literal quote-syntax)) . _)
         stx]
        [(~and (~or :kw-lambda^ :opt-lambda^)
               ((~literal let-values) ([(f) fun]) body))
         stx]
-       [((~or :lambda-identifier
+       [((~or _:lambda-identifier
               case-lambda) . _)
         #:when (not (maybe-type-of stx))
         stx]
