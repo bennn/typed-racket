@@ -56,6 +56,7 @@
     racket/base)
   (for-template
     racket/base
+    (only-in racket/contract/base any/c)
     racket/unsafe/ops
     typed-racket/types/numeric-predicates
     typed-racket/utils/transient-contract))
@@ -271,7 +272,7 @@
      [(or (Poly: _ b)
           (PolyDots: _ b))
       (loop b)]
-     [(Refinement: parent pred)
+     [(Refine: parent pred)
       (raise-user-error 'refine "~s~n ~s~n ~s~n" ty parent pred)]
      [(DepFun: _ _ _)
       (list ty)]
@@ -316,7 +317,7 @@
         (-> in -Void)]
        [else
         (raise-arguments-error 'stx->arrow-type "wrong number of arguments supplied to parameter" "type" ty "stx" stx "num-args" num-args)])]
-     [(Refinement: parent pred)
+     [(Refine: parent pred)
       (raise-user-error 'refine "~s~n ~s~n ~s~n" ty parent pred)]
      [(DepFun: _ _ _)
       ty]
@@ -605,8 +606,6 @@
               (#%plain-app raise-transient-error dom 'err (#%plain-app current-continuation-marks)))))
         (register-ignored! new-stx)
         new-stx)]))
-  ;; must return extra, could contain a def for any/c that we use later
-  ;;bg TODO test what happens if extra-def not returned when stx is #f
   (values extra-def* dom-stx+))
 
 ;; protect-codomain : (U #f Tc-Results) (Syntaxof List) Hash Hash (Boxof Syntax) -> TODO
@@ -791,12 +790,18 @@
        (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" t r))
      (match-define (list defs ctc)
        (type->contract t fail #:typed-side #false #:cache ctc-cache))
-     (for-each register-ignored! defs)
-     (values
-       defs
-       (if (free-identifier=? ctc #'any/c) ;; TODO need this?
-         #f
-         ctc))]))
+     (match t
+      [(Refine: _ _)
+       ;; do not lift defs; they may use a local var
+       ;; e.g. (lambda (a) (lambda (b : (Refine ... a b ...)) ....))
+       (define ctc+ (quasisyntax/loc ctc (let-values () #,@defs #,ctc)))
+       (register-ignored! ctc+)
+       (values '() ctc+)]
+      [_
+       (define ctc+ ;; type variables make an any/c, for example
+         (if (free-identifier=? ctc #'any/c) #f ctc))
+       (for-each register-ignored! defs)
+       (values defs ctc+)])]))
 
 (define (type->flat-contract* t* ctc-cache)
   (for/fold ((extra-def* '())

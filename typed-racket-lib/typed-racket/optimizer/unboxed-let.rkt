@@ -239,6 +239,8 @@
       [(#%plain-app rator:expr rands:expr ...)
        (or (direct-child-of? v #'(rands ...)) ; used as an argument, escapes
            (ormap rec (syntax->list #'(rator rands ...))))]
+      [_:ignore-table^
+       #t]
       [e:kernel-expression
        (look-at #'(e.sub-exprs ...))]
       [_
