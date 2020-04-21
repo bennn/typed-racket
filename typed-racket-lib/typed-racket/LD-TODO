@@ -416,6 +416,10 @@
        tried to look for syntax? and pair? in defend-top, but no good
        skipping all (quote-syntax ...) works though, and is right to do
     - [ ] refinements, identifier out of context
+      ok major problem
+       Refine contract-generation assumes the contract is at the top level,
+        but that's not true here!
+       need to capture those lifts
 
 - [ ] defender: simpler stx->arrow type,
       is there a built-in union function to combine arrows? (not `union`)
