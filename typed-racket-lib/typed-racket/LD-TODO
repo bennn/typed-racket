@@ -391,6 +391,8 @@
 - [X] zordoz 00001 10000 etc have type errors
   - fixed, remove tagged-zo-structs ... only use typed ... consequences?
 
+- [ ] organize benchmarks for eval.
+
 - [ ] defend holes, nothing protected in here (`struct` may have same holes)
   - [X] module+
         can hack-around the problem by adding #:transient to submodules,
@@ -407,6 +409,13 @@
 - [ ] typed-racket-test/t-succeed/README.md (long list!)
   - [X] one pass
   - [ ] all resolved
+    - [X] stx.rkt
+      problem (stx-cdr #'(a b)) => #'(#'b)
+       what the heck!
+      defender is ... somehow ... changing structure of terms,
+       tried to look for syntax? and pair? in defend-top, but no good
+       skipping all (quote-syntax ...) works though, and is right to do
+    - [ ] refinements, identifier out of context
 
 - [ ] defender: simpler stx->arrow type,
       is there a built-in union function to combine arrows? (not `union`)
