@@ -392,6 +392,15 @@
   - fixed, remove tagged-zo-structs ... only use typed ... consequences?
 
 - [ ] organize benchmarks for eval.
+  - [X] jpeg typed/untyped-id issue, (not sure what ID)
+    have a simple fix via vector-map,
+    need to check perf. but anyway
+    guarded code gets precise type, but transient gets supertype to match
+     the handcrafted untyped contract ... don't see a work-around so recommend
+     changing the gtp-benchmark
+  - [ ] lnm typed/untyped-id issue
+    plot-pict in transient code cannot find a type ... can we fix by registering
+    a type somewhere?
 
 - [ ] defend holes, nothing protected in here (`struct` may have same holes)
   - [X] module+
