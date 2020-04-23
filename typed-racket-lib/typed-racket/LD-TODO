@@ -380,6 +380,10 @@
   - save for later, way later ... its not clear now whether there IS a concrete
     problem, only a hunch; looking for typed ids may be good enough
 - [X] support case-lambda in defender
+- [X] quadT 11111110001100
+      Type Checker: Duplicate type annotation of (-> (Listof Index) (Listof Integer)) for add-no-hyphen-zone,
+      previous was (-> (Listof Index) (Listof Integer))
+      - cannot reproduce, maybe fixed by Transient update
 
 - [ ] quadT 01001101010011 #hash() higher-order value passed as Any, yikes
   - my PR for HashTableTop caused this 
