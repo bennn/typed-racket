@@ -395,6 +395,20 @@
 - [X] zordoz 00001 10000 etc have type errors
   - fixed, remove tagged-zo-structs ... only use typed ... consequences?
 
+- [ ] module+ unsoundness
+  tried to add a syntax-time variable to the local env
+   (make-syntax-introducer ; define-syntaxed ; syntax-local-introduce)
+   but no does not work, need a delta introducer because core.rkt instantiated
+   more than once ... probably because of lazy-require
+  so, lets NOT do the delta-introducer,
+   switch to #lang design instead
+  pros of #lang
+  + avoid module+ communication, don't need to disallow (module #:transient (module+ #:guarded))
+  + works in repl
+  + works for (require ....)
+  cons
+  - more langs
+
 - [ ] organize benchmarks for eval.
   - [X] jpeg typed/untyped-id issue, (not sure what ID)
     have a simple fix via vector-map,
@@ -405,6 +419,8 @@
   - [ ] lnm typed/untyped-id issue
     plot-pict in transient code cannot find a type ... can we fix by registering
     a type somewhere?
+
+- [ ] try blame for 2020-04-27 11:00
 
 - [ ] defend holes, nothing protected in here (`struct` may have same holes)
   - [X] module+
