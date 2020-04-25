@@ -7,6 +7,9 @@
   transient-assert
   raise-transient-error)
 
+(require
+  (only-in racket/pretty pretty-format))
+
 ;; ---------------------------------------------------------------------------------------------------
 
 ;; procedure-arity-includes-keywords? : (-> procedure? (listof keyword?) (listof keyword?) boolean?)
@@ -48,10 +51,42 @@
     val
     (raise-transient-error val ty-str ctx)))
 
-(define (raise-transient-error val ty ctx)
+(define (raise-transient-error val ty ctx blame-entry*)
   (raise-arguments-error 'transient-assert
                          "value does not match static type"
                          "value" val
                          "type" (unquoted-printing-string ty)
-                         "src" ctx))
+                         "src" ctx
+                         "blame" blame-entry*))
 
+;;
+
+(provide blame-map-ref blame-map-set!)
+
+(define THE-BLAME-MAP (make-hasheq))
+
+(struct blame-entry (
+  type ;; expected
+  ;; prev ;; eq-hash-code of "parent"
+  dir ;; (or/c 'dom 'cod)
+  ;; ctx ;; source-location-list?
+) #:prefab)
+
+(define (make-blame-entry ty prev-val dir ctx)
+  (blame-entry ty #;(eq-hash-code prev-val) dir #;ctx))
+
+(define (blame-map-ref v)
+  (hash-keys (hash-ref THE-BLAME-MAP v (lambda () '#hash()))))
+
+(define (blame-map-set! v ty prev dir ctx)
+  (unless (eq? v (eq-hash-code v))
+    (define be (make-blame-entry ty prev dir ctx))
+    (hash-update! THE-BLAME-MAP v
+                  (lambda (curr) (set-add curr be))
+                  (lambda () (set-init be)))))
+
+(define (set-init v)
+  (hash v #true))
+
+(define (set-add h v)
+  (hash-set h v #true))
