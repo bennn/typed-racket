@@ -385,6 +385,11 @@
       previous was (-> (Listof Index) (Listof Integer))
       - cannot reproduce, maybe fixed by Transient update
 
+- [ ] send unsound, objects
+  - [ } any other accessors? build a list and tests for all these!
+
+- [ ] defender: why can't cod-checks all share code? values vs single-value
+
 - [ ] quadT 01001101010011 #hash() higher-order value passed as Any, yikes
   - my PR for HashTableTop caused this 
     its a Typed / Untyped issue, nothing doing for transient
@@ -396,9 +401,6 @@
   - fixed, remove tagged-zo-structs ... only use typed ... consequences?
 - [X] try blame for 2020-04-27 11:00
   see 'transient-blame' branch and $GT/blame-trails/meeting/2020-04-27
-
-- [ ] send unsound, objects
-  ... any other accessors? build a list and tests for all these!
 
 - [ ] module+ unsoundness
   tried to add a syntax-time variable to the local env
@@ -424,7 +426,6 @@
   - [ ] lnm typed/untyped-id issue
     plot-pict in transient code cannot find a type ... can we fix by registering
     a type somewhere?
-
 
 - [ ] defend holes, nothing protected in here (`struct` may have same holes)
   - [X] module+
