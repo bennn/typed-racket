@@ -385,10 +385,10 @@
       previous was (-> (Listof Index) (Listof Integer))
       - cannot reproduce, maybe fixed by Transient update
 
+- [ ] defender: why can't cod-checks all share code? values vs single-value
+
 - [ ] send unsound, objects
   - [ } any other accessors? build a list and tests for all these!
-
-- [ ] defender: why can't cod-checks all share code? values vs single-value
 
 - [ ] quadT 01001101010011 #hash() higher-order value passed as Any, yikes
   - my PR for HashTableTop caused this 
@@ -471,6 +471,8 @@
   - [ ] with-type, add te-mode param and update docs
 
 - [ ] blame, simple POPL'17
+  - see 'blame-trail' repo + meeting notes
+  - [ ] real blame should use srclocs as map keys
 
 - [ ] add defend to typecheck/toplevel-trampoline + tests
 - [ ] define-typed/untyped-id ... adapt to E T
