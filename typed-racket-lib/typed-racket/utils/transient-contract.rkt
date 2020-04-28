@@ -42,6 +42,10 @@
           (else ;#(keyword<? actual expected)
            (loop expected-kw* (cdr actual-kw*)))))))
 
-(define (raise-transient-error val ctx-message c-marks)
-  (raise (exn:fail:contract (format "transient-assert: got ~s in ~a" val ctx-message) c-marks)))
+(define (raise-transient-error val ty ctx)
+  (raise-arguments-error 'transient-assert
+                         "value does not match static type"
+                         "value" val
+                         "type" ty
+                         "src" ctx))
 

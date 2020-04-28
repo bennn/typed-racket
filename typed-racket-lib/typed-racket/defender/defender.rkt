@@ -49,6 +49,8 @@
     format-id
     generate-temporary
     with-syntax*)
+  (only-in syntax/srcloc
+    build-source-location-list)
   (only-in (submod typed-racket/private/type-contract test-exports)
     has-contract-def-property?
     type->contract)
@@ -107,7 +109,7 @@
           (let-values ([(extra* f+)
                         (if skip-dom?
                           (values '() '())
-                          (protect-formals dom-map #'formals ctc-cache))])
+                          (protect-formals dom-map #'formals (build-source-location-list stx) ctc-cache))])
             (register-extra-defs! extra*)
             f+))
         (define stx+
@@ -132,7 +134,7 @@
                       (let-values ([(extra* f+)
                                     (if skip-dom?
                                       (values '() '())
-                                      (protect-formals dom-map formals ctc-cache))])
+                                      (protect-formals dom-map formals (build-source-location-list stx) ctc-cache))])
                         (register-extra-defs! extra*)
                         f+))
                     (with-syntax ([formals formals]
@@ -171,7 +173,7 @@
           [else
            (define cod-tc-res (type-of stx))
            (define-values [extra* stx/cod]
-             (protect-codomain cod-tc-res stx+ ctc-cache))
+             (protect-codomain cod-tc-res stx+ (build-source-location-list stx) ctc-cache))
            (void (register-extra-defs! extra*))
            (if stx/cod
              (readd-props stx/cod stx)
@@ -583,7 +585,7 @@
                      (dynamic-require mpi+ #f)
                      #t)))))))))
 
-(define (protect-domain dom-type dom-stx ctc-cache)
+(define (protect-domain dom-type dom-stx ctx ctc-cache)
   (define-values [extra-def* ctc-stx]
     (if dom-type
       (type->flat-contract dom-type ctc-cache)
@@ -597,19 +599,20 @@
         (parameterize ([error-print-width 20])
           (format "~e : ~a" (#%plain-app syntax->datum dom-stx) dom-type)))
       (with-syntax ([ctc ctc-stx]
-                    [err err-msg]
-                    [dom dom-stx])
+                    [dom dom-stx]
+                    [ty-str (format "~a" dom-type)]
+                    [ctx ctx])
         (define new-stx
           (syntax/loc dom-stx
             (if (#%plain-app ctc dom)
               '#true
-              (#%plain-app raise-transient-error dom 'err (#%plain-app current-continuation-marks)))))
+              (#%plain-app raise-transient-error dom 'ty-str 'ctx))))
         (register-ignored! new-stx)
         new-stx)]))
   (values extra-def* dom-stx+))
 
-;; protect-codomain : (U #f Tc-Results) (Syntaxof List) Hash Hash (Boxof Syntax) -> TODO
-(define (protect-codomain cod-tc-res app-stx ctc-cache)
+;; protect-codomain : ???
+(define (protect-codomain cod-tc-res app-stx ctx ctc-cache)
   (define t* (tc-results->type* cod-tc-res))
   (cond
    [(or (not cod-tc-res) (not t*))
@@ -629,55 +632,39 @@
         ;; - checks the tag of each temporary
         (with-syntax ([app app-stx])
           (define var-name 'dyn-cod)
-          (if (null? (cdr t*))
-            ;; -- application returns 1 result, just bind it and check it
-            (with-syntax ([(ctc) ctc-stx*]
-                          [v (generate-temporary var-name)]
-                          [err (parameterize ([error-print-width 20])
-                                 (format "~e : ~a" (syntax->datum app-stx) (car t*)))])
-              (define new-stx
-                (with-type
-                  cod-tc-res
-                  (syntax/loc app-stx
-                    (let-values ([(v) app])
-                      (if (#%plain-app ctc v)
-                        v
-                        (#%plain-app raise-transient-error v 'err (#%plain-app current-continuation-marks)))))))
-              (ignore-if-expr! (caddr (syntax-e new-stx)))
-              new-stx)
-            ;; - application returns +1 results:
-            ;;   - bind all,
-            ;;   - check the ones with matching contracts,
-            ;;   - return all
-            (with-syntax* ([v*
-                            (for/list ([_t (in-list t*)])
-                              (generate-temporary var-name))]
-                           [check-v*
-                            (for/list ((ctc-stx (in-list ctc-stx*))
-                                       (type (in-list t*))
-                                       (v-stx (in-list (syntax-e #'v*)))
-                                       (i (in-naturals))
-                                       #:when ctc-stx)
-                              (define if-stx
-                                (with-syntax ([ctc ctc-stx]
-                                              [v v-stx]
-                                              [err (parameterize ([error-print-width 20])
-                                                     (format "value ~a : ~e : ~a" i (syntax->datum app-stx) type))])
-                                  #'(if (#%plain-app ctc v)
-                                      '#true
-                                      (#%plain-app raise-transient-error v 'err (#%plain-app current-continuation-marks)))))
-                              (ignore-if-expr! if-stx)
-                              if-stx)])
-              (define new-stx
-                (with-type
-                  cod-tc-res
-                  (quasisyntax/loc app-stx
-                    (let-values ([v* app])
-                      (begin
-                        (begin . check-v*)
-                        (#%plain-app values . v*))))))
-              (register-ignored! (caddr (syntax-e new-stx)))
-              new-stx)))))
+          ;; - application returns +1 results:
+          ;;   - bind all,
+          ;;   - check the ones with matching contracts,
+          ;;   - return all
+          (with-syntax* ([v*
+                          (for/list ([_t (in-list t*)])
+                            (generate-temporary var-name))]
+                         [check-v*
+                          (for/list ((ctc-stx (in-list ctc-stx*))
+                                     (type (in-list t*))
+                                     (v-stx (in-list (syntax-e #'v*)))
+                                     (i (in-naturals))
+                                     #:when ctc-stx)
+                            (define if-stx
+                              (with-syntax ([ctc ctc-stx]
+                                            [v v-stx]
+                                            [ty-str (format "~a" type)]
+                                            [ctx ctx])
+                                #'(if (#%plain-app ctc v)
+                                    '#true
+                                    (#%plain-app raise-transient-error v 'ty-str 'ctx))))
+                            (ignore-if-expr! if-stx)
+                            if-stx)])
+            (define new-stx
+              (with-type
+                cod-tc-res
+                (quasisyntax/loc app-stx
+                  (let-values ([v* app])
+                    (begin
+                      (begin . check-v*)
+                      (#%plain-app values . v*))))))
+            (register-ignored! (caddr (syntax-e new-stx)))
+            new-stx))))
     (values extra-def* cod-stx+)]))
 
 (define (ignore-if-expr! if-stx)
@@ -695,8 +682,8 @@
     (add-typeof-expr v t)
     v))
 
-;; protect-formals : TypeMap (Syntaxof List) Hash Hash (Boxof Syntax) -> (Syntaxof List)
-(define (protect-formals dom-map formals ctc-cache)
+;; protect-formals : ???
+(define (protect-formals dom-map formals ctx ctc-cache)
   (let loop ([dom* formals] [position 0])
     ;; may be called with (a b (c . d))
     (cond
@@ -707,7 +694,7 @@
        [(identifier? dom*)
         (define t (type-map-ref dom-map REST-KEY))
         (define-values [ex* dom-stx]
-          (protect-domain t (datum->syntax formals dom*) ctc-cache))
+          (protect-domain t (datum->syntax formals dom*) ctx ctc-cache))
         (values ex* (list dom-stx))]
        [(syntax? dom*)
         (loop (syntax-e dom*) position)]
@@ -722,7 +709,7 @@
      [else
       (define var (formal->var (car dom*)))
       (define t (type-map-ref dom-map position))
-      (define-values [ex0* dom-first] (protect-domain t var ctc-cache))
+      (define-values [ex0* dom-first] (protect-domain t var ctx ctc-cache))
       (define-values [ex1* dom-rest] (loop (cdr dom*) (+ position 1)))
       (values (append ex0* ex1*)
               (if dom-first (cons dom-first dom-rest) dom-rest))])))
