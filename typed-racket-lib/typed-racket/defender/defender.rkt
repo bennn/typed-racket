@@ -82,12 +82,23 @@
       (syntax-parse stx
         #:literals (#%plain-app begin case-lambda define-syntaxes define-values
                     find-method/who let-values letrec-values values)
-        #;[(let-values ([(_) _])
-            (let-values ([(_) _])
+        [;; send (for objects), MUST come before ignored exprs
+         (let-values ([(_) _meth])
+            (let-values ([(_) _rcvr])
               (let-values (((_) (#%plain-app find-method/who _ _ _)))
-                (let-values _ _))))
-         (printf "SEND~n ~s~n ~s~n" stx (maybe-type-of stx))
-         (raise-user-error 'dieerror)]
+                (let-values ([(_) _args] ...) _))))
+         (define stx+
+           (syntax*->syntax stx
+             (for/list ([x (in-list (syntax-e stx))])
+               (loop x #f))))
+         (void (readd-props! stx+ stx))
+         (define tc-res (type-of stx))
+         (define-values [extra* stx/check]
+           (protect-codomain tc-res stx+ (build-source-location-list stx) ctc-cache))
+         (void (register-extra-defs! extra*))
+         (if stx/check
+           (readd-props stx/check stx)
+           stx+)]
         ;; ---------------------------------------------------------------------
         [_
          #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"
