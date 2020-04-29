@@ -536,6 +536,12 @@
               [_
                #false])))))
 
+(define (module-path-index-join* . x*)
+  (let loop ((x* x*))
+    (if (null? (cdr x*))
+      (module-path-index-join (car x*) #f)
+      (module-path-index-join (car x*) (loop (cdr x*))))))
+
 ;; Special case: no cod-check on for loop index functions
 ;; This may lead to unsoundness, but I don't know how else to allow
 ;;  (for ((x (open-input-port "aaa"))) ....)
@@ -548,12 +554,6 @@
            (let ((id (syntax-e stx)))
              (or (eq? id 'pos->vals)
                  (eq? id 'for-loop)))))))
-
-(define (module-path-index-join* . x*)
-  (let loop ((x* x*))
-    (if (null? (cdr x*))
-      (module-path-index-join (car x*) #f)
-      (module-path-index-join (car x*) (loop (cdr x*))))))
 
 ;; from-require/typed? : Identifier -> Boolean
 ;; Typed Racket adds this property to all require/typed identifiers,
