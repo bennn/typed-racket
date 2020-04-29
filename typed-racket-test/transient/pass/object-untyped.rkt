@@ -1,5 +1,7 @@
 #lang typed/racket #:transient
 
+;; Copied from TR -test/fail/ directory
+
 (module u racket
   (define c%
     (class object%
@@ -16,7 +18,7 @@
 (: g (-> (Vector (Instance C%)) Integer))
 (define (g vo)
   (define o (vector-ref vo 0))
-  (send o f (send o f 2)))
+  (send o f 2))
 
 (check-exn exn:fail:contract?
   (lambda () (g (vector (new c%)))))
