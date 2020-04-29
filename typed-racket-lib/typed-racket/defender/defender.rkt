@@ -82,6 +82,7 @@
       (syntax-parse stx
         #:literals (#%plain-app begin case-lambda define-syntaxes define-values
                     find-method/who let-values letrec-values values)
+        ;; unsound within exn-handlers^ ?
         [;; send (for objects), MUST come before ignored exprs
          (let-values ([(_) _meth])
             (let-values ([(_) _rcvr])
