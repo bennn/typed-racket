@@ -61,7 +61,8 @@
     (only-in racket/contract/base any/c)
     racket/unsafe/ops
     typed-racket/types/numeric-predicates
-    typed-racket/utils/transient-contract))
+    typed-racket/utils/transient-contract
+    (only-in racket/private/class-internal find-method/who)))
  
 (provide defend-top)
 
@@ -79,130 +80,138 @@
   (define defended-stx
     (let loop ([stx stx] [skip-dom? #f])
       (syntax-parse stx
-       #:literals (values define-values #%plain-app begin define-syntaxes letrec-values case-lambda)
-       [_
-        #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"
-                   (has-contract-def-property? stx))
-        stx]
-       [(~or _:ignore^ _:ignore-some^) ;; for struct definitions ... not sure what else
-        stx]
-       [((~or (~literal #%provide)
-              (~literal #%require)
-              (~literal begin-for-syntax)
-              (~literal define-syntaxes)
-              (~literal module*)
-              (~literal module)
-              (~literal quote)
-              (~literal quote-syntax)) . _)
-        stx]
-       [(~and (~or :kw-lambda^ :opt-lambda^)
-              ((~literal let-values) ([(f) fun]) body))
-        stx]
-       [((~or _:lambda-identifier
-              case-lambda) . _)
-        #:when (not (maybe-type-of stx))
-        stx]
-       [(op:lambda-identifier formals . body)
-        ;; TODO remove stx->arrow ? maybe this can all be simpler
-        (define dom-map (type->domain-map (stx->arrow-type stx)))
-        (define f+
-          (let-values ([(extra* f+)
-                        (if skip-dom?
-                          (values '() '())
-                          (protect-formals dom-map #'formals (build-source-location-list stx) ctc-cache))])
-            (register-extra-defs! extra*)
-            f+))
-        (define stx+
-          (with-syntax ([body+ (readd-props (loop #'body #f) #'body)])
-            (if (null? f+)
-              (syntax/loc stx (op formals . body+))
-              (let ([stx+ (quasisyntax/loc stx (op formals (#%plain-app void . #,f+) . body+))])
-                (register-ignored! (caddr (syntax-e stx+)))
-                stx+))))
-        (readd-props stx+ stx)]
-       [((~and op case-lambda) [formals* . body*] ...)
-        ;; NOTE similar to the lambda case, but cannot easily share helper functions
-        ;;  because risk `identifier used out of context' errors
-        (define dom-map* (map type->domain-map (stx->arrow-type* stx)))
-        (define stx+
-          (quasisyntax/loc stx
-            (op .
-                #,(for/list ([formals (in-list (syntax-e #'(formals* ...)))]
-                             [body (in-list (syntax-e #'(body* ...)))]
-                             [dom-map (in-list dom-map*)])
-                    (define f+
-                      (let-values ([(extra* f+)
-                                    (if skip-dom?
-                                      (values '() '())
-                                      (protect-formals dom-map formals (build-source-location-list stx) ctc-cache))])
-                        (register-extra-defs! extra*)
-                        f+))
-                    (with-syntax ([formals formals]
-                                  [body+ (readd-props (loop body #f) body)])
-                      (if (null? f+)
-                        (syntax/loc stx [formals . body+])
-                        (let ([stx+ (quasisyntax/loc stx [formals (#%plain-app void . #,f+) . body+])])
-                          (register-ignored! (cadr (syntax-e stx+)))
-                          stx+)))))))
-        (readd-props stx+ stx)]
-       [(#%plain-app (letrec-values (((a:id) e0)) b:id) e1* ...)
-        #:when (free-identifier=? #'a #'b)
-        ;; (for ....) combinators expand to a recursive function that does not escape,
-        ;;  no need to check the domain --- use (loop e #true) to skip
-        ;; TODO can the optimizer remove these checks instead?
-        (define skip? (not (escapes? #'a #'e0 #false)))
-        (with-syntax ((e0+ (loop #'e0 skip?))
-                     ((e1*+ ...) (for/list ((e1 (in-list (syntax-e #'(e1* ...)))))
-                                   (loop e1 #f))))
-          (syntax/loc stx
-            (#%plain-app (letrec-values (((a) e0+)) b) e1*+ ...)))]
-       [(x* ...)
-        #:when (is-application? stx)
-        (define stx+
-          (syntax*->syntax stx
-            (for/list ([x (in-list (syntax-e #'(x* ...)))])
-              (loop x #f))))
-        (void (readd-props! stx+ stx))
-        (define-values [pre* f post*] (split-application stx+))
-        (cond
-          [(or (is-ignored? f)
-               (blessed-codomain? f)
-               (cdr-list? f post*)
-               (blessed-for-function? f))
-           stx+]
-          [else
-           (define cod-tc-res (type-of stx))
-           (define-values [extra* stx/cod]
-             (protect-codomain cod-tc-res stx+ (build-source-location-list stx) ctc-cache))
-           (void (register-extra-defs! extra*))
-           (if stx/cod
-             (readd-props stx/cod stx)
-             stx+)])]
-       [((~and x (~literal #%expression)) _)
-        #:when (type-inst-property #'x)
-        stx]
-       [((~literal #%expression) e)
-        #:when (type-ascription-property stx)
-        (define e+ (loop #'e #f))
-        (void (readd-props! e+ #'e))
-        (define e++
-          (with-syntax ([e+ e+])
-            (syntax/loc stx (#%expression e+))))
-        (void (readd-props! e++ stx))
-        e++]
-       [_
-        #:when (type-ascription-property stx)
-        (raise-user-error 'defend-top "strange type-ascription ~a" (syntax->datum stx))]
-       [(x* ...)
-        (define stx+
-          (syntax*->syntax stx
-            (for/list ((x (in-list (syntax-e #'(x* ...)))))
-              (define x+ (loop x #f))
-              (readd-props! x+ x)
-              x+)))
-        (readd-props stx+ stx)]
-       [_
-        stx])))
+        #:literals (#%plain-app begin case-lambda define-syntaxes define-values
+                    find-method/who let-values letrec-values values)
+        #;[(let-values ([(_) _])
+            (let-values ([(_) _])
+              (let-values (((_) (#%plain-app find-method/who _ _ _)))
+                (let-values _ _))))
+         (printf "SEND~n ~s~n ~s~n" stx (maybe-type-of stx))
+         (raise-user-error 'dieerror)]
+        ;; ---------------------------------------------------------------------
+        [_
+         #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"
+                    (has-contract-def-property? stx))
+         stx]
+        [(~or _:ignore^ _:ignore-some^) ;; for struct definitions ... not sure what else
+         stx]
+        [((~or (~literal #%provide)
+               (~literal #%require)
+               (~literal begin-for-syntax)
+               (~literal define-syntaxes)
+               (~literal module*)
+               (~literal module)
+               (~literal quote)
+               (~literal quote-syntax)) . _)
+         stx]
+        [(~and (~or :kw-lambda^ :opt-lambda^)
+               (let-values ([(f) fun]) body))
+         stx]
+        [((~or _:lambda-identifier
+               case-lambda) . _)
+         #:when (not (maybe-type-of stx))
+         stx]
+        [(op:lambda-identifier formals . body)
+         ;; TODO remove stx->arrow ? maybe this can all be simpler
+         (define dom-map (type->domain-map (stx->arrow-type stx)))
+         (define f+
+           (let-values ([(extra* f+)
+                         (if skip-dom?
+                           (values '() '())
+                           (protect-formals dom-map #'formals (build-source-location-list stx) ctc-cache))])
+             (register-extra-defs! extra*)
+             f+))
+         (define stx+
+           (with-syntax ([body+ (readd-props (loop #'body #f) #'body)])
+             (if (null? f+)
+               (syntax/loc stx (op formals . body+))
+               (let ([stx+ (quasisyntax/loc stx (op formals (#%plain-app void . #,f+) . body+))])
+                 (register-ignored! (caddr (syntax-e stx+)))
+                 stx+))))
+         (readd-props stx+ stx)]
+        [((~and op case-lambda) [formals* . body*] ...)
+         ;; NOTE similar to the lambda case, but cannot easily share helper functions
+         ;;  because risk `identifier used out of context' errors
+         (define dom-map* (map type->domain-map (stx->arrow-type* stx)))
+         (define stx+
+           (quasisyntax/loc stx
+             (op .
+                 #,(for/list ([formals (in-list (syntax-e #'(formals* ...)))]
+                              [body (in-list (syntax-e #'(body* ...)))]
+                              [dom-map (in-list dom-map*)])
+                     (define f+
+                       (let-values ([(extra* f+)
+                                     (if skip-dom?
+                                       (values '() '())
+                                       (protect-formals dom-map formals (build-source-location-list stx) ctc-cache))])
+                         (register-extra-defs! extra*)
+                         f+))
+                     (with-syntax ([formals formals]
+                                   [body+ (readd-props (loop body #f) body)])
+                       (if (null? f+)
+                         (syntax/loc stx [formals . body+])
+                         (let ([stx+ (quasisyntax/loc stx [formals (#%plain-app void . #,f+) . body+])])
+                           (register-ignored! (cadr (syntax-e stx+)))
+                           stx+)))))))
+         (readd-props stx+ stx)]
+        [(#%plain-app (letrec-values (((a:id) e0)) b:id) e1* ...)
+         #:when (free-identifier=? #'a #'b)
+         ;; (for ....) combinators expand to a recursive function that does not escape,
+         ;;  no need to check the domain --- use (loop e #true) to skip
+         ;; TODO can the optimizer remove these checks instead?
+         (define skip? (not (escapes? #'a #'e0 #false)))
+         (with-syntax ((e0+ 42 #;(loop #'e0 skip?))
+                      ((e1*+ ...) 42 #;(for/list ((e1 (in-list (syntax-e #'(e1* ...)))))
+                                    (loop e1 #f))))
+           (syntax/loc stx
+             (#%plain-app (letrec-values (((a) e0+)) b) e1*+ ...))) ]
+        [(x* ...)
+         #:when (is-application? stx)
+         (define stx+
+           (syntax*->syntax stx
+             (for/list ([x (in-list (syntax-e #'(x* ...)))])
+               (loop x #f))))
+         (void (readd-props! stx+ stx))
+         (define-values [pre* f post*] (split-application stx+))
+         (cond
+           [(or (is-ignored? f)
+                (blessed-codomain? f)
+                (cdr-list? f post*)
+                (blessed-for-function? f))
+            stx+]
+           [else
+            (define cod-tc-res (type-of stx))
+            (define-values [extra* stx/cod]
+              (protect-codomain cod-tc-res stx+ (build-source-location-list stx) ctc-cache))
+            (void (register-extra-defs! extra*))
+            (if stx/cod
+              (readd-props stx/cod stx)
+              stx+)])]
+        [((~and x (~literal #%expression)) _)
+         #:when (type-inst-property #'x)
+         stx]
+        [((~literal #%expression) e)
+         #:when (type-ascription-property stx)
+         (define e+ (loop #'e #f))
+         (void (readd-props! e+ #'e))
+         (define e++
+           (with-syntax ([e+ e+])
+             (syntax/loc stx (#%expression e+))))
+         (void (readd-props! e++ stx))
+         e++]
+        [_
+         #:when (type-ascription-property stx)
+         (raise-user-error 'defend-top "strange type-ascription ~a" (syntax->datum stx))]
+        [(x* ...)
+         (define stx+
+           (syntax*->syntax stx
+             (for/list ((x (in-list (syntax-e #'(x* ...)))))
+               (define x+ (loop x #f))
+               (readd-props! x+ x)
+               x+)))
+         (readd-props stx+ stx)]
+        [_
+         stx])))
   (values (reverse (unbox rev-extra-def*)) defended-stx))
 
 (define-syntax-class lambda-identifier
