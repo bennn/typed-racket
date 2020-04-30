@@ -485,3 +485,19 @@
   - rackunit, unsafe-provide macro
   - 2htdp-typed, unsafe-provide macro
 
+- [ ] default-continuation-prompt-tag,
+  should transient not put a contract on it?
+  see t-fail/dyn/control-test-3.rkt 
+  and t-fail/dyn/control-test-6.rkt 
+
+- [ ] unsound t-fail/dyn/pr10350.rkt
+  ... function defined in TR cannot be trusted,
+   what to do?
+
+- [ ] unsound case-lambda t-fail/dyn/pr14173.rkt 
+  case disappeared ... how why?
+
+- [ ] none/c check for Procedure type what the
+  t-fail/dyn/procedure-top.rkt
+
+- [ ] missing dom check t-fail/dyn/union-or-exclusive.rkt
