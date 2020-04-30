@@ -1,4 +1,5 @@
-
+- static = compile time errors, should be the same before + after Transient
+- dyn = runtime errors, need to audit!
 
         all-bad-syntax.rkt
         ann-map-funcs.rkt
