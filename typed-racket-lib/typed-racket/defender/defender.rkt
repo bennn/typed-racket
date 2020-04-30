@@ -512,10 +512,11 @@
     (or (syntax-property stx 'constructor-for) ;; 2020-03: could register in env/lexical-env instead
         ;; 2020-03 : struct predicates handled earlier in type checker
         (transient-trusted-positive? stx)
-        (and (typed-racket-identifier? stx)
+        ;; 2020-04 : TR ids are not always sound, see tests
+        #;(and (typed-racket-identifier? stx)
              (not (struct-accessor? stx))
              (not (from-require/typed? stx))))
-    (is-lambda? stx)))
+    (literal-function stx)))
 
 (define (cdr-list?  f post*)
   ;; TODO put this in optimizer? / reuse optimizer?
@@ -758,7 +759,7 @@
    [_
      (raise-argument-error 'some-values->type* "(or/c Type? SomeValues?)" sv)]))
 
-(define (is-lambda? x)
+(define (literal-function x)
   (syntax-parse x
    [((~or (~literal lambda)
           (~literal #%plain-lambda)
