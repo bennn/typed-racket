@@ -46,6 +46,6 @@
   (raise-arguments-error 'transient-assert
                          "value does not match static type"
                          "value" val
-                         "type" ty
+                         "type" (unquoted-printing-string ty)
                          "src" ctx))
 
