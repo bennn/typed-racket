@@ -392,9 +392,24 @@
    ... I guess optimizartions go to future work, very sad
    BUT we can turn this on for the benchmarks, to compare
 - [X] defender: why can't cod-checks all share code? values vs single-value
+- [X] require/typed and cast, raise transient
+  errors instead of contract errors
 - [X] send unsound, objects
   - [X} any other accessors? build a list and tests for all these!
     - [X] unsound, (cdr (Pairof Sym Sym)) not protected
+  - [ ] send fix causes errors, ugh
+    take5
+     transient-assert: value does not match static type
+     value: #<procedure:!play-game method in dealer%>
+     type: Result
+    acquire
+     transient-assert: value does not match static type
+     value: #<procedure:to-state method in lplaced%>
+     type: state
+    quadT
+     transient-assert: value does not match static type
+     value: #<procedure:get-solution method in problem%>
+     type: HashTableTop
 
 - [ ] methods not defended
   see transient/pass/

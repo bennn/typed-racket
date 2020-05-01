@@ -82,7 +82,6 @@
          racket/struct-info
          syntax/struct
          syntax/location
-         (only-in syntax/srcloc build-source-location-list)
          (for-template "../utils/any-wrap.rkt" "../utils/transient-contract.rkt")
          "../utils/tc-utils.rkt"
          "../private/syntax-properties.rkt"
@@ -214,7 +213,7 @@
                          (list #'(define-syntaxes (hidden) (values)))
                          null)
                   #,(internal #'(require/typed-internal hidden ty . sm))
-                  #,(ignore #`(require/contract nm.spec hidden #,cnt* lib))))]
+                  #,(ignore #`(require/contract nm.spec hidden #,cnt* lib #,(format "~a" (syntax->datum #'ty))))))]
              [else
               (define/with-syntax hidden2 (generate-temporary #'nm.nm))
               (quasisyntax/loc stx
@@ -381,7 +380,7 @@
                  new-ty-ctc 'cast 'typed-world))]
           [else
            (define ty-str (format "~a" (syntax->datum #'ty))) ;;bg need to parse-type ?
-           (define ctx (build-source-location-list stx))
+           (define ctx (quote-srcloc stx))
            #`(#,(external-check-property #'#%expression check-valid-type)
               #,(ignore-some/expr
                   #`(let-values (((val) (#,(casted-expr-property #'#%expression store-existing-type) v)))
@@ -426,7 +425,7 @@
                                     (else
                                       #'any/c))))
                  #'(define pred-cnt ctc)))
-           #,(ignore #'(require/contract pred hidden pred-cnt lib)))))]))
+           #,(ignore #`(require/contract pred hidden pred-cnt lib "(-> Any Boolean)")))))]))
 
 
 
@@ -585,7 +584,7 @@
                                                    #'(procedure-arity-includes/c 1))
                                                   (else
                                                    #'any/c))))
-                               #'(require/contract pred hidden ctc lib)))
+                               #'(require/contract pred hidden ctc lib "(-> Any Boolean)")))
                          #,(internal #'(require/typed-internal hidden (Any -> Boolean : type)))
                          (require/typed #:internal (maker-name real-maker) type lib
                                         #:struct-maker parent
