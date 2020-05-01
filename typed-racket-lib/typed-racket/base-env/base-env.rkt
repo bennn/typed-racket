@@ -973,7 +973,7 @@
                        [(-HashTableTop a) Univ]
                        [(-HashTableTop a (-val #f)) Univ]
                        [(-HashTableTop a (-> c)) Univ])) needs-transient-check]
-[hash-ref! (-poly (a b) (-> (-HT a b) a (-> b) b))]
+[hash-ref! (-poly (a b) (-> (-HT a b) a (-> b) b)) needs-transient-check]
 [hash-has-key? (-HashTableTop Univ . -> . B)]
 [hash-update! (-poly (a b)
                      (cl-> [((-HT a b) a (-> b b)) -Void]
