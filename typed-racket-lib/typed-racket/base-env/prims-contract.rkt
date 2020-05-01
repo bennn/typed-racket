@@ -82,7 +82,8 @@
          racket/struct-info
          syntax/struct
          syntax/location
-         (for-template "../utils/any-wrap.rkt")
+         (only-in syntax/srcloc build-source-location-list)
+         (for-template "../utils/any-wrap.rkt" "../utils/transient-contract.rkt")
          "../utils/tc-utils.rkt"
          "../private/syntax-properties.rkt"
          "../private/cast-table.rkt"
@@ -326,52 +327,64 @@
 (define (core-cast stx)
   (syntax-parse stx
     [(_ v:expr ty:expr)
-     (define (apply-contract v ctc-expr pos neg)
-       #`(#%expression
-          #,(ignore-some/expr
-             #`(let-values (((val) #,(with-type* v #'Any)))
-                 #,(syntax-property
-                    (quasisyntax/loc stx
-                      (contract
-                       #,ctc-expr
-                       val
-                       '#,pos
-                       '#,neg
-                       #f
-                       (quote-srcloc #,stx)))
-                    'feature-profile:TR-dynamic-check #t))
-             #'ty)))
-
-     (cond [(not (unbox typed-context?)) ; no-check, don't check
-            #'v]
-           [else
-            (define new-ty-ctc (syntax-local-lift-expression
-                                (make-contract-def-rhs #'ty #f #f)))
-            (define existing-ty-id new-ty-ctc)
-            (define existing-ty-ctc (syntax-local-lift-expression
-                                     (make-contract-def-rhs/from-typed existing-ty-id #f #f)))
-            (define (store-existing-type existing-type)
-              (check-no-free-vars existing-type #'v)
-              (cast-table-add! existing-ty-id (datum->syntax #f existing-type #'v)))
-            (define (check-valid-type _)
-              (define type (parse-type #'ty))
-              (check-no-free-vars type #'ty))
-            (define (check-no-free-vars type stx)
-              (define vars (fv type))
-              ;; If there was an error don't create another one
-              (unless (or (Error? type) (null? vars))
-                (tc-error/delayed
-                 #:stx stx
-                 "Type ~a could not be converted to a contract because it contains free variables."
-                 type)))
-            #`(#,(external-check-property #'#%expression check-valid-type)
-               #,(apply-contract
-                  (apply-contract
-                   #`(#,(casted-expr-property #'#%expression store-existing-type)
-                      v)
-                   existing-ty-ctc 'typed-world 'cast)
-                  new-ty-ctc 'cast 'typed-world))])]))
-
+     (define te-mode (current-type-enforcement-mode))
+     (case te-mode
+       [(erasure #f) ; no-check, don't check
+        #'v]
+       [(guarded transient)
+        (define new-ty-ctc (syntax-local-lift-expression
+                            (make-contract-def-rhs #'ty #f #f)))
+        (define existing-ty-id new-ty-ctc)
+        (define existing-ty-ctc (syntax-local-lift-expression
+                                 (make-contract-def-rhs/from-typed existing-ty-id #f #f)))
+        (define (store-existing-type existing-type)
+          (check-no-free-vars existing-type #'v)
+          (cast-table-add! existing-ty-id (datum->syntax #f existing-type #'v)))
+        (define (check-valid-type _)
+          (define type (parse-type #'ty))
+          (check-no-free-vars type #'ty))
+        (define (check-no-free-vars type stx)
+          (define vars (fv type))
+          ;; If there was an error don't create another one
+          (unless (or (Error? type) (null? vars))
+            (tc-error/delayed
+             #:stx stx
+             "Type ~a could not be converted to a contract because it contains free variables."
+             type)))
+        (cond
+          [(eq? guarded te-mode)
+           (define (apply-contract v ctc-expr pos neg)
+             #`(#%expression
+                #,(ignore-some/expr
+                   #`(let-values (((val) #,(with-type* v #'Any)))
+                       #,(syntax-property
+                          (quasisyntax/loc stx
+                            (contract
+                             #,ctc-expr
+                             val
+                             '#,pos
+                             '#,neg
+                             #f
+                             (quote-srcloc #,stx)))
+                          'feature-profile:TR-dynamic-check #t))
+                   #'ty)))
+           #`(#,(external-check-property #'#%expression check-valid-type)
+              #,(apply-contract
+                 (apply-contract
+                  #`(#,(casted-expr-property #'#%expression store-existing-type)
+                     v)
+                  existing-ty-ctc 'typed-world 'cast)
+                 new-ty-ctc 'cast 'typed-world))]
+          [else
+           (define ty-str (format "~a" (syntax->datum #'ty))) ;;bg need to parse-type ?
+           (define ctx (build-source-location-list stx))
+           #`(#,(external-check-property #'#%expression check-valid-type)
+              #,(ignore-some/expr
+                  #`(let-values (((val) (#,(casted-expr-property #'#%expression store-existing-type) v)))
+                      (if (#%plain-app #,new-ty-ctc val)
+                        val
+                        (#%plain-app raise-transient-error val '#,ty-str '#,ctx)))
+                  #'ty))])])]))
 
 
 (define (require/opaque-type stx)
