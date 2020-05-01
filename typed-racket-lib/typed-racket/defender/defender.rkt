@@ -172,8 +172,8 @@
          ;;  no need to check the domain --- use (loop e #true) to skip
          ;; TODO can the optimizer remove these checks instead?
          (define skip? (not (escapes? #'a #'e0 #false)))
-         (with-syntax ((e0+ 42 #;(loop #'e0 skip?))
-                      ((e1*+ ...) 42 #;(for/list ((e1 (in-list (syntax-e #'(e1* ...)))))
+         (with-syntax ((e0+ (loop #'e0 skip?))
+                      ((e1*+ ...) (for/list ((e1 (in-list (syntax-e #'(e1* ...)))))
                                     (loop e1 #f))))
            (syntax/loc stx
              (#%plain-app (letrec-values (((a) e0+)) b) e1*+ ...))) ]
@@ -540,14 +540,14 @@
   (and (Type? t)
        (let loop ((t t)
                   (d f-depth))
-         (or (zero? d)
-             (match t
-              [(Listof: _)
-               #true]
-              [(Pair: _ t-cdr)
-               (loop t-cdr (- d 1))]
-              [_
-               #false])))))
+         (match t
+          [(Listof: _)
+           #true]
+          [(Pair: _ t-cdr)
+           (or (zero? d)
+               (loop t-cdr (- d 1)))]
+          [_
+           #false]))))
 
 (define (module-path-index-join* . x*)
   (let loop ((x* x*))
