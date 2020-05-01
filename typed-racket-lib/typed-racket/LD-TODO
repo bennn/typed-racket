@@ -391,11 +391,11 @@
    ... can allow (define (f x) ....), but IDK how to make that cross-module
    ... I guess optimizartions go to future work, very sad
    BUT we can turn this on for the benchmarks, to compare
+- [X] defender: why can't cod-checks all share code? values vs single-value
 
 - [X] send unsound, objects
   - [ } any other accessors? build a list and tests for all these!
-
-- [ ] defender: why can't cod-checks all share code? values vs single-value
+    - [X] unsound, (cdr (Pairof Sym Sym)) not protected
 
 - [ ] quadT 01001101010011 #hash() higher-order value passed as Any, yikes
   - my PR for HashTableTop caused this 
@@ -504,3 +504,14 @@
   t-fail/dyn/procedure-top.rkt
 
 - [ ] missing dom check t-fail/dyn/union-or-exclusive.rkt
+
+- [ ] enable typed-id? check, safely
+   well ok, not so hard,
+   - try to put info on provided ID
+   - else use the type registry, record "trust" for syntax
+   - make sure to keep type, though, b/c can cast or
+     require/type from typed -> typed and get unsound
+   ... consider T vs S, may need different logic,
+    maybe undo contract redirect
+   - can trust T data structures too?
+
