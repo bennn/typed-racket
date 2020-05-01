@@ -392,10 +392,12 @@
    ... I guess optimizartions go to future work, very sad
    BUT we can turn this on for the benchmarks, to compare
 - [X] defender: why can't cod-checks all share code? values vs single-value
-
 - [X] send unsound, objects
-  - [ } any other accessors? build a list and tests for all these!
+  - [X} any other accessors? build a list and tests for all these!
     - [X] unsound, (cdr (Pairof Sym Sym)) not protected
+
+- [ ] methods not defended
+  see transient/pass/
 
 - [ ] quadT 01001101010011 #hash() higher-order value passed as Any, yikes
   - my PR for HashTableTop caused this 
@@ -515,3 +517,22 @@
     maybe undo contract redirect
    - can trust T data structures too?
 
+- [ ] segfault transient/pass/accessors.rkt
+  sensitive to small deletes
+  OK random-ref is unsafe require/typed
+  ```
+  #lang typed/racket #:transient
+
+  (module untyped racket
+    (define pair0 (cons "A" "B"))
+    (define list0 (list "A" "B" "C"))
+    (provide pair0 list0))
+
+  (require/typed 'untyped
+    (pair0 (Pairof Symbol Symbol))
+    (list0 (Listof Symbol)))
+
+  (require typed/racket/random)
+
+  (random-ref list0)
+  ```
