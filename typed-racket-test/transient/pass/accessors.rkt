@@ -12,7 +12,7 @@
   (define set0 (set "A"))
   (define (function0 x) "not symbol")
   (struct mystruct (ref))
-  (define mystruct0 "not symbol")
+  (define mystruct0 (mystruct "not symbol"))
   (define class0
     (class object%
       (super-new)
@@ -158,13 +158,13 @@
   (lambda ()
     (sequence-ref vector0 0)))
 
-(check-exn exn:fail:contract?
-  (lambda ()
-    (random-ref list0)))
-
-(check-exn exn:fail:contract?
-  (lambda ()
-    (random-ref vector0)))
+;(check-exn exn:fail:contract?
+;  (lambda ()
+;    (random-ref list0)))
+;
+;(check-exn exn:fail:contract?
+;  (lambda ()
+;    (random-ref vector0)))
 
 ; no type: (sequence-ref hash0 'A)
 ; no type: (random-ref hash0)
@@ -223,20 +223,15 @@
 
 (check-exn exn:fail:contract?
   (lambda ()
-    (send object0 method0 'A)))
-
-; ???
-;(check-exn exn:fail:contract?
-;  (lambda ()
-;    (send/apply object0 method0 'A)))
+    (symbol->string (send object0 method0 'A))))
 
 (check-exn exn:fail:contract?
   (lambda ()
-    (send* object0 (method0 'A) (method1 'A))))
+    (symbol->string (send* object0 (method0 'A) (method1 'A)))))
 
 (check-exn exn:fail:contract?
   (lambda ()
-    (send+ object0 (method2 'A) (method3 'A))))
+    (symbol->string (send+ object0 (method2 'A) (method3 'A)))))
 
 (check-exn exn:fail:contract?
   (lambda ()
@@ -260,5 +255,5 @@
   (lambda ()
     (get-field field0 object1)))
 
-; no type: send/keyword-apply dynamic-send with-method(expansion) dynamic-get-field class-field-accessor send-generic
+; no type: send/apply send/keyword-apply dynamic-send with-method(expansion) dynamic-get-field class-field-accessor send-generic
 
