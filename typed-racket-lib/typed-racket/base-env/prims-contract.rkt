@@ -383,10 +383,9 @@
            (define ctx (quote-srcloc stx))
            #`(#,(external-check-property #'#%expression check-valid-type)
               #,(ignore-some/expr
-                  #`(let-values (((val) (#,(casted-expr-property #'#%expression store-existing-type) v)))
-                      (if (#%plain-app #,new-ty-ctc val)
-                        val
-                        (#%plain-app raise-transient-error val '#,ty-str '#,ctx)))
+                  #`(#%plain-app transient-assert
+                                 (#,(casted-expr-property #'#%expression store-existing-type) v)
+                                 #,new-ty-ctc '#,ty-str '#,ctx)
                   #'ty))])])]))
 
 

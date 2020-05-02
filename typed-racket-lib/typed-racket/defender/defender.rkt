@@ -626,9 +626,7 @@
                     [ctx ctx])
         (define new-stx
           (syntax/loc dom-stx
-            (if (#%plain-app ctc dom)
-              '#true
-              (#%plain-app raise-transient-error dom 'ty-str 'ctx))))
+            (#%plain-app transient-assert dom ctc 'ty-str 'ctx)))
         (register-ignored! new-stx)
         new-stx)]))
   (values extra-def* dom-stx+))
@@ -661,7 +659,7 @@
           (with-syntax* ([v*
                           (for/list ([_t (in-list t*)])
                             (generate-temporary var-name))]
-                         [check-v*
+                         [(check-v* ...)
                           (for/list ((ctc-stx (in-list ctc-stx*))
                                      (type (in-list t*))
                                      (v-stx (in-list (syntax-e #'v*)))
@@ -672,9 +670,7 @@
                                             [v v-stx]
                                             [ty-str (format "~a" type)]
                                             [ctx ctx])
-                                #'(if (#%plain-app ctc v)
-                                    '#true
-                                    (#%plain-app raise-transient-error v 'ty-str 'ctx))))
+                                #'(#%plain-app transient-assert v ctc 'ty-str 'ctx)))
                             (ignore-if-expr! if-stx)
                             if-stx)])
             (define new-stx
@@ -683,7 +679,7 @@
                 (quasisyntax/loc app-stx
                   (let-values ([v* app])
                     (begin
-                      (begin . check-v*)
+                      check-v* ...
                       (#%plain-app values . v*))))))
             (register-ignored! (caddr (syntax-e new-stx)))
             new-stx))))
