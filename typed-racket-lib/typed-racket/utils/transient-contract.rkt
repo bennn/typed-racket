@@ -4,6 +4,7 @@
 
 (provide
   procedure-arity-includes-keywords?
+  transient-assert
   raise-transient-error)
 
 ;; ---------------------------------------------------------------------------------------------------
@@ -41,6 +42,11 @@
            (loop (cdr expected-kw*) (cdr actual-kw*)))
           (else ;#(keyword<? actual expected)
            (loop expected-kw* (cdr actual-kw*)))))))
+
+(define (transient-assert val pred ty-str ctx)
+  (if (pred val)
+    val
+    (raise-transient-error val ty-str ctx)))
 
 (define (raise-transient-error val ty ctx)
   (raise-arguments-error 'transient-assert

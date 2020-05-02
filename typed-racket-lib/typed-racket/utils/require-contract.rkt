@@ -67,10 +67,7 @@
                                  (quote nm.nm)
                                  (quote-srcloc nm.nm))]
                     [(transient)
-                     #`(let-values (((val) #,(get-alternate #'nm.orig-nm-r)))
-                         (if (#%plain-app cnt val)
-                           val
-                           (#%plain-app raise-transient-error val 'orig-ty-str (quote-srcloc nm.nm))))]
+                     #`(#%plain-app transient-assert #,(get-alternate #'nm.orig-nm-r) cnt 'orig-ty-str (quote-srcloc nm.nm))]
                     [else
                      (get-alternate #'nm.orig-nm-r)])))]))
 

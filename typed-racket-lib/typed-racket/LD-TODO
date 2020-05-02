@@ -397,19 +397,22 @@
 - [X] send unsound, objects
   - [X} any other accessors? build a list and tests for all these!
     - [X] unsound, (cdr (Pairof Sym Sym)) not protected
-  - [ ] send fix causes errors, ugh
-    take5
-     transient-assert: value does not match static type
-     value: #<procedure:!play-game method in dealer%>
-     type: Result
-    acquire
-     transient-assert: value does not match static type
-     value: #<procedure:to-state method in lplaced%>
-     type: state
-    quadT
-     transient-assert: value does not match static type
-     value: #<procedure:get-solution method in problem%>
-     type: HashTableTop
+- [X] use transient-assert function?
+  seems ok
+
+- [ ] send fix causes errors, ugh
+  take5
+   transient-assert: value does not match static type
+   value: #<procedure:!play-game method in dealer%>
+   type: Result
+  acquire
+   transient-assert: value does not match static type
+   value: #<procedure:to-state method in lplaced%>
+   type: state
+  quadT
+   transient-assert: value does not match static type
+   value: #<procedure:get-solution method in problem%>
+   type: HashTableTop
 
 - [ ] methods not defended
   see transient/pass/
