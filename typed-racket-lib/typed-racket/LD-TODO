@@ -438,7 +438,15 @@
   + works in repl
   + works for (require ....)
   cons
-  - more langs
+  - more langs, from 2 to 8
+  - [ ] 2020-05-02 notes
+    - core.rkt -> typed-racket.rkt -> minimal.rkt
+      - not sure how to get TE-MODE into
+        core ... maybe make 3x minimal.rkt
+        and send mode explicitly
+    - other langs set typed-context?
+      see language-info.rkt
+      that can EASILY accept arg
 
 - [ ] organize benchmarks for eval.
   - [X] jpeg typed/untyped-id issue, (not sure what ID)
