@@ -88,18 +88,13 @@
             (let-values ([(_) _rcvr])
               (let-values (((_) (#%plain-app find-method/who _ _ _)))
                 (let-values ([(_) _args] ...) _))))
-         (define stx+
-           (syntax*->syntax stx
-             (for/list ([x (in-list (syntax-e stx))])
-               (loop x #f))))
-         (void (readd-props! stx+ stx))
          (define tc-res (type-of stx))
          (define-values [extra* stx/check]
-           (protect-codomain tc-res stx+ (build-source-location-list stx) ctc-cache))
+           (protect-codomain tc-res stx (build-source-location-list stx) ctc-cache))
          (void (register-extra-defs! extra*))
          (if stx/check
            (readd-props stx/check stx)
-           stx+)]
+           stx)]
         ;; ---------------------------------------------------------------------
         [_
          #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"

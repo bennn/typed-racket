@@ -399,8 +399,7 @@
     - [X] unsound, (cdr (Pairof Sym Sym)) not protected
 - [X] use transient-assert function?
   seems ok
-
-- [ ] send fix causes errors, ugh
+- [X] send fix causes errors, ugh
   take5
    transient-assert: value does not match static type
    value: #<procedure:!play-game method in dealer%>
@@ -413,6 +412,7 @@
    transient-assert: value does not match static type
    value: #<procedure:get-solution method in problem%>
    type: HashTableTop
+  -> very simple, DO NOT defend the class-send code!
 
 - [ ] methods not defended
   see transient/pass/
