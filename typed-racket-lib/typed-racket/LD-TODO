@@ -440,6 +440,9 @@
     maybe undo contract redirect
    - can trust T data structures too?
 
+- [ ] no dom checks for private methods
+- [ ] no self checks for any methods
+
 - [ ] take5 internal error)
    transient-assert: value does not match static type
     value: #<unsafe-undefined>
