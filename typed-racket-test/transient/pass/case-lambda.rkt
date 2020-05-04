@@ -12,7 +12,14 @@
     (case-lambda
       [(x) x]
       [(y z) (string-append y z)]))
-  (provide f0 f1))
+
+  (: f2 (case-> (-> String String String)
+                (-> Symbol Symbol)))
+  (define f2
+    (case-lambda
+      [(x) x]
+      [(y z) (string-append y z)]))
+  (provide f0 f1 f2))
 
 (require 't rackunit)
 
@@ -33,6 +40,18 @@
 
 (check-exn exn:fail:contract?
   (lambda () (f1 "a" 'b)))
+
+(check-not-exn
+  (lambda () (f2 'ok)))
+
+(check-not-exn
+  (lambda () (f2 "a" "b")))
+
+(check-exn exn:fail:contract?
+  (lambda () (f2 42)))
+
+(check-exn exn:fail:contract?
+  (lambda () (f2 "a" 'b)))
 
 ;; ---
 
