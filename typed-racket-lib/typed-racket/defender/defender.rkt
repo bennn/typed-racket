@@ -64,6 +64,7 @@
     racket/base
     (only-in racket/contract/base any/c)
     racket/unsafe/ops
+    (only-in racket/unsafe/undefined unsafe-undefined)
     typed-racket/types/numeric-predicates
     typed-racket/utils/transient-contract
     (only-in racket/private/class-internal find-method/who)
@@ -93,12 +94,12 @@
             (let-values ([(_) _rcvr])
               (let-values (((_) (#%plain-app find-method/who _ _ _)))
                 (let-values ([(_) _args] ...) _))))
-         (define tc-res (type-of stx))
+         (define tc-res (type-of stx (lambda () Univ)))
          (define-values [extra* stx/check]
            (protect-codomain tc-res stx (build-source-location-list stx) ctc-cache))
          (void (register-extra-defs! extra*))
          (if stx/check
-           (readd-props stx/check stx)
+           (register-ignored (readd-props stx/check stx))
            stx)]
         [;; class def, see typecheck/check-class-unit
          (#%plain-app
@@ -195,39 +196,40 @@
            (let ([name* (hash-ref parse-info 'method-names)])
              (lambda (name-stx)
                (memq (hash-ref internal-external-mapping (syntax-e name-stx) #f) name*))))
-         (quasisyntax/loc stx
-           (#%plain-app compose-class name superclass interface internal ...
-            #,(readd-props
-                #`(#%plain-lambda (local-accessor local-mutator local-method-or-field ...)
-                    #,(let defend-method-def ([val #'make-methods-body])
-                        (cond
-                          [(pair? val)
-                           (cons (defend-method-def (car val)) (defend-method-def (cdr val)))]
-                          [(not (syntax? val))
-                           val]
-                          [(let ((name (tr:class:def-property val)))
-                             (and name (public-method-name? name)))
-                           (syntax-parse val
-                            [((~literal #%plain-app)
-                              (~literal chaperone-procedure)
-                              ((~literal let-values) ((meth-id meth-fun)) let-body) . rest)
-                             ;; TODO custom defense here, avoid checking 1st arg to method? ... for keywords, meth-fun is not an immediate lambda
-                             (readd-props
-                               (quasisyntax/loc val
-                                 (#%plain-app chaperone-procedure
-                                   (let-values ((meth-id #,(loop #'meth-fun #f))) let-body) . rest))
-                               val)]
-                            [_
-                              (raise-argument-error 'defend-method-def "tr:class:def-property #t" val)])]
-                          [else
-                           (define v (syntax-e val))
-                           (if (pair? v)
-                             (readd-props
-                               (datum->syntax val (cons (defend-method-def (car v)) (defend-method-def (cdr v))))
-                               val)
-                             val)])))
-                #'make-methods-lambda)
-             (quote b) (quote #f)))]
+         (register-ignored
+           (quasisyntax/loc stx
+             (#%plain-app compose-class name superclass interface internal ...
+              #,(readd-props
+                  #`(#%plain-lambda (local-accessor local-mutator local-method-or-field ...)
+                      #,(let defend-method-def ([val #'make-methods-body])
+                          (cond
+                            [(pair? val)
+                             (cons (defend-method-def (car val)) (defend-method-def (cdr val)))]
+                            [(not (syntax? val))
+                             val]
+                            [(let ((name (tr:class:def-property val)))
+                               (and name (public-method-name? name)))
+                             (syntax-parse val
+                              [((~literal #%plain-app)
+                                (~literal chaperone-procedure)
+                                ((~literal let-values) ((meth-id meth-fun)) let-body) . rest)
+                               ;; TODO custom defense here, avoid checking 1st arg to method? ... for keywords, meth-fun is not an immediate lambda
+                               (readd-props
+                                 (quasisyntax/loc val
+                                   (#%plain-app chaperone-procedure
+                                     (let-values ((meth-id #,(loop #'meth-fun #f))) let-body) . rest))
+                                 val)]
+                              [_
+                                (raise-argument-error 'defend-method-def "tr:class:def-property #t" val)])]
+                            [else
+                             (define v (syntax-e val))
+                             (if (pair? v)
+                               (readd-props
+                                 (datum->syntax val (cons (defend-method-def (car v)) (defend-method-def (cdr v))))
+                                 val)
+                               val)])))
+                  #'make-methods-lambda)
+               (quote b) (quote #f))))]
         ;; -- ignore -----------------------------------------------------------
         [_
          #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"
@@ -272,7 +274,6 @@
         [((~and op (~literal case-lambda)) [formals* . body*] ...)
          ;; NOTE similar to the lambda case, but cannot easily share helper functions
          ;;  because risk `identifier used out of context' errors
-         (printf "CASE ~s~n" stx)
          (define dom-map* (map type->domain-map (stx->arrow-type* stx)))
          (define stx+
            (quasisyntax/loc stx
@@ -441,6 +442,10 @@
 (define (readd-props new-stx old-stx)
   (readd-props! new-stx old-stx)
   new-stx)
+
+(define (register-ignored stx)
+  (register-ignored! stx)
+  stx)
 
 (define maybe-type-of
   (let ((fail (lambda () #false)))
@@ -991,7 +996,9 @@
 
 (define (type->flat-contract t ctc-cache)
   (cond
-    [(eq? t Univ)
+    [(or (eq? t Univ)
+         ;; TODO what's correct for unsafe-undef?
+         #;(eq? unsafe-undefined (match t [(Val-able: v) v] [_ #f])))
      (values '() #f)]
     [else
      (define (fail #:reason r)
