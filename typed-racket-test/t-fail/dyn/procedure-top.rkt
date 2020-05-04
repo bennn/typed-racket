@@ -1,8 +1,6 @@
-#;
-(exn-pred exn:fail:contract?)
 #lang racket
 
-;; fail version
+;;bg NO ERROR
 
 (module example typed/racket #:transient
   ;; coerces into unapplicable function

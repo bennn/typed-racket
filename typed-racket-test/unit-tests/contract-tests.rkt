@@ -1664,6 +1664,7 @@
 ;               (make-channel)
 ;               #:typed
 ;               #:msg "higher-order value passed as `Any`")
+;   (t-sc top-func (case->/sc '()))
   )
 
   (test-suite
@@ -1747,6 +1748,7 @@
 ;              3.0
 ;              #:untyped #:transient
 ;              #:msg #rx"produced: 3.0")
+;   (t-sc top-func procedure?/sc #:transient)
 
 ;   ;; TODO ?
 ;   ;; (t-sc (-StructTop s-type))
