@@ -279,22 +279,28 @@
            (quasisyntax/loc stx
              (op .
                  #,(for/list ([formals (in-list (syntax-e #'(formals* ...)))]
-                              [body (in-list (syntax-e #'(body* ...)))]
-                              [dom-map (in-list dom-map*)])
-                     (define f+
-                       (let-values ([(extra* f+)
-                                     (if skip-dom?
-                                       (values '() '())
-                                       (protect-formals dom-map formals (build-source-location-list stx) ctc-cache))])
-                         (register-extra-defs! extra*)
-                         f+))
-                     (with-syntax ([formals formals]
-                                   [body+ (readd-props (loop body #f) body)])
-                       (if (null? f+)
-                         (syntax/loc stx [formals . body+])
-                         (let ([stx+ (quasisyntax/loc stx [formals (#%plain-app void . #,f+) . body+])])
-                           (register-ignored! (cadr (syntax-e stx+)))
-                           stx+)))))))
+                              [body (in-list (syntax-e #'(body* ...)))])
+                     (cond
+                       [(dead-lambda-branch? formals)
+                        (quasisyntax/loc formals [#,formals . #,body])]
+                       [else
+                        (define dom-map
+                          (begin0 (car dom-map*)
+                                  (set! dom-map* (cdr dom-map*))))
+                        (define f+
+                          (let-values ([(extra* f+)
+                                        (if skip-dom?
+                                          (values '() '())
+                                          (protect-formals dom-map formals (build-source-location-list stx) ctc-cache))])
+                            (register-extra-defs! extra*)
+                            f+))
+                        (with-syntax ([formals formals]
+                                      [body+ (readd-props (loop body #f) body)])
+                          (if (null? f+)
+                            (syntax/loc stx [formals . body+])
+                            (let ([stx+ (quasisyntax/loc stx [formals (#%plain-app void . #,f+) . body+])])
+                              (register-ignored! (cadr (syntax-e stx+)))
+                              stx+)))])))))
          (readd-props stx+ stx)]
         [(#%plain-app (letrec-values (((a:id) e0)) b:id) e1* ...)
          #:when (free-identifier=? #'a #'b)

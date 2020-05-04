@@ -1,8 +1,8 @@
+#;
+(exn-pred exn:fail:contract? #rx"add1")
 #lang racket
 
-;;bg NO ERROR
-
-(module t typed/racket #:no-optimize #:transient
+(module t typed/racket #:transient
   (provide f g)
 
   (define f (ann (case-lambda [() (add1 "hello")] [(x) x]) (Number -> Number)))

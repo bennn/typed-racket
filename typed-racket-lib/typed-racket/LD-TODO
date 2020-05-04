@@ -417,13 +417,13 @@
   - see 'blame-trail' repo + meeting notes
   - [X] real blame should use srclocs as map keys
   - MOVED see $GT/blame-trails repo
-
-- [ ] methods not defended
-  - [ ] new / init probably not either
+- [X] methods not defended
+  - [X] new / init probably not either
   see transient/pass/object-typed.rkt
-
-- [ ] unsound case-lambda t-fail/dyn/pr14173.rkt 
+- [X] unsound case-lambda t-fail/dyn/pr14173.rkt 
   case disappeared ... how why?
+  I'd assumed dom-map has one entry per body,
+   fixed (for now!) by checking for dead-lambda-branch?
 
 - [ ] none/c check for Procedure type what the
   t-fail/dyn/procedure-top.rkt
@@ -439,6 +439,12 @@
    ... consider T vs S, may need different logic,
     maybe undo contract redirect
    - can trust T data structures too?
+
+- [ ] take5 internal error)
+   transient-assert: value does not match static type
+    value: #<unsafe-undefined>
+    type: (U False Nonnegative-Real)
+   even when optimizer off
 
 - [ ] quadT 01001101010011 #hash() higher-order value passed as Any, yikes
   - my PR for HashTableTop caused this 
