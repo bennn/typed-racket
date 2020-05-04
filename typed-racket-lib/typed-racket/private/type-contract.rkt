@@ -23,6 +23,7 @@
  ;; TODO make this from contract-req
  (prefix-in c: racket/contract)
  (contract-req)
+ (only-in racket/unsafe/undefined unsafe-undefined)
  (for-syntax racket/base)
  (for-template racket/base racket/contract (utils any-wrap transient-contract)))
 
@@ -798,7 +799,7 @@
         (flat/sc #'eof-object?)]
        [(void? v)
         (flat/sc #'void?)]
-       [(or (symbol? v) (boolean? v) (keyword? v) (null? v))
+       [(or (symbol? v) (boolean? v) (keyword? v) (null? v) (eq? unsafe-undefined v))
         (flat/sc #`(lambda (x) (eq? x '#,v)))]
        [(or (number? v) (regexp? v) (byte-regexp? v) (string? v) (bytes? v) (char? v))
         (flat/sc #`(lambda (x) (equal? x '#,v)))]
