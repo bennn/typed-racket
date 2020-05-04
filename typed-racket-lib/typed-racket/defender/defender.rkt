@@ -136,6 +136,7 @@
                            (syntax->datum #'tbl.inherit-field-externals)
                            (syntax->datum #'tbl.pubment-externals)
                            (syntax->datum #'tbl.augment-externals))
+                   'private-names  (syntax->datum #'tbl.private-names)
 
                    ;'override-names (syntax->datum #'tbl.override-externals)
                    ;'pubment-names  (syntax->datum #'tbl.pubment-externals)
@@ -196,6 +197,10 @@
            (let ([name* (hash-ref parse-info 'method-names)])
              (lambda (name-stx)
                (memq (hash-ref internal-external-mapping (syntax-e name-stx) #f) name*))))
+         (define private-method-name?
+           (let ([name* (hash-ref parse-info 'private-names)])
+             (lambda (name-stx)
+               (memq (syntax-e name-stx) name*))))
          (register-ignored
            (quasisyntax/loc stx
              (#%plain-app compose-class name superclass interface internal ...
@@ -208,7 +213,9 @@
                             [(not (syntax? val))
                              val]
                             [(let ((name (tr:class:def-property val)))
-                               (and name (public-method-name? name)))
+                               (and name (or (public-method-name? name)
+                                             ;; TODO private = no dom check (right?)
+                                             (private-method-name? name))))
                              (syntax-parse val
                               [((~literal #%plain-app)
                                 (~literal chaperone-procedure)
