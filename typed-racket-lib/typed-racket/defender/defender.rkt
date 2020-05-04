@@ -10,6 +10,7 @@
 
 (require
   (only-in racket/format ~a)
+  (only-in racket/set set-union)
   racket/match
   syntax/parse
   typed-racket/rep/type-rep
@@ -44,7 +45,10 @@
     ignore^
     ignore-some^
     opt-lambda^
-    kw-lambda^)
+    kw-lambda^
+    tr:class:def-property
+    tr:class:name-table-property
+    )
   (only-in racket/syntax
     format-id
     generate-temporary
@@ -62,8 +66,9 @@
     racket/unsafe/ops
     typed-racket/types/numeric-predicates
     typed-racket/utils/transient-contract
-    (only-in racket/private/class-internal find-method/who)))
- 
+    (only-in racket/private/class-internal find-method/who)
+    (only-in typed-racket/private/class-literals class-internal)))
+
 (provide defend-top)
 
 (module+ test
@@ -81,7 +86,7 @@
     (let loop ([stx stx] [skip-dom? #f])
       (syntax-parse stx
         #:literals (#%plain-app begin case-lambda define-syntaxes define-values
-                    find-method/who let-values letrec-values values)
+                    find-method/who let-values letrec-values quote values)
         ;; unsound within exn-handlers^ ?
         [;; send (for objects), MUST come before ignored exprs
          (let-values ([(_) _meth])
@@ -95,12 +100,140 @@
          (if stx/check
            (readd-props stx/check stx)
            stx)]
-        ;; ---------------------------------------------------------------------
+        [;; class def, see typecheck/check-class-unit
+         (#%plain-app
+            compose-class:id name:expr superclass:expr interface:expr internal:expr ...
+            (~and make-methods-lambda (#%plain-lambda (local-accessor:id local-mutator:id local-method-or-field:id ...) make-methods-body))
+            (quote b:boolean) (quote #f))
+         (define class-name-table
+           (car (trawl-for-property #'make-methods-body tr:class:name-table-property)))
+         (define parse-info
+           (syntax-parse class-name-table
+            [tbl:internal-class-data
+             (hash 'method-names
+                   (set-union (syntax->datum #'tbl.public-externals)
+                              (syntax->datum #'tbl.override-externals)
+                              (syntax->datum #'tbl.augment-externals)
+                              (syntax->datum #'tbl.pubment-externals))
+                   'all-internal
+                   (append (syntax->datum #'tbl.init-internals)
+                           (syntax->datum #'tbl.init-field-internals)
+                           (syntax->datum #'tbl.field-internals)
+                           (syntax->datum #'tbl.public-internals)
+                           (syntax->datum #'tbl.override-internals)
+                           (syntax->datum #'tbl.inherit-internals)
+                           (syntax->datum #'tbl.inherit-field-internals)
+                           (syntax->datum #'tbl.pubment-internals)
+                           (syntax->datum #'tbl.augment-internals))
+                   'all-external
+                   (append (syntax->datum #'tbl.init-externals)
+                           (syntax->datum #'tbl.init-field-externals)
+                           (syntax->datum #'tbl.field-externals)
+                           (syntax->datum #'tbl.public-externals)
+                           (syntax->datum #'tbl.override-externals)
+                           (syntax->datum #'tbl.inherit-externals)
+                           (syntax->datum #'tbl.inherit-field-externals)
+                           (syntax->datum #'tbl.pubment-externals)
+                           (syntax->datum #'tbl.augment-externals))
+
+                   ;'override-names (syntax->datum #'tbl.override-externals)
+                   ;'pubment-names  (syntax->datum #'tbl.pubment-externals)
+                   ;'augment-names  (syntax->datum #'tbl.augment-externals)
+                   ;'type-parameters     type-parameters
+                   ;'fresh-parameters    fresh-parameters
+                   ;'superclass-expr     #'cls.superclass-expr
+                   ;'make-methods        #'cls.make-methods
+                   ;'initializer-self-id #'cls.initializer-self-id
+                   ;'initializer-args-id #'cls.initializer-args-id
+                   ;'initializer-body    #'cls.initializer-body
+                   ;'optional-inits      (syntax->datum #'tbl.optional-inits)
+                   ;'only-init-internals (syntax->datum #'tbl.init-internals)
+                   ;'only-init-names     (syntax->datum #'tbl.init-externals)
+                   ;;; the order of these names reflect the order in the class,
+                   ;;; so use this list when retaining the order is important
+                   ;'init-internals      (syntax->datum #'tbl.all-init-internals)
+                   ;'init-rest-name     (and (attribute tbl.init-rest-name)
+                   ;                         (syntax-e (attribute tbl.init-rest-name)))
+                   ;'public-internals   (syntax->datum #'tbl.public-internals)
+                   ;'override-internals (syntax->datum #'tbl.override-internals)
+                   ;'pubment-internals  (syntax->datum #'tbl.pubment-internals)
+                   ;'augment-internals  (syntax->datum #'tbl.augment-internals)
+                   ;'method-internals
+                   ;(set-union (syntax->datum #'tbl.public-internals)
+                   ;           (syntax->datum #'tbl.override-internals))
+                   ;'field-internals
+                   ;(set-union (syntax->datum #'tbl.field-internals)
+                   ;           (syntax->datum #'tbl.init-field-internals))
+                   ;'inherit-internals
+                   ;(syntax->datum #'tbl.inherit-internals)
+                   ;'inherit-field-internals
+                   ;(syntax->datum #'tbl.inherit-field-internals)
+                   ;'init-names
+                   ;(set-union (syntax->datum #'tbl.init-externals)
+                   ;           (syntax->datum #'tbl.init-field-externals))
+                   ;'field-names
+                   ;(set-union (syntax->datum #'tbl.field-externals)
+                   ;           (syntax->datum #'tbl.init-field-externals))
+                   ;'public-names   (syntax->datum #'tbl.public-externals)
+                   ;'inherit-names  (syntax->datum #'tbl.inherit-externals)
+                   ;'inherit-field-names
+                   ;(syntax->datum #'tbl.inherit-field-externals)
+                   ;'private-names  (syntax->datum #'tbl.private-names)
+                   ;'private-fields (syntax->datum #'tbl.private-field-names)
+                   ;'overridable-names
+                   ;(set-union (syntax->datum #'tbl.public-externals)
+                   ;           (syntax->datum #'tbl.override-externals))
+                   ;'augmentable-names
+                   ;(set-union (syntax->datum #'tbl.pubment-externals)
+                   ;           (syntax->datum #'tbl.augment-externals))
+                   )]))
+         (define internal-external-mapping
+           (for/hash ([internal (hash-ref parse-info 'all-internal)]
+                      [external (hash-ref parse-info 'all-external)])
+             (values internal external)))
+         (define public-method-name?
+           (let ([name* (hash-ref parse-info 'method-names)])
+             (lambda (name-stx)
+               (memq (hash-ref internal-external-mapping (syntax-e name-stx) #f) name*))))
+         (quasisyntax/loc stx
+           (#%plain-app compose-class name superclass interface internal ...
+            #,(readd-props
+                #`(#%plain-lambda (local-accessor local-mutator local-method-or-field ...)
+                    #,(let defend-method-def ([val #'make-methods-body])
+                        (cond
+                          [(pair? val)
+                           (cons (defend-method-def (car val)) (defend-method-def (cdr val)))]
+                          [(not (syntax? val))
+                           val]
+                          [(let ((name (tr:class:def-property val)))
+                             (and name (public-method-name? name)))
+                           (syntax-parse val
+                            [((~literal #%plain-app)
+                              (~literal chaperone-procedure)
+                              ((~literal let-values) ((meth-id meth-fun)) let-body) . rest)
+                             ;; TODO custom defense here, avoid checking 1st arg to method? ... for keywords, meth-fun is not an immediate lambda
+                             (readd-props
+                               (quasisyntax/loc val
+                                 (#%plain-app chaperone-procedure
+                                   (let-values ((meth-id #,(loop #'meth-fun #f))) let-body) . rest))
+                               val)]
+                            [_
+                              (raise-argument-error 'defend-method-def "tr:class:def-property #t" val)])]
+                          [else
+                           (define v (syntax-e val))
+                           (if (pair? v)
+                             (readd-props
+                               (datum->syntax val (cons (defend-method-def (car v)) (defend-method-def (cdr v))))
+                               val)
+                             val)])))
+                #'make-methods-lambda)
+             (quote b) (quote #f)))]
+        ;; -- ignore -----------------------------------------------------------
         [_
          #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"
                     (has-contract-def-property? stx))
          stx]
-        [(~or _:ignore^ _:ignore-some^) ;; for struct definitions ... not sure what else
+        [(~or _:ignore^ _:ignore-some^) ;; struct def, class def ... not sure what else
          stx]
         [((~or (~literal #%provide)
                (~literal #%require)
@@ -136,9 +269,10 @@
                  (register-ignored! (caddr (syntax-e stx+)))
                  stx+))))
          (readd-props stx+ stx)]
-        [((~and op case-lambda) [formals* . body*] ...)
+        [((~and op (~literal case-lambda)) [formals* . body*] ...)
          ;; NOTE similar to the lambda case, but cannot easily share helper functions
          ;;  because risk `identifier used out of context' errors
+         (printf "CASE ~s~n" stx)
          (define dom-map* (map type->domain-map (stx->arrow-type* stx)))
          (define stx+
            (quasisyntax/loc stx
@@ -167,9 +301,9 @@
          ;;  no need to check the domain --- use (loop e #true) to skip
          ;; TODO can the optimizer remove these checks instead?
          (define skip? (not (escapes? #'a #'e0 #false)))
-         (with-syntax ((e0+ (loop #'e0 skip?))
+         (with-syntax ((e0+ (readd-props (loop #'e0 skip?) #'e0))
                       ((e1*+ ...) (for/list ((e1 (in-list (syntax-e #'(e1* ...)))))
-                                    (loop e1 #f))))
+                                    (readd-props (loop e1 #f) e1))))
            (syntax/loc stx
              (#%plain-app (letrec-values (((a) e0+)) b) e1*+ ...))) ]
         [(x* ...)
@@ -199,13 +333,11 @@
          stx]
         [((~literal #%expression) e)
          #:when (type-ascription-property stx)
-         (define e+ (loop #'e #f))
-         (void (readd-props! e+ #'e))
+         (define e+ (readd-props (loop #'e #f) #'e))
          (define e++
            (with-syntax ([e+ e+])
              (syntax/loc stx (#%expression e+))))
-         (void (readd-props! e++ stx))
-         e++]
+         (readd-props e++ stx)]
         [_
          #:when (type-ascription-property stx)
          (raise-user-error 'defend-top "strange type-ascription ~a" (syntax->datum stx))]
@@ -224,6 +356,82 @@
 (define-syntax-class lambda-identifier
   (pattern (~literal #%plain-lambda))
   (pattern (~literal lambda)))
+
+;; copied
+(define (trawl-for-property form accessor)
+  (define (recur-on-all stx-list)
+    (apply append (map (λ (stx) (trawl-for-property stx accessor))
+                       (syntax->list stx-list))))
+  (syntax-parse form
+    #:literals (let-values letrec-values #%plain-app
+                #%plain-lambda #%expression)
+    [stx
+     #:when (accessor #'stx)
+     (list form)]
+    [(let-values (b ...) body ...)
+     (recur-on-all #'(b ... body ...))]
+    ;; for letrecs, traverse the RHSs too
+    [(letrec-values ([(x ...) rhs ...] ...) body ...)
+     (recur-on-all #'(rhs ... ... body ...))]
+    [(#%plain-app e ...)
+     (recur-on-all #'(e ...))]
+    [(#%plain-lambda (x ...) e ...)
+     (recur-on-all #'(e ...))]
+    [(#%expression e)
+     (recur-on-all #'(e))]
+    [_ '()]))
+
+;; copied
+(define-syntax-class internal-class-data
+  #:literal-sets (kernel-literals)
+  #:literals (class-internal values)
+  (pattern (let-values ([() (begin (quote-syntax
+                                    (class-internal
+                                     (#:forall type-parameter:id ...)
+                                     (#:all-inits all-init-names:id ...)
+                                     (#:init init-names:name-pair ...)
+                                     (#:init-field init-field-names:name-pair ...)
+                                     (#:init-rest (~optional init-rest-name:id))
+                                     (#:optional-init optional-names:id ...)
+                                     (#:field field-names:name-pair ...)
+                                     (#:public public-names:name-pair ...)
+                                     (#:override override-names:name-pair ...)
+                                     (#:private privates:id ...)
+                                     (#:private-field private-fields:id ...)
+                                     (#:inherit inherit-names:name-pair ...)
+                                     (#:inherit-field inherit-field-names:name-pair ...)
+                                     (#:augment augment-names:name-pair ...)
+                                     (#:pubment pubment-names:name-pair ...))
+                                    #:local)
+                                   (#%plain-app values))])
+             _)
+           #:with type-parameters #'(type-parameter ...)
+           #:with all-init-internals #'(all-init-names ...)
+           #:with init-internals #'(init-names.internal ...)
+           #:with init-externals #'(init-names.external ...)
+           #:with init-field-internals #'(init-field-names.internal ...)
+           #:with init-field-externals #'(init-field-names.external ...)
+           #:with optional-inits #'(optional-names ...)
+           #:with field-internals #'(field-names.internal ...)
+           #:with field-externals #'(field-names.external ...)
+           #:with public-internals #'(public-names.internal ...)
+           #:with public-externals #'(public-names.external ...)
+           #:with override-internals #'(override-names.internal ...)
+           #:with override-externals #'(override-names.external ...)
+           #:with inherit-externals #'(inherit-names.external ...)
+           #:with inherit-internals #'(inherit-names.internal ...)
+           #:with inherit-field-externals #'(inherit-field-names.external ...)
+           #:with inherit-field-internals #'(inherit-field-names.internal ...)
+           #:with augment-externals #'(augment-names.external ...)
+           #:with augment-internals #'(augment-names.internal ...)
+           #:with pubment-externals #'(pubment-names.external ...)
+           #:with pubment-internals #'(pubment-names.internal ...)
+           #:with private-names #'(privates ...)
+           #:with private-field-names #'(private-fields ...)))
+
+;; copied
+(define-syntax-class name-pair
+  (pattern (internal:id external:id)))
 
 (define (readd-props! new-stx old-stx)
   (maybe-add-typeof-expr new-stx old-stx)

@@ -413,9 +413,32 @@
    value: #<procedure:get-solution method in problem%>
    type: HashTableTop
   -> very simple, DO NOT defend the class-send code!
+- [X] blame, simple POPL'17
+  - see 'blame-trail' repo + meeting notes
+  - [X] real blame should use srclocs as map keys
+  - MOVED see $GT/blame-trails repo
 
 - [ ] methods not defended
-  see transient/pass/
+  - [ ] new / init probably not either
+  see transient/pass/object-typed.rkt
+
+- [ ] unsound case-lambda t-fail/dyn/pr14173.rkt 
+  case disappeared ... how why?
+
+- [ ] none/c check for Procedure type what the
+  t-fail/dyn/procedure-top.rkt
+
+- [ ] missing dom check t-fail/dyn/union-or-exclusive.rkt
+
+- [ ] enable typed-id? check, safely
+   well ok, not so hard,
+   - try to put info on provided ID
+   - else use the type registry, record "trust" for syntax
+   - make sure to keep type, though, b/c can cast or
+     require/type from typed -> typed and get unsound
+   ... consider T vs S, may need different logic,
+    maybe undo contract redirect
+   - can trust T data structures too?
 
 - [ ] quadT 01001101010011 #hash() higher-order value passed as Any, yikes
   - my PR for HashTableTop caused this 
@@ -484,11 +507,12 @@
       defender is ... somehow ... changing structure of terms,
        tried to look for syntax? and pair? in defend-top, but no good
        skipping all (quote-syntax ...) works though, and is right to do
-    - [ ] refinements, identifier out of context
+    - [X] refinements, identifier out of context
       ok major problem
        Refine contract-generation assumes the contract is at the top level,
         but that's not true here!
        need to capture those lifts
+    - [ ] 
 
 - [ ] defender: simpler stx->arrow type,
       is there a built-in union function to combine arrows? (not `union`)
@@ -505,16 +529,8 @@
 - [ ] private/with-type ... allow transient as well as guarded
   - [ ] with-type, add te-mode param and update docs
 
-- [ ] blame, simple POPL'17
-  - see 'blame-trail' repo + meeting notes
-  - [ ] real blame should use srclocs as map keys
-
 - [ ] add defend to typecheck/toplevel-trampoline + tests
 - [ ] define-typed/untyped-id ... adapt to E T
-
-- [ ] enable #:with-refinements etc by looking for command-line arguments?
-  - could make a #lang, but perhaps easier this way,
-    try a pull request
 
 - [ ] outstanding 'transient' branches
   - rackunit, unsafe-provide macro
@@ -524,24 +540,6 @@
   should transient not put a contract on it?
   see t-fail/dyn/control-test-3.rkt 
   and t-fail/dyn/control-test-6.rkt 
-
-- [ ] unsound case-lambda t-fail/dyn/pr14173.rkt 
-  case disappeared ... how why?
-
-- [ ] none/c check for Procedure type what the
-  t-fail/dyn/procedure-top.rkt
-
-- [ ] missing dom check t-fail/dyn/union-or-exclusive.rkt
-
-- [ ] enable typed-id? check, safely
-   well ok, not so hard,
-   - try to put info on provided ID
-   - else use the type registry, record "trust" for syntax
-   - make sure to keep type, though, b/c can cast or
-     require/type from typed -> typed and get unsound
-   ... consider T vs S, may need different logic,
-    maybe undo contract redirect
-   - can trust T data structures too?
 
 - [ ] segfault transient/pass/accessors.rkt
   sensitive to small deletes
@@ -562,3 +560,4 @@
 
   (random-ref list0)
   ```
+  2020-05-02 : the above WORKS, but accessors test fails
