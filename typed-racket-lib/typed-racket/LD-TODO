@@ -424,8 +424,7 @@
   case disappeared ... how why?
   I'd assumed dom-map has one entry per body,
    fixed (for now!) by checking for dead-lambda-branch?
-
-- [ ] none/c check for Procedure type what the
+- [X] none/c check for Procedure type what the
   t-fail/dyn/procedure-top.rkt
 
 - [ ] missing dom check t-fail/dyn/union-or-exclusive.rkt

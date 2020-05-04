@@ -842,7 +842,9 @@
                                       (prop->sc prop))]))
       (apply and/sc (append scs (if prop/sc (list prop/sc) '())))]
      [(Fun: arrows)
-      (apply or/sc (map arrow->sc/transient arrows))]
+      (if (null? arrows)
+        procedure?/sc
+        (apply or/sc (map arrow->sc/transient arrows)))]
      [(DepFun: raw-dom _ _)
       (define num-mand-args (length raw-dom))
       (make-procedure-arity-flat/sc num-mand-args '() '())]
