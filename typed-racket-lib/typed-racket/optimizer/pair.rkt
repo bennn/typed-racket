@@ -29,7 +29,7 @@
   (subtypeof? e (-pair Univ Univ)))
 ;; can't do the above for mpairs, as they are invariant
 (define (has-mpair-type? e)
-  (match (type-of e) ; type of the operand
+  (match (maybe-type-of e) ; type of the operand
     [(tc-result1: (MPair: _ _)) #t]
     [_ #f]))
 

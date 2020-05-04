@@ -24,7 +24,8 @@
          define-literal-syntax-class
          define-merged-syntax-class
          syntax/loc/origin quasisyntax/loc/origin
-         raise-optimizer-context-error)
+         raise-optimizer-context-error
+         maybe-type-of)
 
 ;; for tracking both origin and source location information
 (define-syntax-rule (syntax/loc/origin loc op body)

@@ -127,7 +127,7 @@
   #:literal-sets (kernel-literals)
   (pattern ((fun-name:constant-var) (~and fun (#%plain-lambda params body ...)))
     #:do [(define doms
-            (match (type-of #'fun)
+            (match (maybe-type-of #'fun)
               [(tc-result1: (Fun: (list (Arrow: doms
                                                 #f  ;; rest arg
                                                 '() ;; kw args
