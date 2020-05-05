@@ -414,7 +414,7 @@
                                              (current-type-enforcement-mode))
                                     ((guarded)
                                      #'(or/c struct-predicate-procedure?/c
-                                             (any-wrap-warning/c . c-> . boolean?)))
+                                             ((make-any-wrap-warning/c) . c-> . boolean?)))
                                     ((transient)
                                      #'(procedure-arity-includes/c 1))
                                     (else
