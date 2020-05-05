@@ -427,12 +427,25 @@
 - [X] none/c check for Procedure type what the
   t-fail/dyn/procedure-top.rkt
 - [X] missing dom check t-fail/dyn/union-or-exclusive.rkt
-
-- [ ] take5 internal error)
+- [X] take5 internal error)
    transient-assert: value does not match static type
     value: #<unsafe-undefined>
     type: (U False Nonnegative-Real)
    even when optimizer off
+   WOW magically fixed after other issue
+
+- [ ] organize benchmarks for eval.
+  - [X] jpeg typed/untyped-id issue, (not sure what ID)
+    have a simple fix via vector-map,
+    need to check perf. but anyway
+    guarded code gets precise type, but transient gets supertype to match
+     the handcrafted untyped contract ... don't see a work-around so recommend
+     changing the gtp-benchmark
+  - [ ] lnm typed/untyped-id issue
+    plot-pict in transient code cannot find a type ... can we fix by registering
+    a type somewhere?
+
+## reduce checks
 
 - [ ] enable typed-id? check, safely
    well ok, not so hard,
@@ -447,6 +460,9 @@
 
 - [ ] no dom checks for private methods
 - [ ] no self checks for any methods
+
+
+## unsorted
 
 - [ ] quadT 01001101010011 #hash() higher-order value passed as Any, yikes
   - my PR for HashTableTop caused this 
@@ -481,17 +497,6 @@
     - other langs set typed-context?
       see language-info.rkt
       that can EASILY accept arg
-
-- [ ] organize benchmarks for eval.
-  - [X] jpeg typed/untyped-id issue, (not sure what ID)
-    have a simple fix via vector-map,
-    need to check perf. but anyway
-    guarded code gets precise type, but transient gets supertype to match
-     the handcrafted untyped contract ... don't see a work-around so recommend
-     changing the gtp-benchmark
-  - [ ] lnm typed/untyped-id issue
-    plot-pict in transient code cannot find a type ... can we fix by registering
-    a type somewhere?
 
 - [ ] defend holes, nothing protected in here (`struct` may have same holes)
   - [X] module+
