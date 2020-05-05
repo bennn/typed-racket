@@ -444,15 +444,16 @@
 
 - [ ] new runtime errors
   ... should something get register-ignored?
-  - [ ] fsm
-  - [ ] fsmoo
-  - [ ] gregor
-  - [ ] jpeg
-  - [ ] lnm
+  - [ ] acquire
+  - [X] fsm
+  - [X] fsmoo
+  - [X] gregor
+  - [X] jpeg
+  - [X] lnm
   - [ ] quadT
   - [ ] quadU
   - [ ] synth
-  - [ ] zordoz
+  - [X] zordoz
 
 - [ ] organize benchmarks for eval.
   - [X] jpeg typed/untyped-id issue, (not sure what ID)

@@ -99,7 +99,7 @@
            (protect-codomain tc-res stx (build-source-location-list stx) ctc-cache))
          (void (register-extra-defs! extra*))
          (if stx/check
-           (register-ignored (readd-props stx/check stx))
+           (readd-props stx/check stx)
            stx)]
         [;; class def, see typecheck/check-class-unit
          (#%plain-app
@@ -201,7 +201,7 @@
            (let ([name* (hash-ref parse-info 'private-names)])
              (lambda (name-stx)
                (memq (syntax-e name-stx) name*))))
-         (register-ignored
+         (readd-props
            (quasisyntax/loc stx
              (#%plain-app compose-class name superclass interface internal ...
               #,(readd-props
@@ -236,13 +236,16 @@
                                  val)
                                val)])))
                   #'make-methods-lambda)
-               (quote b) (quote #f))))]
+               (quote b) (quote #f)))
+           stx)]
         ;; -- ignore -----------------------------------------------------------
         [_
          #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"
                     (has-contract-def-property? stx))
+         ;; TODO investigate ... contract-def should never be here right?
          stx]
         [(~or _:ignore^ _:ignore-some^) ;; struct def, class def ... not sure what else
+         ;; TODO investigate ... can we loop & re-ignore? probably not!
          stx]
         [((~or (~literal #%provide)
                (~literal #%require)
@@ -257,7 +260,7 @@
                (let-values (((f) fun)) body))
          (readd-props
            (quasisyntax/loc stx
-             (let-values (((f) #,(loop #'fun #f))) body))
+             (let-values (((f) #,(loop #'fun #f))) #,(register-ignored #'body)))
            stx)]
         [((~or _:lambda-identifier
                case-lambda) . _)
@@ -453,6 +456,7 @@
 (define (readd-props! new-stx old-stx)
   (maybe-add-typeof-expr new-stx old-stx)
   (maybe-add-test-position new-stx old-stx)
+  (maybe-register-ignored new-stx old-stx)
   (void))
 
 (define (readd-props new-stx old-stx)
@@ -485,6 +489,11 @@
 (define (maybe-add-test-false new-stx old-stx)
   (when (test-position-takes-false-branch old-stx)
     (test-position-add-false new-stx))
+  (void))
+
+(define (maybe-register-ignored new-stx old-stx)
+  (when (is-ignored? old-stx)
+    (register-ignored! new-stx))
   (void))
 
 ;; -----------------------------------------------------------------------------
