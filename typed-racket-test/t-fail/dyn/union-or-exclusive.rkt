@@ -1,6 +1,6 @@
 #;
-(exn-pred exn:fail:contract? "real?")
-#lang typed/racket #:no-optimize #:transient
+(exn-pred exn:fail:contract? #rx"transient-assert")
+#lang typed/racket #:transient
 
 
 (module m1 racket

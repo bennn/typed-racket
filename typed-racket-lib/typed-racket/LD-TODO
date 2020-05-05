@@ -426,8 +426,13 @@
    fixed (for now!) by checking for dead-lambda-branch?
 - [X] none/c check for Procedure type what the
   t-fail/dyn/procedure-top.rkt
+- [X] missing dom check t-fail/dyn/union-or-exclusive.rkt
 
-- [ ] missing dom check t-fail/dyn/union-or-exclusive.rkt
+- [ ] take5 internal error)
+   transient-assert: value does not match static type
+    value: #<unsafe-undefined>
+    type: (U False Nonnegative-Real)
+   even when optimizer off
 
 - [ ] enable typed-id? check, safely
    well ok, not so hard,
@@ -438,15 +443,10 @@
    ... consider T vs S, may need different logic,
     maybe undo contract redirect
    - can trust T data structures too?
+   - remove recursive fn checks? thats tail calls !
 
 - [ ] no dom checks for private methods
 - [ ] no self checks for any methods
-
-- [ ] take5 internal error)
-   transient-assert: value does not match static type
-    value: #<unsafe-undefined>
-    type: (U False Nonnegative-Real)
-   even when optimizer off
 
 - [ ] quadT 01001101010011 #hash() higher-order value passed as Any, yikes
   - my PR for HashTableTop caused this 

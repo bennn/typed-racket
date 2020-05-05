@@ -253,9 +253,12 @@
                (~literal quote)
                (~literal quote-syntax)) . _)
          stx]
-        [(~and (~or :kw-lambda^ :opt-lambda^)
-               (let-values ([(f) fun]) body))
-         stx]
+        [(~and (~or :opt-lambda^ :kw-lambda^)
+               (let-values (((f) fun)) body))
+         (readd-props
+           (quasisyntax/loc stx
+             (let-values (((f) #,(loop #'fun #f))) body))
+           stx)]
         [((~or _:lambda-identifier
                case-lambda) . _)
          #:when (not (maybe-type-of stx))
