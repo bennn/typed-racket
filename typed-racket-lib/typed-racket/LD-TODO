@@ -433,6 +433,26 @@
     type: (U False Nonnegative-Real)
    even when optimizer off
    WOW magically fixed after other issue
+- [X] mbta too much printing, took 40 min
+  - from unneeded dom checks? NO
+    comes from field cod-check,
+     around in-neighbors in a private method,
+     ... if privates skipped, runtime 2s
+    ugh
+  - remove opaque print helps? YES
+  - cache for opaque printing also helps
+
+- [ ] new runtime errors
+  ... should something get register-ignored?
+  - [ ] fsm
+  - [ ] fsmoo
+  - [ ] gregor
+  - [ ] jpeg
+  - [ ] lnm
+  - [ ] quadT
+  - [ ] quadU
+  - [ ] synth
+  - [ ] zordoz
 
 - [ ] organize benchmarks for eval.
   - [X] jpeg typed/untyped-id issue, (not sure what ID)
