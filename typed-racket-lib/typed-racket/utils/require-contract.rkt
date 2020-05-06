@@ -67,7 +67,7 @@
                                  (quote nm.nm)
                                  (quote-srcloc nm.nm))]
                     [(transient)
-                     #`(#%plain-app transient-assert #,(get-alternate #'nm.orig-nm-r) cnt 'orig-ty-str (quote-srcloc nm.nm))]
+                     #`(#%plain-app transient-assert #,(get-alternate #'nm.orig-nm-r) cnt 'orig-ty-str (quote-srcloc nm.nm) 'require/typed)]
                     [else
                      (get-alternate #'nm.orig-nm-r)])))]))
 

@@ -385,7 +385,7 @@
               #,(ignore-some/expr
                   #`(#%plain-app transient-assert
                                  (#,(casted-expr-property #'#%expression store-existing-type) v)
-                                 #,new-ty-ctc '#,ty-str '#,ctx)
+                                 #,new-ty-ctc '#,ty-str '#,ctx 'cast)
                   #'ty))])])]))
 
 
