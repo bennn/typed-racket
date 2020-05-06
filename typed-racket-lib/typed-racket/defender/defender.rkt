@@ -907,7 +907,7 @@
                                             [ty-str (format "~a" type)]
                                             [ctx ctx])
                                 #'(#%plain-app transient-assert v ctc 'ty-str 'ctx)))
-                            (ignore-if-expr! if-stx)
+                            (register-ignored! if-stx)
                             if-stx)])
             (define new-stx
               (with-type
