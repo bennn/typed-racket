@@ -46,6 +46,8 @@
     ignore-some^
     opt-lambda^
     kw-lambda^
+    opt-lambda-property
+    kw-lambda-property
     tr:class:def-property
     tr:class:name-table-property
     )

@@ -442,16 +442,26 @@
   - remove opaque print helps? YES
   - cache for opaque printing also helps
 
+- [ ] GET BLAME WORKING !!!
+  rebase
+
 - [ ] new runtime errors
   ... should something get register-ignored?
   - [X] acquire
   - [X] fsm
-  - [X] fsmoo
+  - [ ] fsmoo
+    wtf broken again later??? no, I doubt it ever worked
+    methods with kwd + default have the wrong type/expansion,
+     expansion picks default inside the method,
+     but type excludes unsafe-undefined ... expects default outside
+    not sure what to do
+    ... can wait, for blame
   - [X] gregor
   - [X] jpeg
   - [X] lnm
-  - [ ] quadT
-  - [ ] quadU
+  - [X] quadT
+  - [X] quadU
+    incorrect type ann, doesn't match default value
   - [X] synth
     incomplete type, array-append*
   - [X] zordoz
@@ -468,6 +478,7 @@
     a type somewhere?
 
 - [ ] use kw-lambda and opt-lambda properties for checking?
+  what is plambda-property ?
 
 ## reduce checks
 
