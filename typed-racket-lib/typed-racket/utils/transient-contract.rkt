@@ -46,7 +46,8 @@
           (else ;#(keyword<? actual expected)
            (loop expected-kw* (cdr actual-kw*)))))))
 
-(define (transient-assert val pred ty-str ctx)
+(define (transient-assert val pred ty-str ctx from)
+  (blame-map-set! val ty-str from)
   (if (pred val)
     val
     (raise-transient-error val ty-str ctx)))
@@ -59,29 +60,50 @@
                          "src" ctx
                          "blame" blame-entry*))
 
-;;
+;; -----------------------------------------------------------------------------
+;; --- blame map
 
 (provide blame-map-ref blame-map-set!)
 
 (define THE-BLAME-MAP (make-hasheq))
 
+(define blame-source* '(
+  cast
+  require/typed
+  car
+  cdr
+  ;; ... TBD, maybe should be identifiers?
+))
+
+(define (blame-source? sym)
+  (and (symbol? sym)
+       (memq sym blame-source*)))
+
 (struct blame-entry (
-  type ;; expected
-  ;; prev ;; eq-hash-code of "parent"
-  dir ;; (or/c 'dom 'cod)
-  ;; ctx ;; source-location-list?
+  from ;; blame-source?
 ) #:prefab)
 
-(define (make-blame-entry ty prev-val dir ctx)
-  (blame-entry ty #;(eq-hash-code prev-val) dir #;ctx))
+(struct cast-info blame-entry (
+  type ;; string?, expected type
+) #:prefab)
+
+(struct check-info blame-entry (
+  parent ;; eq-hash-code
+) #:prefab)
+
+;; make-blame-entry : (-> string? (or/c symbol? (cons/c any/c symbol?)) blame-entry?)
+(define (make-blame-entry ty-str from)
+  (if (pair? from)
+    (check-info (cdr from) (eq-hash-code (car from)))
+    (cast-info from ty-str)))
 
 (define (blame-map-ref v)
   (hash-keys (hash-ref THE-BLAME-MAP v (lambda () '#hash()))))
 
-(define (blame-map-set! v ty prev dir ctx)
-  (unless (eq? v (eq-hash-code v))
-    (define be (make-blame-entry ty prev dir ctx))
-    (hash-update! THE-BLAME-MAP v
+(define (blame-map-set! val ty-str from)
+  (unless (eq? val (eq-hash-code val))
+    (define be (make-blame-entry ty-str from))
+    (hash-update! THE-BLAME-MAP val
                   (lambda (curr) (set-add curr be))
                   (lambda () (set-init be)))))
 
