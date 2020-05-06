@@ -444,7 +444,7 @@
 
 - [ ] new runtime errors
   ... should something get register-ignored?
-  - [ ] acquire
+  - [X] acquire
   - [X] fsm
   - [X] fsmoo
   - [X] gregor
@@ -452,7 +452,8 @@
   - [X] lnm
   - [ ] quadT
   - [ ] quadU
-  - [ ] synth
+  - [X] synth
+    incomplete type, array-append*
   - [X] zordoz
 
 - [ ] organize benchmarks for eval.
@@ -465,6 +466,8 @@
   - [ ] lnm typed/untyped-id issue
     plot-pict in transient code cannot find a type ... can we fix by registering
     a type somewhere?
+
+- [ ] use kw-lambda and opt-lambda properties for checking?
 
 ## reduce checks
 
