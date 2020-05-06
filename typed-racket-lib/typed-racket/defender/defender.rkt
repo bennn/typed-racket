@@ -99,7 +99,7 @@
            (protect-codomain tc-res stx (build-source-location-list stx) ctc-cache))
          (void (register-extra-defs! extra*))
          (if stx/check
-           (readd-props stx/check stx)
+           (register-ignored (readd-props stx/check stx))
            stx)]
         [;; class def, see typecheck/check-class-unit
          (#%plain-app
@@ -201,43 +201,44 @@
            (let ([name* (hash-ref parse-info 'private-names)])
              (lambda (name-stx)
                (memq (syntax-e name-stx) name*))))
-         (readd-props
-           (quasisyntax/loc stx
-             (#%plain-app compose-class name superclass interface internal ...
-              #,(readd-props
-                  #`(#%plain-lambda (local-accessor local-mutator local-method-or-field ...)
-                      #,(let defend-method-def ([val #'make-methods-body])
-                          (cond
-                            [(pair? val)
-                             (cons (defend-method-def (car val)) (defend-method-def (cdr val)))]
-                            [(not (syntax? val))
-                             val]
-                            [(let ((name (tr:class:def-property val)))
-                               (and name (or (public-method-name? name)
-                                             ;; TODO private = no dom check (right?)
-                                             (private-method-name? name))))
-                             (syntax-parse val
-                              [((~literal #%plain-app)
-                                (~literal chaperone-procedure)
-                                ((~literal let-values) ((meth-id meth-fun)) let-body) . rest)
-                               ;; TODO custom defense here, avoid checking 1st arg to method? ... for keywords, meth-fun is not an immediate lambda
-                               (readd-props
-                                 (quasisyntax/loc val
-                                   (#%plain-app chaperone-procedure
-                                     (let-values ((meth-id #,(loop #'meth-fun #f))) let-body) . rest))
-                                 val)]
-                              [_
-                                (raise-argument-error 'defend-method-def "tr:class:def-property #t" val)])]
-                            [else
-                             (define v (syntax-e val))
-                             (if (pair? v)
-                               (readd-props
-                                 (datum->syntax val (cons (defend-method-def (car v)) (defend-method-def (cdr v))))
-                                 val)
-                               val)])))
-                  #'make-methods-lambda)
-               (quote b) (quote #f)))
-           stx)]
+         (register-ignored
+           (readd-props
+             (quasisyntax/loc stx
+               (#%plain-app compose-class name superclass interface internal ...
+                #,(readd-props
+                    #`(#%plain-lambda (local-accessor local-mutator local-method-or-field ...)
+                        #,(let defend-method-def ([val #'make-methods-body])
+                            (cond
+                              [(pair? val)
+                               (cons (defend-method-def (car val)) (defend-method-def (cdr val)))]
+                              [(not (syntax? val))
+                               val]
+                              [(let ((name (tr:class:def-property val)))
+                                 (and name (or (public-method-name? name)
+                                               ;; TODO private = no dom check (right?)
+                                               (private-method-name? name))))
+                               (syntax-parse val
+                                [((~literal #%plain-app)
+                                  (~literal chaperone-procedure)
+                                  ((~literal let-values) ((meth-id meth-fun)) let-body) . rest)
+                                 ;; TODO custom defense here, avoid checking 1st arg to method? ... for keywords, meth-fun is not an immediate lambda
+                                 (readd-props
+                                   (quasisyntax/loc val
+                                     (#%plain-app chaperone-procedure
+                                       (let-values ((meth-id #,(loop #'meth-fun #f))) let-body) . rest))
+                                   val)]
+                                [_
+                                  (raise-argument-error 'defend-method-def "tr:class:def-property #t" val)])]
+                              [else
+                               (define v (syntax-e val))
+                               (if (pair? v)
+                                 (readd-props
+                                   (datum->syntax val (cons (defend-method-def (car v)) (defend-method-def (cdr v))))
+                                   val)
+                                 val)])))
+                    #'make-methods-lambda)
+                 (quote b) (quote #f)))
+             stx))]
         ;; -- ignore -----------------------------------------------------------
         [_
          #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"
@@ -256,7 +257,8 @@
                (~literal quote)
                (~literal quote-syntax)) . _)
          stx]
-        [(~and (~or :opt-lambda^ :kw-lambda^)
+        [;; opt/kw function
+         (~and (~or :opt-lambda^ :kw-lambda^)
                (let-values (((f) fun)) body))
          (readd-props
            (quasisyntax/loc stx
@@ -329,10 +331,11 @@
         [(x* ...)
          #:when (is-application? stx)
          (define stx+
-           (syntax*->syntax stx
-             (for/list ([x (in-list (syntax-e #'(x* ...)))])
-               (loop x #f))))
-         (void (readd-props! stx+ stx))
+           (readd-props
+             (syntax*->syntax stx
+               (for/list ([x (in-list (syntax-e #'(x* ...)))])
+                 (readd-props (loop x #f) x)))
+             stx))
          (define-values [pre* f post*] (split-application stx+))
          (cond
            [(or (is-ignored? f)
@@ -365,9 +368,7 @@
          (define stx+
            (syntax*->syntax stx
              (for/list ((x (in-list (syntax-e #'(x* ...)))))
-               (define x+ (loop x #f))
-               (readd-props! x+ x)
-               x+)))
+               (readd-props (loop x #f) x))))
          (readd-props stx+ stx)]
         [_
          stx])))
