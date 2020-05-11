@@ -70,14 +70,41 @@
 (define blame-source* '(
   cast
   require/typed
-  car
-  cdr
+  dom cod
+  car cdr
+  list-elem list-rest
+  mcar mcdr
+  vector-elem
+  box-elem
+  hash-key hash-value
+  sequence-elem sequence-rest
+  stream-elem stream-rest
   ;; ... TBD, maybe should be identifiers?
 ))
 
+(define blame-source-1* '(
+  struct-elem
+  object-field
+  object-method-cod
+))
+
+;; Retic sources (mgd_transient.py)
+;;   GETATTR = 0
+;;   GETITEM = 1
+;;   ARG = 2
+;;   RETURN = 3
+;; or this ... both in the same file
+;;   GETATTR = 0 # include attr
+;;   ARG = 1 #include position
+;;   RET = 2
+;;   GETITEM = 3
+
 (define (blame-source? sym)
-  (and (symbol? sym)
-       (memq sym blame-source*)))
+  (or (and (symbol? sym)
+           (memq sym blame-source*))
+      (and (pair? sym)
+           (symbol? (car sym))
+           #;(natural[struct] or symbol[object] (cdr sym)))))
 
 (struct blame-entry (
   from ;; blame-source?

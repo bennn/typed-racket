@@ -73,7 +73,7 @@
     (only-in racket/unsafe/undefined unsafe-undefined)
     typed-racket/types/numeric-predicates
     typed-racket/utils/transient-contract
-    (only-in racket/private/class-internal find-method/who)
+    (only-in racket/private/class-internal get-field/proc find-method/who)
     (only-in typed-racket/private/class-literals class-internal)))
 
 (provide defend-top)
@@ -102,10 +102,19 @@
          ;; send (for objects), MUST come before ignored exprs
          (define tc-res (type-of stx (lambda () Univ)))
          (define-values [extra* stx/check]
-           (protect-codomain tc-res stx (build-source-location-list stx) ctc-cache))
+           (protect-codomain tc-res #'real-case (build-source-location-list #'real-case) ctc-cache
+                             #:blame (cons (cons 'object-method-cod (syntax-e #'meth-id)) #'obj-id)))
          (void (register-extra-defs! extra*))
          (if stx/check
-           (register-ignored (readd-props stx/check stx))
+           (register-ignored
+             (readd-props
+               (quasisyntax/loc stx
+                 (let-values ([(meth-id) meth-e])
+                    (let-values ([(obj-id) rcvr-e])
+                      (let-values (((find-id) (#%plain-app find-method/who . find-arg*)))
+                        (let-values arg-bindings
+                          (if wrap-check ignore-case #,stx/check))))))
+               stx))
            stx)]
         [(#%plain-app
            compose-class:id name:expr superclass:expr interface:expr internal:expr ...
@@ -780,7 +789,7 @@
                      (dynamic-require mpi+ #f)
                      #t)))))))))
 
-(define (protect-domain dom-type dom-stx ctx ctc-cache)
+(define (protect-domain dom-type dom-stx ctx ctc-cache lambda-id)
   (define-values [extra-def* ctc-stx]
     (if dom-type
       (type->flat-contract dom-type ctc-cache)
@@ -798,8 +807,12 @@
   (values extra-def* dom-stx+))
 
 ;; protect-codomain : ???
-(define (protect-codomain cod-tc-res app-stx ctx ctc-cache)
+(define (protect-codomain cod-tc-res app-stx ctx ctc-cache #:blame [blame-info #f])
   (define t* (tc-results->type* cod-tc-res))
+  (define-values [blame-sym blame-id]
+    (if blame-info
+      (values (car blame-info) (cdr blame-info))
+      (infer-blame-source app-stx t*)))
   (cond
    [(or (not t*) (null? t*))
     (values '() #f)]
@@ -834,7 +847,7 @@
                                             [v v-stx]
                                             [ty-str (format "~a" type)]
                                             [ctx ctx])
-                                #'(#%plain-app transient-assert v ctc 'ty-str 'ctx)))
+                                #`(#%plain-app transient-assert v ctc 'ty-str 'ctx (#%plain-app cons '#,blame-sym #,blame-id))))
                             (register-ignored! if-stx)
                             if-stx)])
             (define new-stx
@@ -846,6 +859,170 @@
               (register-ignored! (caddr (syntax-e new-stx))))
             new-stx))))
     (values extra-def* cod-stx+)]))
+
+(define-syntax-class struct-accessor
+  #:attributes (field-index)
+  (pattern f:id
+    #:with field-index (struct-accessor? #'f)
+    #:when (syntax-e #'field-index)))
+
+(define (infer-blame-source app-stx cod-t*)
+  ;; TODO need input type too? can extract from `app-stx` probably
+  (syntax-parse app-stx
+   #:literals (#%plain-app apply quote)
+   ;; --- pair
+   [(#%plain-app (~literal car) x)
+    (values 'car #'x)]
+   [(#%plain-app (~literal cdr) x)
+    (values 'cdr #'x)]
+   ;; --- list
+   [(#%plain-app (~literal list-ref) x pos)
+    (values 'list-elem #'x)]
+   [(#%plain-app (~literal list-tail) x pos)
+    (values 'list-rest #'x)]
+   [(#%plain-app (~or (~literal first)
+                      (~literal second)
+                      (~literal third)
+                      (~literal fourth)
+                      (~literal fifth)
+                      (~literal sixth)
+                      (~literal seventh)
+                      (~literal eighth)
+                      (~literal ninth)
+                      (~literal tenth)
+                      (~literal last)) x)
+    (values 'list-elem #'x)]
+   [(#%plain-app (~literal rest) x)
+    (values 'list-rest #'x)]
+   ;; --- mpair
+   [(#%plain-app (~literal mcar) x)
+    (values 'mcar #'x)]
+   [(#%plain-app (~literal mcdr) x)
+    (values 'mcdr #'x)]
+   ;; --- vector
+   [(#%plain-app (~or (~literal vector-ref)
+                      (~literal vector*-ref)) x pos)
+    (values 'vector-elem #'x)]
+   ;; --- box
+   [(#%plain-app (~or (~literal unbox)
+                      (~literal unbox*)) x)
+    (values 'box-elem #'x)]
+   ;; --- hash
+   [(#%plain-app (~or (~literal hash-ref)
+                      (~literal hash-ref~)) x)
+    (values 'hash-value #'x)]
+   [(#%plain-app (~literal hash-ref-key) x)
+    (values 'hash-key #'x)]
+   ;; --- sequence
+   [(#%plain-app (~literal sequence-ref) x pos)
+    (values 'sequence-elem #'x)]
+   [(#%plain-app (~literal sequence-tail) x pos)
+    (values 'sequence-rest #'x)]
+   ;; --- stream
+   [(#%plain-app (~literal stream-first) x)
+    (values 'stream-elem #'x)]
+   [(#%plain-app (~literal stream-rest) x)
+    (values 'stream-rest #'x)]
+   [(#%plain-app (~literal stream-ref) x pos)
+    (values 'stream-elem #'x)]
+   [(#%plain-app (~literal stream-tail) x pos)
+    (values 'stream-rest #'x)]
+   ;; --- generator
+   ;; --- dict
+   ;; --- set
+   [(#%plain-app (~literal set-first) x)
+    (values 'set-elem #'x)]
+   [(#%plain-app (~literal set-rest) x)
+    (values 'set-rest #'x)]
+   [(#%plain-app (~or (~literal set-add)
+                      (~literal set-remove)) x elem)
+    (values 'set-rest #'x)]
+   ;; --- struct
+   [(#%plain-app f:struct-accessor x)
+    (values (cons 'struct-elem (syntax-e #'f.field-index)) #'x)]
+   ;; --- class
+   [(#%plain-app (~literal get-field/proc) (quote tgt) obj)
+    (values (cons 'object-field (syntax-e #'tgt)) #'obj)]
+   ;; --- function (the default)
+   [(#%plain-app (~optional apply) unknown-f:id . _)
+    (values 'cod #'unknown-f)]
+   [(#%plain-app (~optional apply) unknown:expr . _)
+    (raise-arguments-error 'infer-blame-source
+                           "cannot assign blame to application"
+                           "ctx" app-stx)]
+   [_
+    (raise-argument-error 'infer-blame-source
+                          "application" app-stx)]))
+
+(define (ignore-if-expr! if-stx)
+  (register-ignored! if-stx)
+  (register-ignored! (caddr (syntax-e if-stx)))
+  (register-ignored! (cadddr (syntax-e if-stx)))
+  (let ((chk-stx (syntax-e (cadr (syntax-e if-stx)))))
+    (register-ignored! chk-stx)
+    (test-position-add-true chk-stx)
+    (test-position-add-false chk-stx))
+  (void))
+
+(define-syntax-rule (with-type t e)
+  (let ((v e))
+    (add-typeof-expr v t)
+    v))
+
+;; protect-formals : ???
+(define (protect-formals dom-map formals ctx ctc-cache lambda-id)
+  (let loop ([dom* formals] [position 0])
+    ;; may be called with (a b (c . d))
+    (cond
+     [(null? dom*)
+      (values '() '())]
+     [(not (pair? dom*))
+      (cond
+       [(identifier? dom*)
+        (define t (type-map-ref dom-map REST-KEY))
+        (define-values [ex* dom-stx]
+          (protect-domain t (datum->syntax formals dom*) ctx ctc-cache lambda-id))
+        (values ex* (list dom-stx))]
+       [(syntax? dom*)
+        (loop (syntax-e dom*) position)]
+       [else
+        (raise-arguments-error 'protect-formals "strange domain element in formals"
+          "elem" dom*
+          "formals" formals)])]
+     [(keyword? (syntax-e (car dom*)))
+      (raise-arguments-error 'protect-formals "unexpected keyword in domain"
+        "elem" (car dom*)
+        "formals" formals)]
+     [else
+      (define var (formal->var (car dom*)))
+      (define t (type-map-ref dom-map position))
+      (define-values [ex0* dom-first] (protect-domain t var ctx ctc-cache lambda-id))
+      (define-values [ex1* dom-rest] (loop (cdr dom*) (+ position 1)))
+      (values (append ex0* ex1*)
+              (if dom-first (cons dom-first dom-rest) dom-rest))])))
+
+(define (formal->var stx)
+  (syntax-parse stx
+   [_:id
+    stx]
+   [(x:id _)
+    (syntax/loc stx x)]
+   [_
+    (raise-argument-error 'formal->var "(or/c #'id #'(id _))" stx)]))
+
+;; some-values->type* : (U Type SomeValues) -> (Listof Type)
+(define (some-values->type* sv)
+  (match sv
+   [(? Type?)
+    (list sv)]
+   [(Values: r*)
+    (map Result-t r*)]
+   [(AnyValues: _)
+    (raise-user-error 'some-values->type* "cannot generate contract for AnyValues type '~a'" sv)]
+   [(ValuesDots: _ _ _)
+    (raise-user-error 'some-values->type* "cannot generate contract for ValuesDots type '~a'" sv)]
+   [_
+     (raise-argument-error 'some-values->type* "(or/c Type? SomeValues?)" sv)]))
 
 (define (literal-function x)
   (syntax-parse x
