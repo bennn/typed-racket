@@ -827,7 +827,7 @@
         ;; - performs the application
         ;; - binds the result(s) to temporary variable(s)
         ;; - checks the tag of each temporary
-        (with-syntax ([app app-stx])
+        (let ()
           (define var-name 'dyn-cod)
           ;; - application returns +1 results:
           ;;   - bind all,
@@ -836,24 +836,28 @@
           (with-syntax* ([v*
                           (for/list ([_t (in-list t*)])
                             (generate-temporary var-name))]
-                         [(check-v* ...)
-                          (for/list ((ctc-stx (in-list ctc-stx*))
-                                     (type (in-list t*))
-                                     (v-stx (in-list (syntax-e #'v*)))
-                                     (i (in-naturals))
-                                     #:when ctc-stx)
-                            (define if-stx
-                              (with-syntax ([ctc ctc-stx]
-                                            [v v-stx]
-                                            [ty-str (format "~a" type)]
-                                            [ctx ctx])
-                                #`(#%plain-app transient-assert v ctc 'ty-str 'ctx (#%plain-app cons '#,blame-sym #,blame-id))))
-                            (register-ignored! if-stx)
-                            if-stx)])
+                         [f-id (generate-temporary 't-fun)])
             (define new-stx
               (quasisyntax/loc app-stx
-                (let-values ([v* app])
-                  (begin check-v* ...  (#%plain-app values . v*)))))
+                (let-values (((f-id) #,(if blame-id #''#f (syntax-parse app-stx #:literals (#%plain-app apply) ((#%plain-app (~optional apply) e . arg*) #'e)))))
+                  (let-values ([v* #,(if blame-id app-stx (syntax-parse app-stx #:literals (#%plain-app apply)
+                                                                        ((#%plain-app apply _ . arg*) #'(#%plain-app apply f-id . arg*))
+                                                                        ((#%plain-app _ . arg*) #'(#%plain-app f-id . arg*))))])
+                    (begin
+                      #,@(for/list ((ctc-stx (in-list ctc-stx*))
+                                    (type (in-list t*))
+                                    (v-stx (in-list (syntax-e #'v*)))
+                                    (i (in-naturals))
+                                    #:when ctc-stx)
+                           (define if-stx
+                             (with-syntax ([ctc ctc-stx]
+                                           [v v-stx]
+                                           [ty-str (format "~a" type)]
+                                           [ctx ctx])
+                               #`(#%plain-app transient-assert v ctc 'ty-str 'ctx (#%plain-app cons '#,blame-sym #,(or blame-id #'f-id)))))
+                           (register-ignored! if-stx)
+                           if-stx)
+                      (#%plain-app values . v*))))))
             (void
               (add-typeof-expr new-stx cod-tc-res)
               (register-ignored! (caddr (syntax-e new-stx))))
@@ -869,7 +873,7 @@
 (define (infer-blame-source app-stx cod-t*)
   ;; TODO need input type too? can extract from `app-stx` probably
   (syntax-parse app-stx
-   #:literals (#%plain-app apply quote)
+   #:literals (#%plain-app #%expression apply quote)
    ;; --- pair
    [(#%plain-app (~literal car) x)
     (values 'car #'x)]
@@ -944,12 +948,15 @@
    [(#%plain-app (~literal get-field/proc) (quote tgt) obj)
     (values (cons 'object-field (syntax-e #'tgt)) #'obj)]
    ;; --- function (the default)
-   [(#%plain-app (~optional apply) unknown-f:id . _)
+   [(#%plain-app (~optional apply) (~or unknown-f:id (#%expression unknown-f:id)) . _)
     (values 'cod #'unknown-f)]
    [(#%plain-app (~optional apply) unknown:expr . _)
-    (raise-arguments-error 'infer-blame-source
-                           "cannot assign blame to application"
-                           "ctx" app-stx)]
+    (values 'cod #f)
+    #;
+    (raise-syntax-error 'infer-blame-source
+                        (format "cannot assign blame to application (~a:~a:~a)"
+                                (syntax-source app-stx) (syntax-line app-stx) (syntax-column app-stx))
+                        app-stx)]
    [_
     (raise-argument-error 'infer-blame-source
                           "application" app-stx)]))
@@ -1029,6 +1036,9 @@
    [((~or (~literal lambda)
           (~literal #%plain-lambda)
           (~literal case-lambda)) . _) #true]
+   [;; literal fun. after this file rewrites it
+    ((~literal letrec-values) (((a:id) ((~or (~literal lambda) (~literal #%plain-lambda) (~literal case-lambda)) . _))) b:id)
+    (free-identifier=? #'a #'b)]
    [_ #false]))
 
 (define (syntax*->syntax ctx stx*)
