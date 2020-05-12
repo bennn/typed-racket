@@ -50,7 +50,7 @@
   (blame-map-set! val ty-str from)
   (if (pred val)
     val
-    (raise-transient-error val ty-str ctx)))
+    (raise-transient-error val ty-str ctx (blame-map-ref val))))
 
 (define (raise-transient-error val ty ctx blame-entry*)
   (raise-arguments-error 'transient-assert
