@@ -31,4 +31,7 @@
   (lambda () (send o1 f 'NaN #:y 1)))
 (check-exn exn:fail:contract?
   (lambda () (send o1 f 0 #:y 'NaN)))
-
+(check-not-exn
+  (lambda () (send o1 f 0)))
+(check-not-exn
+  (lambda () (send o1 f 0 #:y 1)))
