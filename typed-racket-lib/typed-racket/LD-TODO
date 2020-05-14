@@ -463,7 +463,21 @@
   - [X] zordoz
 
 - [ ] use kw-lambda and opt-lambda properties for checking?
-  what is plambda-property ?
+  ... oh dear
+  TR says Nothing enters, which is incorrect but happens to work
+   (not sure where this Nothing = empty union originates)
+  then, the body of the function ends up with the right type via occurrence typing and unions,
+   desipite faulty reasoninng (input in NOT Nothing, nor is it only Unsafe-Undef)
+   seems sound, though
+  for transient, need to redo the opt/kw checks,
+   do not check at top
+   wait until the (let ((k (if .... k0))) ....)
+    find the right type (on k) and check the k0 case
+  - [ ] found type?
+  - [ ] rewrite, simple,
+  - [ ] refactor domain-map code?
+
+- [ ] what is plambda-property ... can use ?
 
 - [ ] GET BLAME WORKING !!!
   rebase
