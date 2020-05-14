@@ -441,15 +441,11 @@
     ugh
   - remove opaque print helps? YES
   - cache for opaque printing also helps
-
-- [ ] GET BLAME WORKING !!!
-  rebase
-
-- [ ] new runtime errors
+- [X] new runtime errors
   ... should something get register-ignored?
   - [X] acquire
   - [X] fsm
-  - [ ] fsmoo
+  - [X] fsmoo
     wtf broken again later??? no, I doubt it ever worked
     methods with kwd + default have the wrong type/expansion,
      expansion picks default inside the method,
@@ -466,6 +462,12 @@
     incomplete type, array-append*
   - [X] zordoz
 
+- [ ] use kw-lambda and opt-lambda properties for checking?
+  what is plambda-property ?
+
+- [ ] GET BLAME WORKING !!!
+  rebase
+
 - [ ] organize benchmarks for eval.
   - [X] jpeg typed/untyped-id issue, (not sure what ID)
     have a simple fix via vector-map,
@@ -476,9 +478,6 @@
   - [ ] lnm typed/untyped-id issue
     plot-pict in transient code cannot find a type ... can we fix by registering
     a type somewhere?
-
-- [ ] use kw-lambda and opt-lambda properties for checking?
-  what is plambda-property ?
 
 ## reduce checks
 
