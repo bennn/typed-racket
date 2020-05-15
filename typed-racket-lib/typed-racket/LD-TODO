@@ -461,8 +461,7 @@
   - [X] synth
     incomplete type, array-append*
   - [X] zordoz
-
-- [ ] use kw-lambda and opt-lambda properties for checking?
+- [X] use kw-lambda and opt-lambda properties for checking?
   ... oh dear
   TR says Nothing enters, which is incorrect but happens to work
    (not sure where this Nothing = empty union originates)
@@ -473,11 +472,14 @@
    do not check at top
    wait until the (let ((k (if .... k0))) ....)
     find the right type (on k) and check the k0 case
-  - [ ] found type?
-  - [ ] rewrite, simple,
-  - [ ] refactor domain-map code?
+  - [X] found type?
+  - [X] rewrite, simple,
+
+- [X] refactor domain-map code?
 
 - [ ] what is plambda-property ... can use ?
+
+- [ ] defender, need "ignored" cases ever?
 
 - [ ] GET BLAME WORKING !!!
   rebase
