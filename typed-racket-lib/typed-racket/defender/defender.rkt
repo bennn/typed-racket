@@ -273,10 +273,9 @@
                                    (readd-props (loop f-body #f) f-body)
                                    (syntax-parse f-body
                                     #:literals (let-values if)
-                                    [(let-values (((arg-id) (if test default-expr arg))) f-rest)
+                                    [(let-values (((arg-id) (~and if-expr (if test default-expr arg)))) f-rest)
                                      ;; optional, default expression may need defense
-                                     (define arg-ty (union (tc-results->type1 (type-of #'default-expr))
-                                                           (tc-results->type1 (type-of #'arg))))
+                                     (define arg-ty (tc-results->type1 (type-of #'if-expr)))
                                      (define-values [ex* arg+] (protect-domain arg-ty #'arg (build-source-location-list f-body) ctc-cache))
                                      (void (register-extra-defs! ex*))
                                      (quasisyntax/loc f-body
