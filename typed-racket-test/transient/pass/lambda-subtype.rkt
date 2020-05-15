@@ -28,8 +28,8 @@
 
 (define-type Array (Vectorof Real))
 
-(: synth-array-append* (-> (Listof Array) Array))
-(define (synth-array-append* arr* [k 0])
+(: synth-array-append* (-> (Listof Array) (Listof Array) Array))
+(define (synth-array-append* aa bb [k 0])
   (vector k))
 
-(synth-array-append* '())
+(synth-array-append* '() '())

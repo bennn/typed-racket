@@ -91,11 +91,11 @@
         #:literals (#%plain-app begin case-lambda define-syntaxes define-values
                     find-method/who let-values letrec-values quote values)
         ;; unsound within exn-handlers^ ?
-        [;; send (for objects), MUST come before ignored exprs
-         (let-values ([(_) _meth])
-            (let-values ([(_) _rcvr])
-              (let-values (((_) (#%plain-app find-method/who _ _ _)))
-                (let-values ([(_) _args] ...) _))))
+        [(let-values ([(_) _meth])
+           (let-values ([(_) _rcvr])
+             (let-values (((_) (#%plain-app find-method/who _ _ _)))
+               (let-values ([(_) _args] ...) _))))
+         ;; send (for objects), MUST come before ignored exprs
          (define tc-res (type-of stx (lambda () Univ)))
          (define-values [extra* stx/check]
            (protect-codomain tc-res stx (build-source-location-list stx) ctc-cache))
@@ -103,11 +103,11 @@
          (if stx/check
            (register-ignored (readd-props stx/check stx))
            stx)]
-        [;; class def, see typecheck/check-class-unit
-         (#%plain-app
-            compose-class:id name:expr superclass:expr interface:expr internal:expr ...
-            (~and make-methods-lambda (#%plain-lambda (local-accessor:id local-mutator:id local-method-or-field:id ...) make-methods-body))
-            (quote b:boolean) (quote #f))
+        [(#%plain-app
+           compose-class:id name:expr superclass:expr interface:expr internal:expr ...
+           (~and make-methods-lambda (#%plain-lambda (local-accessor:id local-mutator:id local-method-or-field:id ...) make-methods-body))
+           (quote b:boolean) (quote #f))
+         ;; class def, see typecheck/check-class-unit
          (define class-name-table
            (car (trawl-for-property #'make-methods-body tr:class:name-table-property)))
          (define parse-info
@@ -259,13 +259,50 @@
                (~literal quote)
                (~literal quote-syntax)) . _)
          stx]
-        [;; opt/kw function
-         (~and (~or :opt-lambda^ :kw-lambda^)
-               (let-values (((f) fun)) body))
+        [(~and (~or :opt-lambda^ :kw-lambda^)
+               (let-values (((f-name) (#%plain-lambda f-args f-body))) body))
+         ;; opt/kw function
+         (define num-args (length (syntax->list #'f-args)))
          (readd-props
            (quasisyntax/loc stx
-             (let-values (((f) #,(loop #'fun #f))) #,(register-ignored #'body)))
-           stx)]
+             (let-values (((f-name)
+                           (#%plain-lambda f-args
+                             #,(let dom-check-loop ([f-body #'f-body]
+                                                    [num-args num-args])
+                                 (if (zero? num-args)
+                                   (readd-props (loop f-body #f) f-body)
+                                   (syntax-parse f-body
+                                    #:literals (let-values if)
+                                    [(let-values (((arg-id) (if test default-expr arg))) f-rest)
+                                     ;; optional, default expression may need defense
+                                     (define arg-ty (union (tc-results->type1 (type-of #'default-expr))
+                                                           (tc-results->type1 (type-of #'arg))))
+                                     (define-values [ex* arg+] (protect-domain arg-ty #'arg (build-source-location-list f-body) ctc-cache))
+                                     (void (register-extra-defs! ex*))
+                                     (quasisyntax/loc f-body
+                                       (let-values (((arg-id)
+                                                     (if test
+                                                       #,(syntax-parse #'test
+                                                          [((~literal #%expression) ((~literal quote) #f))
+                                                           #'default-expr]
+                                                          [_
+                                                           (readd-props (loop #'default-expr #f) #'default-expr)])
+                                                       #,(if arg+ (readd-props arg+ #'arg) #'arg))))
+                                         #,(dom-check-loop #'f-rest (- num-args 1))))]
+                                    [(let-values (((arg-id) arg-val)) f-rest)
+                                     ;; normal arg
+                                     (define arg-ty (tc-results->type1 (type-of #'arg-val)))
+                                     (define-values [ex* arg-val+] (protect-domain arg-ty #'arg-val (build-source-location-list f-body) ctc-cache))
+                                     (void (register-extra-defs! ex*))
+                                     (quasisyntax/loc f-body
+                                       (let-values (((arg-id)
+                                                     #,(if arg-val+ (readd-props arg-val+ #'arg-val) #'arg-val)))
+                                         #,(dom-check-loop #'f-rest (- num-args 1))))]
+                                    [_
+                                     (raise-syntax-error 'defend-top "strange kw/opt function body"
+                                                         stx f-body)]))))))
+               #,(register-ignored #'body)))
+             stx)]
         [((~or _:lambda-identifier
                case-lambda) . _)
          #:when (not (maybe-type-of stx))
