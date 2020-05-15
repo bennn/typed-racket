@@ -18,6 +18,8 @@
   typed-racket/types/match-expanders
   (only-in typed-racket/optimizer/unboxed-let
     escapes?)
+  (only-in typed-racket/private/type-annotation
+    get-type)
   (only-in typed-racket/env/transient-env
     transient-trusted-positive?)
   (only-in typed-racket/typecheck/internal-forms
@@ -88,7 +90,7 @@
   (define defended-stx
     (let loop ([stx stx] [skip-dom? #f])
       (syntax-parse stx
-        #:literals (#%plain-app begin case-lambda define-syntaxes define-values
+        #:literals (#%plain-app #%plain-lambda begin case-lambda define-syntaxes define-values
                     find-method/who let-values letrec-values quote values)
         ;; unsound within exn-handlers^ ?
         [(let-values ([(_) _meth])
@@ -306,31 +308,48 @@
                case-lambda) . _)
          #:when (not (maybe-type-of stx))
          stx]
-        [(op:lambda-identifier formals . body)
-         ;; TODO remove stx->arrow ? maybe this can all be simpler
-         (define dom-map (type->domain-map (stx->arrow-type stx)))
-         (define f+
-           (let-values ([(extra* f+)
-                         (if skip-dom?
-                           (values '() '())
-                           (protect-formals dom-map #'formals (build-source-location-list stx) ctc-cache))])
-             (register-extra-defs! extra*)
-             f+))
-         (define stx+
-           (with-syntax ([body+ (readd-props (loop #'body #f) #'body)])
-             (if (null? f+)
-               (syntax/loc stx (op formals . body+))
-               (let ([stx+ (quasisyntax/loc stx (op formals (#%plain-app void . #,f+) . body+))])
-                 (register-ignored! (caddr (syntax-e stx+)))
-                 stx+))))
-         (readd-props stx+ stx)]
-        [((~and op (~literal case-lambda)) [formals* . body*] ...)
+        [((~literal lambda) formals . body)
+         (raise-argument-error 'defend-top "what lambda" stx)]
+        [(#%plain-lambda formals . body)
+         ;; plain lambda
+         (readd-props
+           (quasisyntax/loc stx
+             (#%plain-lambda formals .
+               #,(let* ([body+
+                          (readd-props (loop #'body #f) #'body)]
+                        [check-formal*
+                          (let protect-loop ([args #'formals])
+                            (if (or (identifier? args)
+                                    (null? args)
+                                    (and (syntax? args) (null? (syntax-e args))))
+                              '()
+                              (let*-values ([(fst rst)
+                                             (cond
+                                               [(pair? args)
+                                                (values (car args) (cdr args))]
+                                               [(syntax? args)
+                                                (let ((e (syntax-e args)))
+                                                  (values (car e) (cdr e)))]
+                                               [else
+                                                 (raise-syntax-error 'defend-top "#%plain-lambda formals" #'formals args)])]
+                                            [(check*) (protect-loop rst)]
+                                            [(fst-ty) (get-type fst #:default Univ)]
+                                            [(ex* fst+) (protect-domain fst-ty fst (build-source-location-list fst) ctc-cache)])
+                                (void (register-extra-defs! ex*))
+                                (if fst+ (cons fst+ check*) check*))))])
+                   (if (null? check-formal*)
+                     body+
+                     (cons
+                       (quasisyntax/loc #'body (#%plain-app void . #,check-formal*))
+                       body+)))))
+           stx)]
+        [(case-lambda [formals* . body*] ...)
          ;; NOTE similar to the lambda case, but cannot easily share helper functions
          ;;  because risk `identifier used out of context' errors
          (define dom-map* (map type->domain-map (stx->arrow-type* stx)))
          (define stx+
            (quasisyntax/loc stx
-             (op .
+             (case-lambda .
                  #,(for/list ([formals (in-list (syntax-e #'(formals* ...)))]
                               [body (in-list (syntax-e #'(body* ...)))])
                      (cond
