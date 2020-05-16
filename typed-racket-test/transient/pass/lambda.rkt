@@ -127,3 +127,22 @@
 
 ;; Do NOT want to see "error transient-assert expected Nothing"
 ((plambda: (x ...) [xs : x ... x] xs) 3 4 5)
+
+;; -----------------------------------------------------------------------------
+;; --- poly
+
+(: shuffle-vector
+   (All (X) (-> (Vectorof X) (Vectorof X) (cons (Vectorof X) (Vectorof X)))))
+(define (shuffle-vector b a)
+  ;; copy b into a
+  (for ([x (in-vector b)][i (in-naturals)])
+    (vector-set! a i x))
+  ;; now shuffle a 
+  (for ([x (in-vector b)] [i (in-naturals)])
+    (define j (random (add1 i)))
+    (unless (= j i) (vector-set! a i (vector-ref a j)))
+    (vector-set! a j x))
+  (cons a b))
+
+(shuffle-vector (vector 1 2 3) (vector 4 5 6))
+

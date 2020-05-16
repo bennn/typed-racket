@@ -474,15 +474,19 @@
     find the right type (on k) and check the k0 case
   - [X] found type?
   - [X] rewrite, simple,
-
+- [X] what is plambda-property ... can use ?
+  - keeps the plambda syntax, declaring the poly vars, used in typechecking
+  - ((plambda: (x ...) [xs : x ... x] xs) 3 4 5)
+    has the "wrong" type because `tc/funapp1` adds the inferred type for the tooltip table
+    gets type after substitution
+    ... anything to do?
 - [X] refactor domain-map code?
+  - darn, case-lambda makes it tough,
+    see tc-lambda-unit and reuse code
+  - [X] defender: simpler stx->arrow type,
+        is there a built-in union function to combine arrows? (not `union`)
+        can the whole protect-formals code get simpler / fewer steps?
 
-- [ ] what is plambda-property ... can use ?
-
-- [ ] defender, need "ignored" cases ever?
-
-- [ ] GET BLAME WORKING !!!
-  rebase
 
 - [ ] organize benchmarks for eval.
   - [X] jpeg typed/untyped-id issue, (not sure what ID)
@@ -494,6 +498,11 @@
   - [ ] lnm typed/untyped-id issue
     plot-pict in transient code cannot find a type ... can we fix by registering
     a type somewhere?
+
+- [ ] defender, need "ignored" cases?
+
+- [ ] GET BLAME WORKING !!!
+  rebase
 
 ## reduce checks
 
@@ -576,10 +585,6 @@
         but that's not true here!
        need to capture those lifts
     - [ ] 
-
-- [ ] defender: simpler stx->arrow type,
-      is there a built-in union function to combine arrows? (not `union`)
-      can the whole protect-formals code get simpler / fewer steps?
 
 - [ ] defend / optimize : share "escapes" more gracefully
 - [ ] type-contract: new tests + docs
