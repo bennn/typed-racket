@@ -67,7 +67,8 @@
                                  (quote nm.nm)
                                  (quote-srcloc nm.nm))]
                     [(transient)
-                     #`(#%plain-app transient-assert #,(get-alternate #'nm.orig-nm-r) cnt 'orig-ty-str (quote-srcloc nm.nm) 'require/typed)]
+                     #`(#%plain-app transient-assert #,(get-alternate #'nm.orig-nm-r) cnt 'orig-ty-str (quote-srcloc nm.nm)
+                         (#%plain-app list 'boundary 'require/typed (quote-srcloc nm.nm) '(interface for #,(syntax->datum #'nm.nm)) (current-contract-region)))]
                     [else
                      (get-alternate #'nm.orig-nm-r)])))]))
 

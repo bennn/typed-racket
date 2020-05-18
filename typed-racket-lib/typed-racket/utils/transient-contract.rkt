@@ -52,15 +52,15 @@
     val
     (begin
       (print-blame-map)
-      (raise-transient-error val ty-str ctx (blame-map-ref val)))))
+      (raise-transient-error val ty-str ctx))))
 
-(define (raise-transient-error val ty ctx blame-entry*)
+(define (raise-transient-error val ty ctx)
   (raise-arguments-error 'transient-assert
                          "value does not match static type"
                          "value" val
                          "type" (unquoted-printing-string ty)
                          "src" ctx
-                         "blame" blame-entry*))
+                         "boundary" (blame-map-boundary* val)))
 
 ;; -----------------------------------------------------------------------------
 ;; --- blame map
@@ -69,12 +69,7 @@
 
 (define THE-BLAME-MAP (make-hasheq))
 
-(define BLAME-DEBUG? #true)
-
-(define blame-compress-key ;; (-> any/c any/c)
-  (if BLAME-DEBUG?
-    values
-    eq-hash-code))
+(define blame-compress-key eq-hash-code)
 
 (define blame-source* '(
   cast
@@ -121,6 +116,7 @@
 
 (struct cast-info blame-entry (
   type ;; string?, expected type
+  blame ;; ???
 ) #:prefab)
 
 (struct check-info blame-entry (
@@ -129,12 +125,24 @@
 
 ;; make-blame-entry : (-> string? (or/c symbol? (cons/c any/c symbol?)) blame-entry?)
 (define (make-blame-entry ty-str from)
-  (if (pair? from)
-    (check-info (cdr from) (eq-hash-code (car from)))
-    (cast-info from ty-str)))
+  (if (eq? 'boundary (car from))
+    (cast-info (cadr from) ty-str (cddr from))
+    (check-info (cdr from) (eq-hash-code (car from)))))
 
 (define (blame-map-ref v)
   (hash-keys (hash-ref THE-BLAME-MAP (blame-compress-key v) (lambda () '#hash()))))
+
+(define (blame-map-boundary* v)
+  (let loop ([entry* (blame-map-ref v)])
+   (apply append
+    (for/list ((e (in-list entry*)))
+      (cond
+        [(check-info? e)
+         (loop (blame-map-ref (check-info-parent e)))]
+        [(cast-info? e)
+         (list e)]
+        [else
+          (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
 
 (define (blame-map-set! val ty-str from)
   (unless (eq? val (eq-hash-code val))
@@ -153,7 +161,7 @@
   (printf "BLAME MAP~n")
    (printf "ps ~a~n" (eq-hash-code apply))
   (for (((k v) (in-hash THE-BLAME-MAP)))
-    (printf " (~s ~a(~n" k (if BLAME-DEBUG? (format "~a " (eq-hash-code k)) ""))
+    (printf " (~s (~n" k)
     (for ((vv (in-hash-keys v)))
       (printf "  ~s~n" vv))
     (printf " )~n"))
