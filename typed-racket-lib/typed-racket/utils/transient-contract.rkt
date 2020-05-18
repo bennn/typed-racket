@@ -50,7 +50,9 @@
   (blame-map-set! val ty-str from)
   (if (pred val)
     val
-    (raise-transient-error val ty-str ctx (blame-map-ref val))))
+    (begin
+      (print-blame-map)
+      (raise-transient-error val ty-str ctx (blame-map-ref val)))))
 
 (define (raise-transient-error val ty ctx blame-entry*)
   (raise-arguments-error 'transient-assert
@@ -66,6 +68,13 @@
 (provide blame-map-ref blame-map-set!)
 
 (define THE-BLAME-MAP (make-hasheq))
+
+(define BLAME-DEBUG? #true)
+
+(define blame-compress-key ;; (-> any/c any/c)
+  (if BLAME-DEBUG?
+    values
+    eq-hash-code))
 
 (define blame-source* '(
   cast
@@ -125,12 +134,12 @@
     (cast-info from ty-str)))
 
 (define (blame-map-ref v)
-  (hash-keys (hash-ref THE-BLAME-MAP v (lambda () '#hash()))))
+  (hash-keys (hash-ref THE-BLAME-MAP (blame-compress-key v) (lambda () '#hash()))))
 
 (define (blame-map-set! val ty-str from)
   (unless (eq? val (eq-hash-code val))
     (define be (make-blame-entry ty-str from))
-    (hash-update! THE-BLAME-MAP val
+    (hash-update! THE-BLAME-MAP (blame-compress-key val)
                   (lambda (curr) (set-add curr be))
                   (lambda () (set-init be)))))
 
@@ -139,3 +148,13 @@
 
 (define (set-add h v)
   (hash-set h v #true))
+
+(define (print-blame-map)
+  (printf "BLAME MAP~n")
+   (printf "ps ~a~n" (eq-hash-code apply))
+  (for (((k v) (in-hash THE-BLAME-MAP)))
+    (printf " (~s ~a(~n" k (if BLAME-DEBUG? (format "~a " (eq-hash-code k)) ""))
+    (for ((vv (in-hash-keys v)))
+      (printf "  ~s~n" vv))
+    (printf " )~n"))
+  (void))
