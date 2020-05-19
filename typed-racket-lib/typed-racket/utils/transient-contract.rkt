@@ -52,15 +52,22 @@
     val
     (begin
       (print-blame-map)
-      (raise-transient-error val ty-str ctx))))
+      (raise-transient-error val ty-str ctx from))))
 
-(define (raise-transient-error val ty ctx)
+(define (raise-transient-error val ty-str ctx from)
+  (define boundary*
+    (if (boundary? from)
+      (list (make-blame-entry ty-str from))
+      (blame-map-boundary* (blame-compress-key (car from)))))
+  (void
+    (log-transient-error "blaming ~a boundaries" (length boundary*))
+    (for ((b (in-list boundary*)))
+      (log-transient-error "  ~s" b)))
   (raise-arguments-error 'transient-assert
                          "value does not match static type"
                          "value" val
-                         "type" (unquoted-printing-string ty)
-                         "src" ctx
-                         "boundary" (blame-map-boundary* val)))
+                         "type" (unquoted-printing-string ty-str)
+                         "src" ctx))
 
 ;; -----------------------------------------------------------------------------
 ;; --- blame map
@@ -68,6 +75,8 @@
 (provide blame-map-ref blame-map-set!)
 
 (define THE-BLAME-MAP (make-hasheq))
+
+(define-logger transient)
 
 (define blame-compress-key eq-hash-code)
 
@@ -123,9 +132,12 @@
   parent ;; eq-hash-code
 ) #:prefab)
 
+(define (boundary? x)
+  (and (pair? x) (eq? 'boundary (car x))))
+
 ;; make-blame-entry : (-> string? (or/c symbol? (cons/c any/c symbol?)) blame-entry?)
 (define (make-blame-entry ty-str from)
-  (if (eq? 'boundary (car from))
+  (if (boundary? from)
     (cast-info (cadr from) ty-str (cddr from))
     (check-info (cdr from) (eq-hash-code (car from)))))
 
