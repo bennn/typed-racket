@@ -17,6 +17,7 @@
  racket/format
  racket/string
  syntax/flatten-begin
+ syntax/location
  (only-in (types abbrev) -Bottom -Boolean)
  (static-contracts instantiate structures combinators constraints)
  (only-in (submod typed-racket/static-contracts/instantiate internals) compute-constraints)
@@ -152,15 +153,25 @@
                      #,@(if maybe-inline-val
                             null
                             (list #`(define-values (ctc-id) #,ctc)))
-                     (define-module-boundary-contract #,untyped-id
-                       #,orig-id
-                       #,(or maybe-inline-val #'ctc-id)
-                       #:pos-source #,blame-id
-                       #:srcloc (vector (quote #,(syntax-source orig-id))
-                                        #,(syntax-line orig-id)
-                                        #,(syntax-column orig-id)
-                                        #,(syntax-position orig-id)
-                                        #,(syntax-span orig-id))))])]))
+                     #,(case (current-type-enforcement-mode)
+                         ((guarded)
+                          #`(define-module-boundary-contract #,untyped-id
+                              #,orig-id
+                              #,(or maybe-inline-val #'ctc-id)
+                              #:pos-source #,blame-id
+                              #:srcloc (vector (quote #,(syntax-source orig-id))
+                                               #,(syntax-line orig-id)
+                                               #,(syntax-column orig-id)
+                                               #,(syntax-position orig-id)
+                                               #,(syntax-span orig-id))))
+                         ((transient)
+                          (define ty-str (format "~a" type))
+                          (define ctx (quote-srcloc orig-id))
+                          #`(define #,untyped-id
+                              (#%plain-app transient-assert #,orig-id #,(or maybe-inline-val #'ctc-id) '#,ty-str '#,ctx
+                               (#%plain-app list 'boundary 'provide '#,ctx #,blame-id 'unknown))))
+                         ((erasure)
+                          #`(define #,untyped-id #,orig-id))))])]))
 
 ;; Syntax (Dict Static-Contract (Cons Id Syntax)) -> (Option Syntax)
 ;; A helper for generate-contract-def/provide that helps inline contract
