@@ -487,7 +487,6 @@
         is there a built-in union function to combine arrows? (not `union`)
         can the whole protect-formals code get simpler / fewer steps?
 
-
 - [ ] organize benchmarks for eval.
   - [X] jpeg typed/untyped-id issue, (not sure what ID)
     have a simple fix via vector-map,
@@ -498,11 +497,22 @@
   - [ ] lnm typed/untyped-id issue
     plot-pict in transient code cannot find a type ... can we fix by registering
     a type somewhere?
+  - [ ] quadT duplicate type annotation in hypenate (same type 2x)
+    - [X] max 10111101111001 failed to reproduce
+    - [X] regular 10000011110100 ... cannot reproduce
+    - [ ] is NSA code different???
+
+- [ ] runtime surprises
+  - [ ] fsm 0000 way slow, 400 vs 4000
+    cannot reproduce locally, must be something wrong with NSA code
+  - [ ] snake 20x ?!
+    0*11 0*1011 10001* 10101* 11101*
+    seems LEGIT locally, can improve?
 
 - [ ] defender, need "ignored" cases?
 
 - [ ] GET BLAME WORKING !!!
-  rebase
+  [X] rebase 2020-05-17
 
 ## reduce checks
 
