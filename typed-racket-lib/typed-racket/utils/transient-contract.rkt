@@ -59,7 +59,7 @@
   (define boundary*
     (if (boundary? from)
       (list (make-blame-entry ty-str from))
-      (blame-map-boundary* (blame-compress-key (car from)))))
+      (blame-map-boundary* val (cdr from) (blame-compress-key (car from)))))
   (void
     (log-transient-error "blaming ~a boundaries" (length boundary*))
     (for ((b (in-list boundary*)))
@@ -74,6 +74,10 @@
 ;; --- blame map
 
 (provide blame-map-ref blame-map-set!)
+
+(require
+  racket/match
+  racket/port)
 
 (define THE-BLAME-MAP (make-hasheq))
 
@@ -145,7 +149,65 @@
 (define (blame-map-ref v)
   (hash-keys (hash-ref THE-BLAME-MAP (blame-compress-key v) (lambda () '#hash()))))
 
-(define (blame-map-boundary* v)
+(define (add-path* entry* path)
+  (for/list ((e (in-list entry*)))
+    (cons e path)))
+
+(define (blame-map-boundary* val init-action key)
+  (let loop ([entry+path* (add-path* (blame-map-ref key) (list init-action))])
+   (apply append
+    (for/list ((e+p (in-list entry+path*)))
+      (define e (car e+p))
+      (define curr-path (cdr e+p))
+      (cond
+        [(check-info? e)
+         (define parent (check-info-parent e))
+         (define action (blame-entry-from e))
+         (define new-path (cons action curr-path))
+         (loop (add-path* (blame-map-ref parent) new-path))]
+        [(cast-info? e)
+         (define ty (cast-info-type e))
+         (define tgt-ty (type-follow-path ty curr-path))
+         (if (and tgt-ty (value-type-match? val tgt-ty))
+           '()
+           (list e))]
+        [else
+          (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
+
+(define (type-follow-path init-ty init-path)
+  (define sexp
+    (with-input-from-string init-ty read))
+  (let loop ((ty sexp)
+             (curr-path init-path))
+    (if (null? curr-path)
+      ty
+      (let ((ty+ (type-step ty (car curr-path))))
+        (if ty+
+          (loop ty+ (cdr curr-path))
+          (log-transient-error "PATH ERROR cannot follow ~s in ~s orig type ~s orig path ~s" (car curr-path) ty init-ty init-path))))))
+
+(define (type-step ty action)
+  (cond
+    [(eq? action 'dom)
+     (and (list? ty)
+          (eq? '-> (car ty))
+          (cadr ty))]
+    [(eq? action 'cod)
+     (and (list? ty)
+          (eq? '-> (car ty))
+          (caddr ty))]
+    [else
+      #f]))
+
+(define (value-type-match? v ty)
+  (define f
+    (match ty
+      ['Real real?]
+      ['String string?]
+      [_ (raise-arguments-error 'value-type-match? "cannot handle type" "type" ty "value" v)]))
+  (f v))
+
+(define (simple-blame-map-boundary* v)
   (let loop ([entry* (blame-map-ref v)])
    (apply append
     (for/list ((e (in-list entry*)))

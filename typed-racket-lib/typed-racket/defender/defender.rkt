@@ -802,13 +802,13 @@
     (if (not ctc-stx)
       #f
       (with-syntax ([ctc ctc-stx]
-                    [dom dom-stx]
+                    [dom-expr dom-stx]
                     [ty-str (format "~a" dom-type)]
                     [ctx ctx]
                     [lambda-id lambda-id])
         (register-ignored
           (syntax/loc dom-stx
-            (#%plain-app transient-assert dom ctc 'ty-str 'ctx (#%plain-app cons lambda-id 'dom)))))))
+            (#%plain-app transient-assert dom-expr ctc 'ty-str 'ctx (#%plain-app cons lambda-id 'dom)))))))
   (values extra-def* dom-stx+))
 
 ;; protect-codomain : ???
