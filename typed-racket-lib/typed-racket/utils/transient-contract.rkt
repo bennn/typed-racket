@@ -8,6 +8,7 @@
   raise-transient-error)
 
 (require
+  (only-in racket/contract blame-positive make-flat-contract)
   (only-in racket/pretty pretty-format))
 
 ;; ---------------------------------------------------------------------------------------------------
@@ -177,3 +178,20 @@
       (log-transient-error "  ~s" vv))
     (log-transient-error " )"))
   (void))
+
+;; -----------------------------------------------------------------------------
+
+(provide
+  make-transient-provide-contract)
+
+(define (make-transient-provide-contract pred ty-str ctx)
+  (define ((lnp blame) val neg-party)
+    (if (eq? neg-party 'incomplete-blame-from-provide.rkt)
+      #true
+      (let ((pos-party (blame-positive blame)))
+        (transient-assert val pred ty-str ctx
+                          (list 'boundary 'provide ctx pos-party neg-party)))))
+  (make-flat-contract
+    #:name (format "transient-projection:~a" (object-name pred))
+    #:late-neg-projection lnp))
+
