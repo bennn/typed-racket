@@ -149,76 +149,6 @@
 (define (blame-map-ref v)
   (hash-keys (hash-ref THE-BLAME-MAP (blame-compress-key v) (lambda () '#hash()))))
 
-(define (add-path* entry* path)
-  (for/list ((e (in-list entry*)))
-    (cons e path)))
-
-(define (blame-map-boundary* val init-action key)
-  (let loop ([entry+path* (add-path* (blame-map-ref key) (list init-action))])
-   (apply append
-    (for/list ((e+p (in-list entry+path*)))
-      (define e (car e+p))
-      (define curr-path (cdr e+p))
-      (cond
-        [(check-info? e)
-         (define parent (check-info-parent e))
-         (define action (blame-entry-from e))
-         (define new-path (cons action curr-path))
-         (loop (add-path* (blame-map-ref parent) new-path))]
-        [(cast-info? e)
-         (define ty (cast-info-type e))
-         (define tgt-ty (type-follow-path ty curr-path))
-         (if (and tgt-ty (value-type-match? val tgt-ty))
-           '()
-           (list e))]
-        [else
-          (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
-
-(define (type-follow-path init-ty init-path)
-  (define sexp
-    (with-input-from-string init-ty read))
-  (let loop ((ty sexp)
-             (curr-path init-path))
-    (if (null? curr-path)
-      ty
-      (let ((ty+ (type-step ty (car curr-path))))
-        (if ty+
-          (loop ty+ (cdr curr-path))
-          (log-transient-error "PATH ERROR cannot follow ~s in ~s orig type ~s orig path ~s" (car curr-path) ty init-ty init-path))))))
-
-(define (type-step ty action)
-  (cond
-    [(eq? action 'dom)
-     (and (list? ty)
-          (eq? '-> (car ty))
-          (cadr ty))]
-    [(eq? action 'cod)
-     (and (list? ty)
-          (eq? '-> (car ty))
-          (caddr ty))]
-    [else
-      #f]))
-
-(define (value-type-match? v ty)
-  (define f
-    (match ty
-      ['Real real?]
-      ['String string?]
-      [_ (raise-arguments-error 'value-type-match? "cannot handle type" "type" ty "value" v)]))
-  (f v))
-
-(define (simple-blame-map-boundary* v)
-  (let loop ([entry* (blame-map-ref v)])
-   (apply append
-    (for/list ((e (in-list entry*)))
-      (cond
-        [(check-info? e)
-         (loop (blame-map-ref (check-info-parent e)))]
-        [(cast-info? e)
-         (list e)]
-        [else
-          (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
-
 (define (blame-map-set! val ty-str from)
   (unless (eq? val (eq-hash-code val))
     (define be (make-blame-entry ty-str from))
@@ -240,6 +170,148 @@
       (log-transient-error "  ~s" vv))
     (log-transient-error " )"))
   (void))
+
+(define (blame-map-boundary* val init-action key)
+  (let loop ([entry+path* (add-path* (blame-map-ref key) (list init-action))])
+   (apply append
+    (for/list ((e+p (in-list entry+path*)))
+      (define e (car e+p))
+      (define curr-path (cdr e+p))
+      (cond
+        [(check-info? e)
+         (define parent (check-info-parent e))
+         (define action (blame-entry-from e))
+         (define new-path (cons action curr-path))
+         (loop (add-path* (blame-map-ref parent) new-path))]
+        [(cast-info? e)
+         (define ty (cast-info-type e))
+         (if (value-type-match? val ty curr-path)
+           '()
+           (list e))]
+        [else
+          (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
+
+(define (add-path* entry* path)
+  (for/list ((e (in-list entry*)))
+    (cons e path)))
+
+;; -----------------------------------------------------------------------------
+;; --- reviving types
+
+(require
+  typed-racket/rep/type-rep
+  typed-racket/rep/values-rep
+  typed-racket/types/match-expanders
+  typed-racket/private/parse-type)
+
+;; Parse `ty-str` to a type,
+;;  follow `elim-path` into the type,
+;;  check whether value satisfies the transient contract at the end of the road
+(define (value-type-match? val ty-str elim-path)
+  ;; TODO get srcloc from cast-info struct ... use to parse type
+  (define ty-path
+    (let* ((ty-full (parse-type ty-str)))
+      (let loop ((ty ty-full)
+                 (elim* elim-path))
+        (if (null? elim*)
+          ty
+          (let ((ty+ (type-step2 ty (car elim*))))
+            (if ty+
+              (loop ty+ (cdr elim*))
+              (log-transient-error
+                "PATH ERROR cannot follow ~s in ~s orig type ~s orig path ~s"
+                (car elim*) ty ty-full elim-path)))))))
+  (define f
+    ;; ... unit-tests/contract-tests.rkt
+    (let* ((ctc-fail (lambda (#:reason r) (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" ty-path r)))
+           (ctc-data (type->contract ty-path fail #:typed-side #f #:cache #f #:enforcement-mode 'transient))
+           (extra-stxs (car ctc-data))
+           (ctc-stx (cadr ctc-data))
+           (ctc-ns (ctc-namespace)))
+      (eval #`(let () #,@extra-stxs #,ctc-stx) ns)))
+  (f val))
+
+(define (ctc-namespace)
+  ;; TODO needs this file, for procedure predicate?
+  (parameterize ([current-namespace (make-base-namespace)])
+    (namespace-require 'racket/contract)
+    (namespace-require 'racket/sequence)
+    (namespace-require 'racket/async-channel)
+    (namespace-require '(submod typed-racket/private/type-contract predicates))
+    (namespace-require 'typed/racket/class)
+    (current-namespace)))
+
+(define (type-step2 ty elim)
+  (match elim ;; blame-source
+   ['dom
+    (match ty
+     [(Fun: (list (Arrow: dom _ _ _)))
+      (car dom)]
+     [_ #f])]
+   ['cod
+    (match ty
+     [(Fun: (list (Arrow: _ _ _ cod)))
+      cod]
+     [_ #f])]
+   ['car
+    #f]
+   ['cdr
+    #f]
+   ['list-elem
+    #f]
+   ['list-rest
+    #f]
+   ['mcar
+    #f]
+   ['mcdr
+    #f]
+   [_
+     #f]))
+
+;(define (type-follow-path init-ty init-path)
+;  (define sexp
+;    (with-input-from-string init-ty read))
+;  (let loop ((ty sexp)
+;             (curr-path init-path))
+;    (if (null? curr-path)
+;      ty
+;      (let ((ty+ (type-step ty (car curr-path))))
+;        (if ty+
+;          (loop ty+ (cdr curr-path))
+;          (log-transient-error "PATH ERROR cannot follow ~s in ~s orig type ~s orig path ~s" (car curr-path) ty init-ty init-path))))))
+;
+;(define (type-step ty action)
+;  (cond
+;    [(eq? action 'dom)
+;     (and (list? ty)
+;          (eq? '-> (car ty))
+;          (cadr ty))]
+;    [(eq? action 'cod)
+;     (and (list? ty)
+;          (eq? '-> (car ty))
+;          (caddr ty))]
+;    [else
+;      #f]))
+;
+;(define (value-type-match? v ty)
+;  (define f
+;    (match ty
+;      ['Real real?]
+;      ['String string?]
+;      [_ (raise-arguments-error 'value-type-match? "cannot handle type" "type" ty "value" v)]))
+;  (f v))
+
+(define (simple-blame-map-boundary* v)
+  (let loop ([entry* (blame-map-ref v)])
+   (apply append
+    (for/list ((e (in-list entry*)))
+      (cond
+        [(check-info? e)
+         (loop (blame-map-ref (check-info-parent e)))]
+        [(cast-info? e)
+         (list e)]
+        [else
+          (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
 
 ;; -----------------------------------------------------------------------------
 
