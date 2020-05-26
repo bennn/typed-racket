@@ -5,11 +5,16 @@
 (provide
   procedure-arity-includes-keywords?
   transient-assert
-  raise-transient-error)
+  raise-transient-error
+  make-transient-provide-contract)
 
 (require
   (only-in racket/contract blame-positive make-flat-contract)
-  (only-in racket/pretty pretty-format))
+  (only-in racket/pretty pretty-format)
+  racket/lazy-require)
+
+(lazy-require
+  (typed-racket/utils/transient-blame (value-type-match?)))
 
 ;; ---------------------------------------------------------------------------------------------------
 
@@ -70,14 +75,19 @@
                          "type" (unquoted-printing-string ty-str)
                          "src" ctx))
 
+(define (make-transient-provide-contract pred ty-str ctx)
+  (define ((lnp blame) val neg-party)
+    (if (eq? neg-party 'incomplete-blame-from-provide.rkt)
+      #true
+      (let ((pos-party (blame-positive blame)))
+        (transient-assert val pred ty-str ctx
+                          (list 'boundary 'provide ctx pos-party neg-party)))))
+  (make-flat-contract
+    #:name (format "transient-projection:~a" (object-name pred))
+    #:late-neg-projection lnp))
+
 ;; -----------------------------------------------------------------------------
 ;; --- blame map
-
-(provide blame-map-ref blame-map-set!)
-
-(require
-  racket/match
-  racket/port)
 
 (define THE-BLAME-MAP (make-hasheq))
 
@@ -185,7 +195,7 @@
          (loop (add-path* (blame-map-ref parent) new-path))]
         [(cast-info? e)
          (define ty (cast-info-type e))
-         (if (value-type-match? val ty curr-path)
+         (if (value-type-match? val ty curr-path (car (cast-info-blame e)))
            '()
            (list e))]
         [else
@@ -194,79 +204,6 @@
 (define (add-path* entry* path)
   (for/list ((e (in-list entry*)))
     (cons e path)))
-
-;; -----------------------------------------------------------------------------
-;; --- reviving types
-
-(require
-  typed-racket/rep/type-rep
-  typed-racket/rep/values-rep
-  typed-racket/types/match-expanders
-  typed-racket/private/parse-type)
-
-;; Parse `ty-str` to a type,
-;;  follow `elim-path` into the type,
-;;  check whether value satisfies the transient contract at the end of the road
-(define (value-type-match? val ty-str elim-path)
-  ;; TODO get srcloc from cast-info struct ... use to parse type
-  (define ty-path
-    (let* ((ty-full (parse-type ty-str)))
-      (let loop ((ty ty-full)
-                 (elim* elim-path))
-        (if (null? elim*)
-          ty
-          (let ((ty+ (type-step2 ty (car elim*))))
-            (if ty+
-              (loop ty+ (cdr elim*))
-              (log-transient-error
-                "PATH ERROR cannot follow ~s in ~s orig type ~s orig path ~s"
-                (car elim*) ty ty-full elim-path)))))))
-  (define f
-    ;; ... unit-tests/contract-tests.rkt
-    (let* ((ctc-fail (lambda (#:reason r) (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" ty-path r)))
-           (ctc-data (type->contract ty-path fail #:typed-side #f #:cache #f #:enforcement-mode 'transient))
-           (extra-stxs (car ctc-data))
-           (ctc-stx (cadr ctc-data))
-           (ctc-ns (ctc-namespace)))
-      (eval #`(let () #,@extra-stxs #,ctc-stx) ns)))
-  (f val))
-
-(define (ctc-namespace)
-  ;; TODO needs this file, for procedure predicate?
-  (parameterize ([current-namespace (make-base-namespace)])
-    (namespace-require 'racket/contract)
-    (namespace-require 'racket/sequence)
-    (namespace-require 'racket/async-channel)
-    (namespace-require '(submod typed-racket/private/type-contract predicates))
-    (namespace-require 'typed/racket/class)
-    (current-namespace)))
-
-(define (type-step2 ty elim)
-  (match elim ;; blame-source
-   ['dom
-    (match ty
-     [(Fun: (list (Arrow: dom _ _ _)))
-      (car dom)]
-     [_ #f])]
-   ['cod
-    (match ty
-     [(Fun: (list (Arrow: _ _ _ cod)))
-      cod]
-     [_ #f])]
-   ['car
-    #f]
-   ['cdr
-    #f]
-   ['list-elem
-    #f]
-   ['list-rest
-    #f]
-   ['mcar
-    #f]
-   ['mcdr
-    #f]
-   [_
-     #f]))
 
 ;(define (type-follow-path init-ty init-path)
 ;  (define sexp
@@ -301,31 +238,14 @@
 ;      [_ (raise-arguments-error 'value-type-match? "cannot handle type" "type" ty "value" v)]))
 ;  (f v))
 
-(define (simple-blame-map-boundary* v)
-  (let loop ([entry* (blame-map-ref v)])
-   (apply append
-    (for/list ((e (in-list entry*)))
-      (cond
-        [(check-info? e)
-         (loop (blame-map-ref (check-info-parent e)))]
-        [(cast-info? e)
-         (list e)]
-        [else
-          (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
-
-;; -----------------------------------------------------------------------------
-
-(provide
-  make-transient-provide-contract)
-
-(define (make-transient-provide-contract pred ty-str ctx)
-  (define ((lnp blame) val neg-party)
-    (if (eq? neg-party 'incomplete-blame-from-provide.rkt)
-      #true
-      (let ((pos-party (blame-positive blame)))
-        (transient-assert val pred ty-str ctx
-                          (list 'boundary 'provide ctx pos-party neg-party)))))
-  (make-flat-contract
-    #:name (format "transient-projection:~a" (object-name pred))
-    #:late-neg-projection lnp))
-
+;(define (simple-blame-map-boundary* v)
+;  (let loop ([entry* (blame-map-ref v)])
+;   (apply append
+;    (for/list ((e (in-list entry*)))
+;      (cond
+;        [(check-info? e)
+;         (loop (blame-map-ref (check-info-parent e)))]
+;        [(cast-info? e)
+;         (list e)]
+;        [else
+;          (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
