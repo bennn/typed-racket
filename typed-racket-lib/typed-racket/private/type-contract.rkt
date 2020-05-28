@@ -8,6 +8,7 @@
  (rep type-rep prop-rep object-rep fme-utils)
  (utils tc-utils prefab identifier)
  (env type-name-env row-constraint-env)
+ (only-in typed-racket/env/init-envs type->sexp)
  (rep core-rep rep-utils free-ids type-mask values-rep
       base-types numeric-base-types)
  (types resolve utils printer match-expanders union subtype)
@@ -159,9 +160,9 @@
                            ((guarded)
                             (or maybe-inline-val #'ctc-id))
                            ((transient)
-                            (with-syntax ((ty-str (format "~a" type))
+                            (with-syntax ((ty-datum (type->sexp type))
                                           (ctx (build-source-location-list orig-id)))
-                              #'(#%plain-app make-transient-provide-contract ctc-id 'ty-str 'ctx)))
+                              #'(#%plain-app make-transient-provide-contract ctc-id 'ty-datum 'ctx)))
                            ((erasure)
                             #'ctc-id))
                        #:pos-source #,blame-id
@@ -769,7 +770,6 @@
 
 ;; TODO full tests
 (define (type->static-contract/transient type)
-  (define typed-side 'both)
   (let loop ([type type])
     (define t->sc loop)
     (define (prop->sc p)
