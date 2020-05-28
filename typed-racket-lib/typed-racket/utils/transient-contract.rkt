@@ -13,8 +13,8 @@
   (only-in racket/pretty pretty-format)
   racket/lazy-require)
 
-(lazy-require
-  (typed-racket/utils/transient-blame (value-type-match?)))
+(lazy-require ;; avoid circular reference to type-contract.rkt
+  (typed-racket/utils/transient-filter (value-type-match? sexp->type)))
 
 ;; ---------------------------------------------------------------------------------------------------
 
@@ -52,42 +52,53 @@
           (else ;#(keyword<? actual expected)
            (loop expected-kw* (cdr actual-kw*)))))))
 
-(define (transient-assert val pred ty-str ctx from)
-  (blame-map-set! val ty-str from)
+(define (transient-assert val pred ty-datum ctx from)
+  (blame-map-set! val ty-datum from)
   (if (pred val)
     val
     (begin
       (print-blame-map)
-      (raise-transient-error val ty-str ctx from))))
+      (raise-transient-error val ty-datum ctx from))))
 
-(define (raise-transient-error val ty-str ctx from)
+(define (raise-transient-error val ty-datum ctx from)
   (define boundary*
     (if (boundary? from)
-      (list (make-blame-entry ty-str from))
+      (list (make-blame-entry ty-datum from))
       (blame-map-boundary* val (cdr from) (blame-compress-key (car from)))))
   (void
-    (log-transient-error "blaming ~a boundaries" (length boundary*))
+    (let ((num-b (length boundary*)))
+      (log-transient-error "blaming ~a boundar~a" num-b (if (= 1 num-b) "y" "ies")))
     (for ((b (in-list boundary*)))
       (log-transient-error "  ~s" b)))
   (raise-arguments-error 'transient-assert
                          "value does not match static type"
                          "value" val
-                         "type" (unquoted-printing-string ty-str)
+                         "type" (sexp->type ty-datum)
                          "src" ctx))
 
-(define (make-transient-provide-contract pred ty-str ctx)
+(define (make-transient-provide-contract pred ty-datum ctx)
   (define ((lnp blame) val neg-party)
     (if (eq? neg-party 'incomplete-blame-from-provide.rkt)
       #true
       (let ((pos-party (blame-positive blame)))
-        (transient-assert val pred ty-str ctx
-                          (list 'boundary 'provide ctx pos-party neg-party)))))
+        (blame-map-set! val ty-datum (list 'boundary 'provide ctx pos-party neg-party)))))
   (make-flat-contract
     #:name (format "transient-projection:~a" (object-name pred))
     #:late-neg-projection lnp))
 
 ;; -----------------------------------------------------------------------------
 ;; --- blame map
+
+;; Retic sources (mgd_transient.py)
+;;   GETATTR = 0
+;;   GETITEM = 1
+;;   ARG = 2
+;;   RETURN = 3
+;; or this ... both in the same file
+;;   GETATTR = 0 # include attr
+;;   ARG = 1 #include position
+;;   RET = 2
+;;   GETITEM = 3
 
 (define THE-BLAME-MAP (make-hasheq))
 
@@ -98,7 +109,6 @@
 (define blame-source* '(
   cast
   require/typed
-  dom cod
   car cdr
   list-elem list-rest
   mcar mcdr
@@ -113,19 +123,10 @@
 (define blame-source-1* '(
   struct-elem
   object-field
-  object-method-cod
+  object-method-rng
+  dom
+  rng
 ))
-
-;; Retic sources (mgd_transient.py)
-;;   GETATTR = 0
-;;   GETITEM = 1
-;;   ARG = 2
-;;   RETURN = 3
-;; or this ... both in the same file
-;;   GETATTR = 0 # include attr
-;;   ARG = 1 #include position
-;;   RET = 2
-;;   GETITEM = 3
 
 (define (blame-source? sym)
   (or (and (symbol? sym)
@@ -151,17 +152,17 @@
   (and (pair? x) (eq? 'boundary (car x))))
 
 ;; make-blame-entry : (-> string? (or/c symbol? (cons/c any/c symbol?)) blame-entry?)
-(define (make-blame-entry ty-str from)
+(define (make-blame-entry ty-datum from)
   (if (boundary? from)
-    (cast-info (cadr from) ty-str (cddr from))
+    (cast-info (cadr from) ty-datum (cddr from))
     (check-info (cdr from) (eq-hash-code (car from)))))
 
 (define (blame-map-ref v)
   (hash-keys (hash-ref THE-BLAME-MAP (blame-compress-key v) (lambda () '#hash()))))
 
-(define (blame-map-set! val ty-str from)
+(define (blame-map-set! val ty-datum from)
   (unless (eq? val (eq-hash-code val))
-    (define be (make-blame-entry ty-str from))
+    (define be (make-blame-entry ty-datum from))
     (hash-update! THE-BLAME-MAP (blame-compress-key val)
                   (lambda (curr) (set-add curr be))
                   (lambda () (set-init be)))))
@@ -204,39 +205,6 @@
 (define (add-path* entry* path)
   (for/list ((e (in-list entry*)))
     (cons e path)))
-
-;(define (type-follow-path init-ty init-path)
-;  (define sexp
-;    (with-input-from-string init-ty read))
-;  (let loop ((ty sexp)
-;             (curr-path init-path))
-;    (if (null? curr-path)
-;      ty
-;      (let ((ty+ (type-step ty (car curr-path))))
-;        (if ty+
-;          (loop ty+ (cdr curr-path))
-;          (log-transient-error "PATH ERROR cannot follow ~s in ~s orig type ~s orig path ~s" (car curr-path) ty init-ty init-path))))))
-;
-;(define (type-step ty action)
-;  (cond
-;    [(eq? action 'dom)
-;     (and (list? ty)
-;          (eq? '-> (car ty))
-;          (cadr ty))]
-;    [(eq? action 'cod)
-;     (and (list? ty)
-;          (eq? '-> (car ty))
-;          (caddr ty))]
-;    [else
-;      #f]))
-;
-;(define (value-type-match? v ty)
-;  (define f
-;    (match ty
-;      ['Real real?]
-;      ['String string?]
-;      [_ (raise-arguments-error 'value-type-match? "cannot handle type" "type" ty "value" v)]))
-;  (f v))
 
 ;(define (simple-blame-map-boundary* v)
 ;  (let loop ([entry* (blame-map-ref v)])

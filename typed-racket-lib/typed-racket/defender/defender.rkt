@@ -21,6 +21,8 @@
   (only-in typed-racket/private/type-annotation
     type-annotation
     get-type)
+  (only-in typed-racket/env/init-envs
+    type->sexp)
   (only-in typed-racket/env/transient-env
     transient-trusted-positive?)
   (only-in typed-racket/typecheck/internal-forms
@@ -103,7 +105,7 @@
          (define tc-res (type-of stx (lambda () Univ)))
          (define-values [extra* stx/check]
            (protect-codomain tc-res #'real-case (build-source-location-list #'real-case) ctc-cache
-                             #:blame (cons (cons 'object-method-cod (syntax-e #'meth-id)) #'obj-id)))
+                             #:blame (cons (cons 'object-method-rng (syntax-e #'meth-id)) #'obj-id)))
          (void (register-extra-defs! extra*))
          (if stx/check
            (register-ignored
@@ -281,15 +283,15 @@
              (letrec-values (((f-name)
                            (#%plain-lambda f-args
                              #,(let dom-check-loop ([f-body #'f-body]
-                                                    [num-args num-args])
-                                 (if (zero? num-args)
+                                                    [arg-idx 0])
+                                 (if (= arg-idx num-args)
                                    (readd-props (loop f-body #f) f-body)
                                    (syntax-parse f-body
                                     #:literals (let-values if)
                                     [(let-values (((arg-id) (~and if-expr (if test default-expr arg)))) f-rest)
                                      ;; optional, default expression may need defense
                                      (define arg-ty (tc-results->type1 (type-of #'if-expr)))
-                                     (define-values [ex* arg+] (protect-domain arg-ty #'arg (build-source-location-list f-body) ctc-cache #'f-name))
+                                     (define-values [ex* arg+] (protect-domain arg-ty #'arg (build-source-location-list f-body) ctc-cache #'f-name arg-idx))
                                      (void (register-extra-defs! ex*))
                                      (quasisyntax/loc f-body
                                        (let-values (((arg-id)
@@ -300,16 +302,16 @@
                                                           [_
                                                            (readd-props (loop #'default-expr #f) #'default-expr)])
                                                        #,(if arg+ (readd-props arg+ #'arg) #'arg))))
-                                         #,(dom-check-loop #'f-rest (- num-args 1))))]
+                                         #,(dom-check-loop #'f-rest (+ num-args 1))))]
                                     [(let-values (((arg-id) arg-val)) f-rest)
                                      ;; normal arg
                                      (define arg-ty (tc-results->type1 (type-of #'arg-val)))
-                                     (define-values [ex* arg-val+] (protect-domain arg-ty #'arg-val (build-source-location-list f-body) ctc-cache #'f-name))
+                                     (define-values [ex* arg-val+] (protect-domain arg-ty #'arg-val (build-source-location-list f-body) ctc-cache #'f-name arg-idx))
                                      (void (register-extra-defs! ex*))
                                      (quasisyntax/loc f-body
                                        (let-values (((arg-id)
                                                      #,(if arg-val+ (readd-props arg-val+ #'arg-val) #'arg-val)))
-                                         #,(dom-check-loop #'f-rest (- num-args 1))))]
+                                         #,(dom-check-loop #'f-rest (+ num-args 1))))]
                                     [_
                                      (raise-syntax-error 'defend-top "strange kw/opt function body"
                                                          stx f-body)]))))))
@@ -327,12 +329,12 @@
            (quasisyntax/loc stx
             (letrec-values (((f-name)
              (#%plain-lambda formals .
-               #,(let* ([body+
-                          (readd-props (loop #'body #f) #'body)]
+               #,(let* ([body+ (readd-props (loop #'body #f) #'body)]
                         [dom* (map Arrow-dom (syntax->arrows stx))]
                         [check-formal*
                           (let protect-loop ([args #'formals]
-                                             [dom* dom*])
+                                             [dom* dom*]
+                                             [arg-idx 0])
                             (if (or (identifier? args)
                                     (null? args)
                                     (and (syntax? args) (null? (syntax-e args))))
@@ -351,7 +353,7 @@
                                                    (for/fold ((acc '()))
                                                              ((dom (in-list dom*)))
                                                      (if (pair? dom) (cons (cdr dom) acc) acc))))
-                                               (protect-loop rst dom+))]
+                                               (protect-loop rst dom+ (+ arg-idx 1)))]
                                             [(fst-ty)
                                              (if (type-annotation fst)
                                                (get-type fst #:default Univ)
@@ -359,7 +361,8 @@
                                                       (for/fold ((acc '()))
                                                                 ((dom (in-list dom*)))
                                                         (if (pair? dom) (cons (car dom) acc) acc))))]
-                                            [(ex* fst+) (protect-domain fst-ty fst (build-source-location-list fst) ctc-cache #'f-name)])
+                                            [(ex* fst+)
+                                             (protect-domain fst-ty fst (build-source-location-list fst) ctc-cache #'f-name arg-idx)])
                                 (void (register-extra-defs! ex*))
                                 (if fst+ (cons fst+ check*) check*))))])
                    (if (null? check-formal*)
@@ -395,7 +398,8 @@
                                       (readd-props (loop body #f) body)]
                                      [check-formal*
                                        (let protect-loop ([args formals]
-                                                          [dom* matching-dom*])
+                                                          [dom* matching-dom*]
+                                                          [arg-idx 0])
                                          (if (or (identifier? args)
                                                  (null? args)
                                                  (and (syntax? args) (null? (syntax-e args))))
@@ -414,7 +418,7 @@
                                                                 (for/fold ((acc '()))
                                                                           ((dom (in-list dom*)))
                                                                   (if (pair? dom) (cons (cdr dom) acc) acc))))
-                                                            (protect-loop rst dom+))]
+                                                            (protect-loop rst dom+ (+ arg-idx 1)))]
                                                          [(fst-ty)
                                                           (if (type-annotation fst)
                                                             (get-type fst #:default Univ)
@@ -422,7 +426,8 @@
                                                                    (for/fold ((acc '()))
                                                                              ((dom (in-list dom*)))
                                                                      (if (pair? dom) (cons (car dom) acc) acc))))]
-                                                         [(ex* fst+) (protect-domain fst-ty fst (build-source-location-list fst) ctc-cache #'f-name)])
+                                                         [(ex* fst+)
+                                                          (protect-domain fst-ty fst (build-source-location-list fst) ctc-cache #'f-name arg-idx)])
                                              (void (register-extra-defs! ex*))
                                              (if fst+ (cons fst+ check*) check*))))])
                                (if (null? check-formal*)
@@ -793,7 +798,7 @@
                      (dynamic-require mpi+ #f)
                      #t)))))))))
 
-(define (protect-domain dom-type dom-stx ctx ctc-cache lambda-id)
+(define (protect-domain dom-type dom-stx ctx ctc-cache lambda-id idx)
   (define-values [extra-def* ctc-stx]
     (if dom-type
       (type->flat-contract dom-type ctc-cache)
@@ -803,12 +808,13 @@
       #f
       (with-syntax ([ctc ctc-stx]
                     [dom-expr dom-stx]
-                    [ty-str (format "~a" dom-type)]
+                    [ty-datum (type->sexp dom-type)]
                     [ctx ctx]
+                    [idx idx]
                     [lambda-id lambda-id])
         (register-ignored
           (syntax/loc dom-stx
-            (#%plain-app transient-assert dom-expr ctc 'ty-str 'ctx (#%plain-app cons lambda-id 'dom)))))))
+            (#%plain-app transient-assert dom-expr ctc 'ty-datum 'ctx (#%plain-app cons lambda-id '(dom . idx))))))))
   (values extra-def* dom-stx+))
 
 ;; protect-codomain : ???
@@ -857,9 +863,13 @@
                            (define if-stx
                              (with-syntax ([ctc ctc-stx]
                                            [v v-stx]
-                                           [ty-str (format "~a" type)]
+                                           [ty-datum (type->sexp type)]
                                            [ctx ctx])
-                               #`(#%plain-app transient-assert v ctc 'ty-str 'ctx (#%plain-app cons #,(or blame-id #'f-id) '#,blame-sym))))
+                               #`(#%plain-app transient-assert v ctc 'ty-datum 'ctx
+                                              (#%plain-app cons #,(or blame-id #'f-id)
+                                                                '#,(if (eq? blame-sym 'rng)
+                                                                     (cons blame-sym i)
+                                                                     blame-sym)))))
                            (register-ignored! if-stx)
                            if-stx)
                       (#%plain-app values . v*))))))
@@ -954,9 +964,9 @@
     (values (cons 'object-field (syntax-e #'tgt)) #'obj)]
    ;; --- function (the default)
    [(#%plain-app (~optional (~datum apply)) (~or unknown-f:id (#%expression unknown-f:id)) . _)
-    (values 'cod #'unknown-f)]
+    (values 'rng #'unknown-f)]
    [(#%plain-app (~optional (~datum apply)) unknown:expr . _)
-    (values 'cod #f)
+    (values 'rng #f)
     #;
     (raise-syntax-error 'infer-blame-source
                         (format "cannot assign blame to application (~a:~a:~a)"

@@ -53,7 +53,7 @@
              #:with orig-nm-r ((make-syntax-introducer) #'nm)))
 
   (syntax-parse stx
-    [(require/contract nm:renameable hidden:id cnt lib orig-ty-str)
+    [(require/contract nm:renameable hidden:id cnt lib orig-ty-datum)
      #`(begin (require (only-in lib [nm.orig-nm nm.orig-nm-r]))
               (rename-without-provide nm.nm hidden)
 
@@ -67,7 +67,7 @@
                                  (quote nm.nm)
                                  (quote-srcloc nm.nm))]
                     [(transient)
-                     #`(#%plain-app transient-assert #,(get-alternate #'nm.orig-nm-r) cnt 'orig-ty-str (quote-srcloc nm.nm)
+                     #`(#%plain-app transient-assert #,(get-alternate #'nm.orig-nm-r) cnt 'orig-ty-datum (quote-srcloc nm.nm)
                          (#%plain-app list 'boundary 'require/typed (quote-srcloc nm.nm) '(interface for #,(syntax->datum #'nm.nm)) (current-contract-region)))]
                     [else
                      (get-alternate #'nm.orig-nm-r)])))]))
