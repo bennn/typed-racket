@@ -14,7 +14,6 @@
   racket/match
   typed-racket/rep/values-rep
   (only-in (submod typed-racket/private/type-contract test-exports) type->contract)
-  ;;(only-in setup/collects path->module-path)
   typed-racket/types/numeric-tower
   typed-racket/env/type-name-env
   typed-racket/env/global-env
@@ -29,7 +28,6 @@
 ;;  follow `elim-path` into the type,
 ;;  check whether value satisfies the transient contract at the end of the road
 (define (value-type-match? val ty-datum elim-path ctx)
-  ;; TODO get srcloc from cast-info struct ... use to parse type
   (define ty-full (sexp->type ty-datum))
   (define ty-path
     (let* ((ty-full (sexp->type ty-datum)))
