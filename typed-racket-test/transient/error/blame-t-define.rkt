@@ -22,5 +22,3 @@
 (void (g cnst42))
 (h cnst42)
 
-
-

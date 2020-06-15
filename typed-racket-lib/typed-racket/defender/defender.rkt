@@ -21,11 +21,14 @@
   (only-in typed-racket/private/type-annotation
     type-annotation
     get-type)
+  (only-in typed-racket/private/parse-type
+    parse-type)
   (only-in typed-racket/env/init-envs
     type->sexp)
   (only-in typed-racket/env/transient-env
     transient-trusted-positive?)
   (only-in typed-racket/typecheck/internal-forms
+    transient-require
     typed-struct
     typed-struct/exec)
   (only-in typed-racket/types/base-abbrev
@@ -96,6 +99,9 @@
       (syntax-parse stx
         #:literals (#%plain-app #%plain-lambda begin case-lambda define-syntaxes define-values
                     find-method/who let-values letrec-values quote values)
+        [r:transient-require
+          (with-syntax ([t (type->sexp (parse-type #'r.type))])
+            #`(#%plain-app transient-assert r.name r.contract 't r.srcloc r.blame))]
         ;; unsound within exn-handlers^ ?
         [(let-values ([(_) _meth])
            (let-values ([(_) _rcvr])

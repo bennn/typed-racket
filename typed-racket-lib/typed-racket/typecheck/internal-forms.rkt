@@ -27,6 +27,7 @@
   typed-struct/exec
   typed-require
   typed-require/struct
+  transient-require
   predicate-assertion
   type-declaration
   typed-define-signature
@@ -56,6 +57,7 @@
 
   (internal-forms internal-literals
                   require/typed-internal
+                  transient-require-internal
                   define-type-alias-internal
                   define-new-subtype-internal
                   define-type-internal
@@ -161,6 +163,8 @@
     (require/typed-internal name type)]
   [typed-require/struct
     (require/typed-internal name type #:struct-maker parent)]
+  [transient-require
+    (transient-require-internal name contract type srcloc blame)]
   [predicate-assertion
     (assert-predicate-internal type predicate)]
   [type-declaration
