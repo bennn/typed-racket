@@ -101,7 +101,8 @@
                     find-method/who let-values letrec-values quote values)
         [r:transient-require
           (with-syntax ([t (type->sexp (parse-type #'r.type))])
-            #`(#%plain-app transient-assert r.name r.contract 't r.srcloc r.blame))]
+            (register-ignored
+              #`(#%plain-app transient-assert r.name r.contract 't r.srcloc r.blame)))]
         ;; unsound within exn-handlers^ ?
         [(let-values ([(_) _meth])
            (let-values ([(_) _rcvr])

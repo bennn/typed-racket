@@ -79,9 +79,8 @@
                         (#%plain-app
                          list 'boundary 'require/typed
                          '#,(quote-srcloc #'nm.nm)
-                         '(interface for #,(syntax->datum #'nm.nm))
-                         '(current-contract-region)))))
-              )]))
+                         'lib
+                         (current-contract-region))))))]))
 
 ;; identifier -> identifier
 ;; get the alternate field of the renaming, if it exists

@@ -158,20 +158,23 @@
     (check-info (cdr from) (eq-hash-code (car from)))))
 
 (define (blame-map-ref v)
-  (hash-keys (hash-ref THE-BLAME-MAP (blame-compress-key v) (lambda () '#hash()))))
+  (define entry# (hash-ref THE-BLAME-MAP (blame-compress-key v) (lambda () '#hash())))
+  (map car (sort (hash->list entry#) > #:key cdr)))
 
 (define (blame-map-set! val ty-datum from)
   (unless (eq? val (eq-hash-code val))
     (define be (make-blame-entry ty-datum from))
     (hash-update! THE-BLAME-MAP (blame-compress-key val)
-                  (lambda (curr) (set-add curr be))
-                  (lambda () (set-init be)))))
+                  (lambda (curr) (blame-entry*-add curr be))
+                  (lambda () (blame-entry*-init be)))))
 
-(define (set-init v)
-  (hash v #true))
+(define (blame-entry*-init v)
+  (hash v 0))
 
-(define (set-add h v)
-  (hash-set h v #true))
+(define (blame-entry*-add h v)
+  (if (hash-has-key? h v)
+    h
+    (hash-set h v (hash-count h))))
 
 (define (print-blame-map)
   (log-transient-error "blame map")
@@ -196,9 +199,15 @@
          (loop (add-path* (blame-map-ref parent) new-path))]
         [(cast-info? e)
          (define ty (cast-info-type e))
-         (if (value-type-match? val ty curr-path (car (cast-info-blame e)))
-           '()
-           (list e))]
+         (define blame-val (cast-info-blame e))
+         (define-values [pass? blame-dir] (value-type-match? val ty curr-path (car blame-val)))
+         (case (or pass? blame-dir)
+           ((#t) '())
+           ((pos) (list (cadr blame-val)))
+           ((neg) (list (caddr blame-val)))
+           ((#f) ;; path error, cannot follow
+            (list blame-val))
+           (else (raise-argument-error 'blame-map-boundary* "(listof (or/c #t #f 'pos 'neg))" (list pass? blame-dir))))]
         [else
           (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
 
@@ -206,14 +215,3 @@
   (for/list ((e (in-list entry*)))
     (cons e path)))
 
-;(define (simple-blame-map-boundary* v)
-;  (let loop ([entry* (blame-map-ref v)])
-;   (apply append
-;    (for/list ((e (in-list entry*)))
-;      (cond
-;        [(check-info? e)
-;         (loop (blame-map-ref (check-info-parent e)))]
-;        [(cast-info? e)
-;         (list e)]
-;        [else
-;          (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
