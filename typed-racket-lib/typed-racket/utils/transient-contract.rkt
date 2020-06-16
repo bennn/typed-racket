@@ -11,7 +11,8 @@
 (require
   (only-in racket/contract blame-positive make-flat-contract)
   (only-in racket/pretty pretty-format)
-  racket/lazy-require)
+  racket/lazy-require
+  typed-racket/utils/transient-contract-struct)
 
 (lazy-require ;; avoid circular reference to type-contract.rkt
   (typed-racket/utils/transient-filter (value-type-match? sexp->type)))
@@ -70,11 +71,13 @@
       (log-transient-error "blaming ~a boundar~a" num-b (if (= 1 num-b) "y" "ies")))
     (for ((b (in-list boundary*)))
       (log-transient-error "  ~s" b)))
-  (raise-arguments-error 'transient-assert
-                         "value does not match static type"
-                         "value" val
-                         "type" (sexp->type ty-datum)
-                         "src" ctx))
+  (raise
+    (exn:fail:contract:blame:transient
+      (format
+        "transient-assert: value does not match static type\n  value: ~s\n  type: ~s\n  src: ~s"
+        val (sexp->type ty-datum) ctx)
+      (current-continuation-marks)
+      boundary*)))
 
 (define (make-transient-provide-contract pred ty-datum ctx)
   (define ((lnp blame) val neg-party)
