@@ -203,14 +203,9 @@
         [(cast-info? e)
          (define ty (cast-info-type e))
          (define blame-val (cast-info-blame e))
-         (define-values [pass? blame-dir] (value-type-match? val ty curr-path (car blame-val)))
-         (case (or pass? blame-dir)
-           ((#t) '())
-           ((pos) (list (cadr blame-val)))
-           ((neg) (list (caddr blame-val)))
-           ((#f) ;; path error, cannot follow
-            (list blame-val))
-           (else (raise-argument-error 'blame-map-boundary* "(listof (or/c #t #f 'pos 'neg))" (list pass? blame-dir))))]
+         (if (value-type-match? val ty curr-path (car blame-val))
+           '()
+           (list (list (cadr blame-val) (caddr blame-val))))]
         [else
           (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
 

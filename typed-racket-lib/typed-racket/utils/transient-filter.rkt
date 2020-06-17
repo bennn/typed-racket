@@ -31,64 +31,58 @@
 ;;  check whether value satisfies the transient contract at the end of the road
 (define (value-type-match? val ty-datum elim-path ctx)
   (define ty-full (sexp->type ty-datum))
-  (define-values [ty-path blame-dir]
+  (define ty-path
     (let* ((ty-full (sexp->type ty-datum)))
       (let loop ((ty ty-full)
-                 (elim* elim-path)
-                 (blame-dir 'pos))
+                 (elim* elim-path))
         (if (null? elim*)
-          (values ty blame-dir)
-          (let-values (((ty+ bd+) (type-step ty blame-dir (car elim*))))
+          ty
+          (let ((ty+ (type-step ty (car elim*))))
             (if ty+
-              (loop ty+ (cdr elim*) bd+)
+              (loop ty+ (cdr elim*))
               (begin
                 (printf
                   "transient: PATH ERROR cannot follow ~s in ~s orig type ~s orig path ~s~n"
                   (car elim*) ty ty-full elim-path)
-                (values #f #f))))))))
+                #f)))))))
   (define ty-pred
     ;; ... unit-tests/contract-tests.rkt
     (let* ((ctc-fail (lambda (#:reason r) (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" ty-path r)))
            (defs+ctc-stx (type->contract ty-path ctc-fail #:typed-side #f #:cache #f #:enforcement-mode 'transient)))
       (eval #`(let () #,@(car defs+ctc-stx) #,(cadr defs+ctc-stx)) ns)))
-  (values (ty-pred val) blame-dir))
+  (ty-pred val))
 
 (define (sexp->type ty-datum)
   (eval ty-datum ns))
 
-(define (type-step ty bd elim)
+(define (type-step ty elim)
   (match elim ;; blame-source
    [`(dom . ,i)
-    (define t+
-      (match ty
-       [(Fun: (list (Arrow: dom _ _ _)))
-        (list-ref dom i)]
-       [_ #f]))
-    (values t+ (blame-dir-flip bd))]
+    (match ty
+     [(Fun: (list (Arrow: dom _ _ _)))
+      (list-ref dom i)]
+     [_ #f])]
    [`(rng . ,i)
-    (define t+
-      (match ty
-       [(Fun: (list (Arrow: _ _ _ (Values: (list (Result: rng* _ _) ...)))))
-        (list-ref rng* i)]
-       [_ #f]))
-    (values t+ bd)]
+    (match ty
+     [(Fun: (list (Arrow: _ _ _ (Values: (list (Result: rng* _ _) ...)))))
+      (list-ref rng* i)]
+     [_ #f])]
    ['car
-    (values #f bd)]
+    (match ty
+     [(Listof: t)
+      t]
+     [_
+       #f])]
    ['cdr
-    (values #f bd)]
+    #f]
    ['list-elem
-    (values #f bd)]
+    #f]
    ['list-rest
-    (values #f bd)]
+    #f]
    ['mcar
-    (values #f bd)]
+    #f]
    ['mcdr
-    (values #f bd)]
+    #f]
    [_
-     (values #f bd)]))
-
-(define (blame-dir-flip bd)
-  (case bd
-    ((pos) 'neg)
-    ((neg) 'pos)))
+    #f]))
 
