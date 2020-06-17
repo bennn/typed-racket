@@ -63,14 +63,14 @@
 
 (define (raise-transient-error val ty-datum ctx from)
   (define boundary*
-    (if (boundary? from)
+    (if (pre-boundary? from)
       (list (make-blame-entry ty-datum from))
       (blame-map-boundary* val (cdr from) (blame-compress-key (car from)))))
   (void
     (let ((num-b (length boundary*)))
-      (log-transient-error "blaming ~a boundar~a" num-b (if (= 1 num-b) "y" "ies")))
+      (log-transient-info "blaming ~a boundar~a" num-b (if (= 1 num-b) "y" "ies")))
     (for ((b (in-list boundary*)))
-      (log-transient-error "  ~s" b)))
+      (log-transient-info "  ~s" (list (boundary-pos b) (boundary-neg b)))))
   (raise
     (exn:fail:contract:blame:transient
       (format
@@ -92,71 +92,16 @@
 ;; -----------------------------------------------------------------------------
 ;; --- blame map
 
-;; Retic sources (mgd_transient.py)
-;;   GETATTR = 0
-;;   GETITEM = 1
-;;   ARG = 2
-;;   RETURN = 3
-;; or this ... both in the same file
-;;   GETATTR = 0 # include attr
-;;   ARG = 1 #include position
-;;   RET = 2
-;;   GETITEM = 3
-
 (define THE-BLAME-MAP (make-hasheq))
-
-(define-logger transient)
 
 (define blame-compress-key eq-hash-code)
 
-(define blame-source* '(
-  cast
-  require/typed
-  car cdr
-  list-elem list-rest
-  mcar mcdr
-  vector-elem
-  box-elem
-  hash-key hash-value
-  sequence-elem sequence-rest
-  stream-elem stream-rest
-  ;; ... TBD, maybe should be identifiers?
-))
-
-(define blame-source-1* '(
-  struct-elem
-  object-field
-  object-method-rng
-  dom
-  rng
-))
-
-(define (blame-source? sym)
-  (or (and (symbol? sym)
-           (memq sym blame-source*))
-      (and (pair? sym)
-           (symbol? (car sym))
-           #;(natural[struct] or symbol[object] (cdr sym)))))
-
-(struct blame-entry (
-  from ;; blame-source?
-) #:prefab)
-
-(struct cast-info blame-entry (
-  type ;; string?, expected type
-  blame ;; ???
-) #:prefab)
-
-(struct check-info blame-entry (
-  parent ;; eq-hash-code
-) #:prefab)
-
-(define (boundary? x)
+(define (pre-boundary? x)
   (and (pair? x) (eq? 'boundary (car x))))
 
 ;; make-blame-entry : (-> string? (or/c symbol? (cons/c any/c symbol?)) blame-entry?)
 (define (make-blame-entry ty-datum from)
-  (if (boundary? from)
+  (if (pre-boundary? from)
     (cast-info (cadr from) ty-datum (cddr from))
     (check-info (cdr from) (eq-hash-code (car from)))))
 
@@ -180,12 +125,12 @@
     (hash-set h v (hash-count h))))
 
 (define (print-blame-map)
-  (log-transient-error "blame map")
+  (log-transient-info "blame map")
   (for (((k v) (in-hash THE-BLAME-MAP)))
-    (log-transient-error " (~s (" k)
+    (log-transient-info " (~s (" k)
     (for ((vv (in-hash-keys v)))
-      (log-transient-error "  ~s" vv))
-    (log-transient-error " )"))
+      (log-transient-info "  ~s" vv))
+    (log-transient-info " )"))
   (void))
 
 (define (blame-map-boundary* val init-action key)
@@ -205,7 +150,7 @@
          (define blame-val (cast-info-blame e))
          (if (value-type-match? val ty curr-path (car blame-val))
            '()
-           (list (list (cadr blame-val) (caddr blame-val))))]
+           (list (make-boundary (cadr blame-val) (caddr blame-val) ty)))]
         [else
           (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
 

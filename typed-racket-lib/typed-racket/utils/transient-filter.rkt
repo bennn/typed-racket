@@ -57,7 +57,7 @@
 
 ;; elim : blame-source? (see transient-contract.rkt)
 (define (type-step ty elim)
-  (match elim ;; blame-source
+  (match elim
    [`(dom . ,i)
     (match ty
      [(Fun: (list (Arrow: dom _ _ _)))
