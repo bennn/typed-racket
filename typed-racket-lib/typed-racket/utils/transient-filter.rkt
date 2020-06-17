@@ -55,6 +55,7 @@
 (define (sexp->type ty-datum)
   (eval ty-datum ns))
 
+;; elim : blame-source? (see transient-contract.rkt)
 (define (type-step ty elim)
   (match elim ;; blame-source
    [`(dom . ,i)
@@ -86,3 +87,20 @@
    [_
     #f]))
 
+(module+ test
+  (require rackunit)
+
+  (test-case "type-step"
+
+    (check-equal?
+      (type-step (-> -Real -Symbol) '(rng . 0))
+      -Symbol)
+    (check-equal?
+      (type-step (-> -Real (-values (list -Symbol -String))) '(rng . 0))
+      -Symbol)
+    (check-equal?
+      (type-step (-> -Real (-values (list -Symbol -String))) '(rng . 1))
+      -String)
+
+  )
+)
