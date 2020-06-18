@@ -199,12 +199,38 @@
     (match ty
      [(Struct: _nm _par (list (fld: t* _ _) ...) _ _ _ _)
       (list-ref/#f t* i)]
+     [(StructTop: _)
+      Univ]
      [_
        #f])]
    [`(object-field . ,name)
-     #f]
-   [`(object-method-rng . ,name)
-     #f]
+    (match ty
+     [(Instance: (Class: _ _ field* _ _ _))
+      (or
+        (for/first ((name+type (in-list field*))
+                    #:when (eq? name (car name+type)))
+          (cadr name+type))
+        #f)]
+     [(Instance: (? Name? t))
+      (raise-argument-error 'transient-filter "Class Type, not Name" t)]
+     [(Instance: (ClassTop:))
+      Univ]
+     [_
+      #f])]
+   [`(object-method-rng ,name . ,i)
+    (match ty
+     [(Instance: (Class: _ _ _ method* _ _))
+      (or
+        (for/first ((name+type (in-list method*))
+                    #:when (eq? name (car name+type)))
+          (type-step (cadr name+type) `(rng . ,i)))
+        #f)]
+     [(Instance: (? Name? t))
+      (raise-argument-error 'transient-filter "Class Type, not Name" t)]
+     [(Instance: (ClassTop:))
+      Univ]
+     [_
+      #f])]
 
    [_
     #f]))
@@ -221,6 +247,7 @@
   (require rackunit)
 
   (test-case "type-step"
+
     ;; TODO lots to test with domains ... optional, keyword, etc ... what does defender do?
 
     (check-equal?
@@ -326,7 +353,6 @@
       (type-step -BoxTop 'box-elem)
       Univ)
 
-    ;; hash
     (check-equal?
       (type-step (-Mutable-HT -Symbol -String) 'hash-key)
       -Symbol)
@@ -384,16 +410,41 @@
       (type-step (-set -Symbol) 'set-rest)
       (-set -Symbol))
 
-    ;; TODO
-    ;(check-equal?
-    ;  (type-step (-struct #'Foo #f (list (list -Symbol '() #f) (list -String '() #f))) '(struct-elem . 0))
-    ;  -Symbol)
-    ;(check-equal?
-    ;  (type-step (-struct #'Foo #f (list (list -Symbol '() #f) (list -String '() #f))) '(struct-elem . 1))
-    ;  -String)
+    (check-equal?
+      (type-step (-struct #'Foo #f (list (make-fld -Symbol #'Foo-a #f) (make-fld -String #'Foo-b #f))) '(struct-elem . 0))
+      -Symbol)
+    (check-equal?
+      (type-step (-struct #'Foo #f (list (make-fld -Symbol #'Foo-a #f) (make-fld -String #'Foo-b #f))) '(struct-elem . 1))
+      -String)
 
-    ;; '(object-field . wepa)
-    ;; '(object-method-rng . wepa) ;; TODO need position, for Values?
+    (check-equal?
+      (type-step (-object #:field ((f0 -Symbol) (f1 -String)) #:method ((m0 (-> -Symbol)) (m1 (-> -String -String))))
+                 '(object-field . f0))
+      -Symbol)
+    (check-equal?
+      (type-step (-object #:field ((f0 -Symbol) (f1 -String)) #:method ((m0 (-> -Symbol)) (m1 (-> -String -String))))
+                 '(object-field . f1))
+      -String)
+    (check-equal?
+      (type-step (-object #:field ((f0 -Symbol) (f1 -String)) #:method ((m0 (-> -Symbol)) (m1 (-> -String -String))))
+                 '(object-field . m1))
+      #f)
+    (check-equal?
+      (type-step (-object #:field ((f0 -Symbol) (f1 -String)) #:method ((m0 (-> -Symbol)) (m1 (-> -String -String))))
+                 '(object-method-rng m0 . 0))
+      -Symbol)
+    (check-equal?
+      (type-step (-object #:field ((f0 -Symbol) (f1 -String)) #:method ((m0 (-> -Symbol)) (m1 (-> -String -String))))
+                 '(object-method-rng m1 . 0))
+      -String)
+    (check-equal?
+      (type-step (-object #:field ((f0 -Symbol) (f1 -String)) #:method ((m0 (-> -Symbol)) (m1 (-> -String -String))))
+                 '(object-method-rng f1 . 0))
+      #f)
+    (check-equal?
+      (type-step (-object #:field ((f0 -Symbol) (f1 -String)) #:method ((m0 (-> -Symbol)) (m1 (-> -String -String))))
+                 '(object-method-rng m1 . 1))
+      #f)
 
 
   )

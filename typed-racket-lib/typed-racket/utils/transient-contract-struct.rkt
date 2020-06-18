@@ -48,11 +48,11 @@
 ))
 
 (define blame-source-1* '(
-  struct-elem
-  object-field
-  object-method-rng
-  dom
-  rng
+  struct-elem ;; cdr = natural = field index
+  object-field ;; cdr = symbol = field name
+  object-method-rng ;; cdr = (cons symbol natural) = (method-name result-index)
+  dom ;; cdr = ????
+  rng ;; cdr = natural = result-index, for Values
 ))
 
 (define (blame-source? sym)

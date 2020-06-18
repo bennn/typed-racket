@@ -104,15 +104,16 @@
             (register-ignored
               #`(#%plain-app transient-assert r.name r.contract 't r.srcloc r.blame)))]
         ;; unsound within exn-handlers^ ?
-        [(let-values ([(_) _meth])
-           (let-values ([(_) _rcvr])
-             (let-values (((_) (#%plain-app find-method/who _ _ _)))
-               (let-values ([(_) _args] ...) _))))
+        [(let-values ([(meth-id) meth-e])
+           (let-values ([(obj-id) rcvr-e])
+             (let-values (((find-id) (#%plain-app find-method/who . find-arg*)))
+               (let-values arg-bindings
+                 ((~literal if) wrap-check ignore-case real-case)))))
          ;; send (for objects), MUST come before ignored exprs
          (define tc-res (type-of stx (lambda () Univ)))
          (define-values [extra* stx/check]
            (protect-codomain tc-res #'real-case (build-source-location-list #'real-case) ctc-cache
-                             #:blame (cons (cons 'object-method-rng (syntax-e #'meth-id)) #'obj-id)))
+                             #:blame (cons (cons 'object-method-rng #'meth-id) #'obj-id)))
          (void (register-extra-defs! extra*))
          (if stx/check
            (register-ignored
@@ -295,6 +296,10 @@
                                    (readd-props (loop f-body #f) f-body)
                                    (syntax-parse f-body
                                     #:literals (let-values if)
+                                    [(let-values () f-rest)
+                                     (quasisyntax/loc f-body
+                                       (let-values ()
+                                         #,(dom-check-loop #'f-rest num-args)))]
                                     [(let-values (((arg-id) (~and if-expr (if test default-expr arg)))) f-rest)
                                      ;; optional, default expression may need defense
                                      (define arg-ty (tc-results->type1 (type-of #'if-expr)))
@@ -874,9 +879,20 @@
                                            [ctx ctx])
                                #`(#%plain-app transient-assert v ctc 'ty-datum 'ctx
                                               (#%plain-app cons #,(or blame-id #'f-id)
-                                                                '#,(if (eq? blame-sym 'rng)
-                                                                     (cons blame-sym i)
-                                                                     blame-sym)))))
+                                                                #,(cond
+                                                                    [(eq? blame-sym 'rng)
+                                                                     (with-syntax ((datum (cons blame-sym i)))
+                                                                       #''datum)]
+                                                                    [(and (pair? blame-sym)
+                                                                          (eq? (car blame-sym) 'object-method-rng))
+                                                                     (with-syntax ((blame-sym (car blame-sym))
+                                                                                   (meth-id (cdr blame-sym))
+                                                                                   (i i))
+                                                                       #`(#%plain-app cons 'blame-sym
+                                                                                      (#%plain-app cons meth-id 'i)))]
+                                                                    [else
+                                                                     (with-syntax ((datum blame-sym))
+                                                                       #''datum)])))))
                            (register-ignored! if-stx)
                            if-stx)
                       (#%plain-app values . v*))))))
@@ -946,13 +962,13 @@
     (values 'sequence-rest #'x)]
    ;; --- stream
    [(#%plain-app (~literal stream-first) x)
-    (values 'stream-elem #'x)]
+    (values 'sequence-elem #'x)]
    [(#%plain-app (~literal stream-rest) x)
-    (values 'stream-rest #'x)]
+    (values 'sequence-rest #'x)]
    [(#%plain-app (~literal stream-ref) x pos)
-    (values 'stream-elem #'x)]
+    (values 'sequence-elem #'x)]
    [(#%plain-app (~literal stream-tail) x pos)
-    (values 'stream-rest #'x)]
+    (values 'sequence-rest #'x)]
    ;; --- generator
    ;; --- dict
    ;; --- set
