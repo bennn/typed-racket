@@ -297,8 +297,14 @@
                                    (syntax-parse f-body
                                     #:literals (let-values if)
                                     [(let-values () f-rest)
+                                     ;; empty rest-arg
                                      (quasisyntax/loc f-body
                                        (let-values ()
+                                         #,(dom-check-loop #'f-rest num-args)))]
+                                    [(let-values (((rest-var:id) rest-arg:id)) f-rest)
+                                     ;; non-empty rest-arg
+                                     (quasisyntax/loc f-body
+                                       (let-values (((rest-var) rest-arg))
                                          #,(dom-check-loop #'f-rest num-args)))]
                                     [(let-values (((arg-id) (~and if-expr (if test default-expr arg)))) f-rest)
                                      ;; optional, default expression may need defense
@@ -399,11 +405,11 @@
                         ;; no type
                         (quasisyntax/loc formals [#,formals . #,body])]
                        [else
+                         (define this-formals-len (formals-length formals))
                          (define matching-dom*
-                           (let ([len (formals-length formals)])
-                             (for/list ((dom (in-list all-dom*))
-                                        #:when (= len (length dom)))
-                               dom)))
+                           (for/list ((dom (in-list all-dom*))
+                                      #:when (= this-formals-len (length dom)))
+                             dom))
                          (quasisyntax/loc stx
                            [#,formals .
                             #,(let* ([body+
@@ -439,7 +445,7 @@
                                                                              ((dom (in-list dom*)))
                                                                      (if (pair? dom) (cons (car dom) acc) acc))))]
                                                          [(ex* fst+)
-                                                          (protect-domain fst-ty fst (build-source-location-list fst) ctc-cache #'f-name arg-idx)])
+                                                          (protect-case-domain fst-ty fst (build-source-location-list fst) ctc-cache #'f-name arg-idx this-formals-len)])
                                              (void (register-extra-defs! ex*))
                                              (if fst+ (cons fst+ check*) check*))))])
                                (if (null? check-formal*)
@@ -811,6 +817,12 @@
                      #t)))))))))
 
 (define (protect-domain dom-type dom-stx ctx ctc-cache lambda-id idx)
+  (protect-domain/from dom-type dom-stx ctx ctc-cache lambda-id (cons 'dom idx)))
+
+(define (protect-case-domain dom-type dom-stx ctx ctc-cache lambda-id arg-idx this-formals-len)
+  (protect-domain/from dom-type dom-stx ctx ctc-cache lambda-id (cons 'case-dom (cons arg-idx this-formals-len))))
+
+(define (protect-domain/from dom-type dom-stx ctx ctc-cache lambda-id from-datum)
   (define-values [extra-def* ctc-stx]
     (if dom-type
       (type->flat-contract dom-type ctc-cache)
@@ -823,10 +835,11 @@
                     [ty-datum (type->sexp dom-type)]
                     [ctx ctx]
                     [idx idx]
-                    [lambda-id lambda-id])
+                    [lambda-id lambda-id]
+                    [from-datum from-datum])
         (register-ignored
           (syntax/loc dom-stx
-            (#%plain-app transient-assert dom-expr ctc 'ty-datum 'ctx (#%plain-app cons lambda-id '(dom . idx))))))))
+            (#%plain-app transient-assert dom-expr ctc 'ty-datum 'ctx (#%plain-app cons lambda-id 'from-datum)))))))
   (values extra-def* dom-stx+))
 
 ;; protect-codomain : ???

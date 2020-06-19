@@ -50,8 +50,9 @@
 (define blame-source-1* '(
   struct-elem ;; cdr = natural = field index
   object-field ;; cdr = symbol = field name
-  object-method-rng ;; cdr = (cons symbol natural) = (method-name result-index)
-  dom ;; cdr = ????
+  object-method-rng ;; cdr = (cons symbol natural) = (cons method-name result-index)
+  dom ;; cdr = natural = arg-index in fully-expanded kw function (kws ... mand ... opt ... rest)
+  case-dom ;; cdr = (cons natural natural) = (cons arg-idx dom-len) ~ dom-len used to filter useful cases
   rng ;; cdr = natural = result-index, for Values
 ))
 

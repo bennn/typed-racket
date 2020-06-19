@@ -62,10 +62,32 @@
   ;;  but they are here to be safe --- we need the blame-trails experiment
   ;;  to run successfully ASAP and can debug extra Transient checks later
   (match elim
-   [`(dom . ,i)
+   [`(case-dom ,arg-idx . ,dom-len)
     (match ty
-     [(Fun: (list (Arrow: dom _ _ _)))
-      (list-ref/#f dom i)]
+     [(Fun: arrow*)
+      (define ty*
+        (filter values
+          (for/list ((arr (in-list arrow*)))
+            (define dom (Arrow-dom arr))
+            (and (= dom-len (length dom))
+                 (list-ref/#f dom arg-idx)))))
+      (and (not (null? ty*))
+           (apply Un ty*))]
+     [_
+       #f])]
+   [`(dom . ,arg-idx)
+    (match ty
+     [(Fun: arrow*)
+      ;; get all types at the `arg-idx` position
+      ;; (Fun with optional args have multiple arrows)
+      (define ty%idx*
+        (filter values
+          (for/list ((arr (in-list arrow*)))
+            (define all-dom-t*
+              (append (map Keyword-ty (Arrow-kws arr)) (Arrow-dom arr)))
+            (list-ref/#f all-dom-t* arg-idx))))
+      (and (not (null? ty%idx*))
+           (apply Un ty%idx*))]
      [_ #f])]
    [`(rng . ,i)
     (match ty
@@ -231,7 +253,6 @@
       Univ]
      [_
       #f])]
-
    [_
     #f]))
 
@@ -248,7 +269,74 @@
 
   (test-case "type-step"
 
-    ;; TODO lots to test with domains ... optional, keyword, etc ... what does defender do?
+    (check-equal?
+      (type-step (cl->* (-> -String -Void)
+                        (-> -Symbol -String -Void))
+                 '(case-dom 0 . 0))
+      #f)
+    (check-equal?
+      (type-step (cl->* (-> -String -Void)
+                        (-> -Symbol -String -Void))
+                 '(case-dom 0 . 0))
+      #f)
+
+    (check-equal?
+      (type-step (-> -String -Symbol) '(dom . 0))
+      -String)
+    (check-equal?
+      (type-step (-> -String -Symbol) '(dom . 2))
+      #f)
+    (check-equal?
+      (type-step (-> -String -Symbol -Symbol) '(dom . 1))
+      -Symbol)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] -Symbol) '(dom . 0))
+      -String)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] -Symbol) '(dom . 1))
+      -Symbol)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] #:a -Void #f #:b Univ #f -Symbol) '(dom . 0))
+      -Void)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] #:a -Void #f #:b Univ #f -Symbol) '(dom . 1))
+      Univ)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] #:a -Void #f #:b Univ #f -Symbol) '(dom . 2))
+      -String)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] #:a -Void #t #:b Univ #f -Symbol) '(dom . 0))
+      -Void)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] #:a -Void #t #:b Univ #f -Symbol) '(dom . 1))
+      Univ)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] #:a -Void #t #:b Univ #f -Symbol) '(dom . 2))
+      -String)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] #:a -Void #t #:b Univ #t -Symbol) '(dom . 0))
+      -Void)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] #:a -Void #t #:b Univ #t -Symbol) '(dom . 1))
+      Univ)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] #:a -Void #t #:b Univ #t -Symbol) '(dom . 2))
+      -String)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] #:a -Void #f #:b Univ #t -Symbol) '(dom . 0))
+      -Void)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] #:a -Void #f #:b Univ #t -Symbol) '(dom . 1))
+      Univ)
+    (check-equal?
+      (type-step (->optkey -String [-Symbol] #:a -Void #f #:b Univ #t -Symbol) '(dom . 2))
+      -String)
+
+    (check-equal?
+      (type-step (cl->* (->optkey -String [] -Void)
+                        (->optkey -Symbol -String [] -Void))
+                 '(dom . 0))
+      (Un -String -Symbol))
 
     (check-equal?
       (type-step (-> -Real -Symbol) '(rng . 0))
