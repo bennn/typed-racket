@@ -21,6 +21,7 @@
   typed-racket/types/struct-table
   typed-racket/types/abbrev
   ;; contract requires, need to `eval` code from type->contract
+  (only-in racket/contract any/c)
   racket/list)
 
 (define-namespace-anchor nsa)
@@ -80,11 +81,18 @@
      [(Fun: arrow*)
       ;; get all types at the `arg-idx` position
       ;; (Fun with optional args have multiple arrows)
+      (define num-mand-args
+        (apply min (map (compose1 length Arrow-dom) arrow*)))
       (define ty%idx*
         (filter values
           (for/list ((arr (in-list arrow*)))
             (define all-dom-t*
-              (append (map Keyword-ty (Arrow-kws arr)) (Arrow-dom arr)))
+              (let ([mand+opt (Arrow-dom arr)])
+                (define-values [m-kw* o-kw*] (partition-kws (Arrow-kws arr)))
+                (append (take mand+opt num-mand-args)
+                        (map Keyword-ty m-kw*)
+                        (map Keyword-ty o-kw*)
+                        (drop mand+opt num-mand-args))))
             (list-ref/#f all-dom-t* arg-idx))))
       (and (not (null? ty%idx*))
            (apply Un ty%idx*))]
@@ -255,6 +263,9 @@
       #f])]
    [_
     #f]))
+
+(define (partition-kws kws)
+  (partition (match-lambda [(Keyword: _ _ mand?) mand?]) kws))
 
 (define (list-ref/#f lst i)
   (or
