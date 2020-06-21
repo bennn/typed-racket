@@ -19,6 +19,7 @@
   (struct-out check-info)
 
   blame-source?
+  noop-action?
   ;; (-> any/c boolean?)
 
   transient-logger
@@ -44,6 +45,7 @@
   hash-key hash-value
   sequence-elem sequence-rest
   stream-elem stream-rest
+  noop
   ;; ... TBD, maybe should be identifiers?
 ))
 
@@ -62,6 +64,9 @@
       (and (pair? sym)
            (symbol? (car sym))
            #;(natural[struct] or symbol[object] (cdr sym)))))
+
+(define (noop-action? x)
+  (eq? x 'noop))
 
 (struct blame-entry (
   from ;; blame-source?

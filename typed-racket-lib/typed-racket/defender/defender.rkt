@@ -296,16 +296,6 @@
                                    (readd-props (loop f-body #f) f-body)
                                    (syntax-parse f-body
                                     #:literals (let-values if)
-                                    [(let-values () f-rest)
-                                     ;; empty rest-arg
-                                     (quasisyntax/loc f-body
-                                       (let-values ()
-                                         #,(dom-check-loop #'f-rest num-args)))]
-                                    [(let-values (((rest-var:id) rest-arg:id)) f-rest)
-                                     ;; non-empty rest-arg
-                                     (quasisyntax/loc f-body
-                                       (let-values (((rest-var) rest-arg))
-                                         #,(dom-check-loop #'f-rest num-args)))]
                                     [(let-values (((arg-id) (~and if-expr (if test default-expr arg)))) f-rest)
                                      ;; optional, default expression may need defense
                                      (define arg-ty (tc-results->type1 (type-of #'if-expr)))
@@ -320,7 +310,7 @@
                                                           [_
                                                            (readd-props (loop #'default-expr #f) #'default-expr)])
                                                        #,(if arg+ (readd-props arg+ #'arg) #'arg))))
-                                         #,(dom-check-loop #'f-rest (+ num-args 1))))]
+                                         #,(dom-check-loop #'f-rest (+ arg-idx 1))))]
                                     [(let-values (((arg-id) arg-val)) f-rest)
                                      ;; normal arg
                                      (define arg-ty (tc-results->type1 (type-of #'arg-val)))
@@ -329,11 +319,11 @@
                                      (quasisyntax/loc f-body
                                        (let-values (((arg-id)
                                                      #,(if arg-val+ (readd-props arg-val+ #'arg-val) #'arg-val)))
-                                         #,(dom-check-loop #'f-rest (+ num-args 1))))]
+                                         #,(dom-check-loop #'f-rest (+ arg-idx 1))))]
                                     [_
                                      (raise-syntax-error 'defend-top "strange kw/opt function body"
                                                          stx f-body)]))))))
-               #,(register-ignored #'body)))
+               #,(register-ignored #'(transient-redirect f-name body))))
              stx)]
         [((~or #%plain-lambda case-lambda) . _)
          #:when (not (maybe-type-of stx))
@@ -834,7 +824,6 @@
                     [dom-expr dom-stx]
                     [ty-datum (type->sexp dom-type)]
                     [ctx ctx]
-                    [idx idx]
                     [lambda-id lambda-id]
                     [from-datum from-datum])
         (register-ignored

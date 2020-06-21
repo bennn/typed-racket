@@ -4,7 +4,18 @@
 
 (provide
   procedure-arity-includes-keywords?
+  ;; 
+
   transient-assert
+  ;; (-> value predicate ty-datum ctx from value)
+  ;; If value matches predicate, update blame & return value.
+  ;; Error otherwise
+
+  transient-redirect
+  ;; (-> private-value public-value public-value)
+  ;; Update blame map so that errors for private-value
+  ;;  refer to the boundaries on public-value
+
   raise-transient-error
   make-transient-provide-contract)
 
@@ -61,6 +72,10 @@
       (print-blame-map)
       (raise-transient-error val ty-datum ctx from))))
 
+(define (transient-redirect private-v public-v)
+  (blame-map-set! private-v #f (cons public-v 'noop))
+  public-v)
+
 (define (raise-transient-error val ty-datum ctx from)
   (define boundary*
     (if (pre-boundary? from)
@@ -99,7 +114,7 @@
 (define (pre-boundary? x)
   (and (pair? x) (eq? 'boundary (car x))))
 
-;; make-blame-entry : (-> string? (or/c symbol? (cons/c any/c symbol?)) blame-entry?)
+;; make-blame-entry : (-> any/c (or/c symbol? (cons/c any/c symbol?)) blame-entry?)
 (define (make-blame-entry ty-datum from)
   (if (pre-boundary? from)
     (cast-info (cadr from) ty-datum (cddr from))
@@ -143,7 +158,10 @@
         [(check-info? e)
          (define parent (check-info-parent e))
          (define action (blame-entry-from e))
-         (define new-path (cons action curr-path))
+         (define new-path
+           (if (noop-action? action)
+             curr-path
+             (cons action curr-path)))
          (loop (add-path* (blame-map-ref parent) new-path))]
         [(cast-info? e)
          (define ty (cast-info-type e))
