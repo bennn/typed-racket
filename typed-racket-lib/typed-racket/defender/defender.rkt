@@ -283,12 +283,14 @@
                (~literal quote-syntax)) . _)
          stx]
         [(~and (~or :opt-lambda^ :kw-lambda^)
-               (let-values (((f-name) (#%plain-lambda f-args f-body))) body))
+               (let-values (((inner-f-name) (#%plain-lambda f-args f-body))) body))
+         #:with outer-f-name (gensym 'Soptkey)
          ;; opt/kw function
          (define num-args (length (syntax->list #'f-args)))
          (readd-props
            (quasisyntax/loc stx
-             (letrec-values (((f-name)
+             (letrec-values (((outer-f-name)
+               (let-values (((inner-f-name)
                            (#%plain-lambda f-args
                              #,(let dom-check-loop ([f-body #'f-body]
                                                     [arg-idx 0])
@@ -299,7 +301,7 @@
                                     [(let-values (((arg-id) (~and if-expr (if test default-expr arg)))) f-rest)
                                      ;; optional, default expression may need defense
                                      (define arg-ty (tc-results->type1 (type-of #'if-expr)))
-                                     (define-values [ex* arg+] (protect-domain arg-ty #'arg (build-source-location-list f-body) ctc-cache #'f-name arg-idx))
+                                     (define-values [ex* arg+] (protect-domain arg-ty #'arg (build-source-location-list f-body) ctc-cache #'outer-f-name arg-idx))
                                      (void (register-extra-defs! ex*))
                                      (quasisyntax/loc f-body
                                        (let-values (((arg-id)
@@ -314,7 +316,7 @@
                                     [(let-values (((arg-id) arg-val)) f-rest)
                                      ;; normal arg
                                      (define arg-ty (tc-results->type1 (type-of #'arg-val)))
-                                     (define-values [ex* arg-val+] (protect-domain arg-ty #'arg-val (build-source-location-list f-body) ctc-cache #'f-name arg-idx))
+                                     (define-values [ex* arg-val+] (protect-domain arg-ty #'arg-val (build-source-location-list f-body) ctc-cache #'outer-f-name arg-idx))
                                      (void (register-extra-defs! ex*))
                                      (quasisyntax/loc f-body
                                        (let-values (((arg-id)
@@ -323,7 +325,8 @@
                                     [_
                                      (raise-syntax-error 'defend-top "strange kw/opt function body"
                                                          stx f-body)]))))))
-               #,(register-ignored #'(transient-redirect f-name body))))
+                 #,(register-ignored #'body))))
+               outer-f-name))
              stx)]
         [((~or #%plain-lambda case-lambda) . _)
          #:when (not (maybe-type-of stx))

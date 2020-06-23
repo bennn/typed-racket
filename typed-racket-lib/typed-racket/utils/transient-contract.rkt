@@ -11,11 +11,6 @@
   ;; If value matches predicate, update blame & return value.
   ;; Error otherwise
 
-  transient-redirect
-  ;; (-> private-value public-value public-value)
-  ;; Update blame map so that errors for private-value
-  ;;  refer to the boundaries on public-value
-
   raise-transient-error
   make-transient-provide-contract)
 
@@ -71,10 +66,6 @@
     (begin
       (print-blame-map)
       (raise-transient-error val ty-datum ctx from))))
-
-(define (transient-redirect private-v public-v)
-  (blame-map-set! private-v #f (cons public-v 'noop))
-  public-v)
 
 (define (raise-transient-error val ty-datum ctx from)
   (define boundary*
