@@ -918,14 +918,18 @@
   (syntax-parse app-stx
    #:literals (#%plain-app #%expression apply quote)
    ;; --- pair
-   [(#%plain-app (~literal car) x)
+   [(#%plain-app (~or (~literal car)
+                      (~literal unsafe-car)) x)
     (values 'car #'x)]
-   [(#%plain-app (~literal cdr) x)
+   [(#%plain-app (~or (~literal cdr)
+                      (~literal unsafe-cdr)) x)
     (values 'cdr #'x)]
    ;; --- list
-   [(#%plain-app (~literal list-ref) x pos)
+   [(#%plain-app (~or (~literal list-ref)
+                      (~literal unsafe-list-ref)) x pos)
     (values 'list-elem #'x)]
-   [(#%plain-app (~literal list-tail) x pos)
+   [(#%plain-app (~or (~literal list-tail)
+                      (~literal unsafe-list-tail)) x pos)
     (values 'list-rest #'x)]
    [(#%plain-app (~or (~literal first)
                       (~literal second)
@@ -942,17 +946,23 @@
    [(#%plain-app (~literal rest) x)
     (values 'list-rest #'x)]
    ;; --- mpair
-   [(#%plain-app (~literal mcar) x)
+   [(#%plain-app (~or (~literal mcar)
+                      (~literal unsafe-mcar)) x)
     (values 'mcar #'x)]
-   [(#%plain-app (~literal mcdr) x)
+   [(#%plain-app (~or (~literal mcdr)
+                      (~literal unsafe-mcdr)) x)
     (values 'mcdr #'x)]
    ;; --- vector
    [(#%plain-app (~or (~literal vector-ref)
-                      (~literal vector*-ref)) x pos)
+                      (~literal vector*-ref)
+                      (~literal unsafe-vector*-ref)
+                      (~literal unsafe-vector-ref)) x pos)
     (values 'vector-elem #'x)]
    ;; --- box
    [(#%plain-app (~or (~literal unbox)
-                      (~literal unbox*)) x)
+                      (~literal unbox*)
+                      (~literal unsafe-unbox)
+                      (~literal unsafe-unbox*)) x)
     (values 'box-elem #'x)]
    ;; --- hash
    [(#%plain-app (~or (~literal hash-ref)
