@@ -30,10 +30,9 @@
 ;; Parse type,
 ;;  follow `elim-path` into the type,
 ;;  check whether value satisfies the transient contract at the end of the road
-(define (value-type-match? val ty-datum elim-path ctx)
-  (define ty-full (sexp->type ty-datum))
+(define (value-type-match? val ty-datum elim-path mpi)
   (define ty-path
-    (let* ((ty-full (sexp->type ty-datum)))
+    (let* ((ty-full (sexp->type ty-datum mpi)))
       (let loop ((ty ty-full)
                  (elim* elim-path))
         (if (null? elim*)
@@ -53,7 +52,17 @@
       (eval #`(let () #,@(car defs+ctc-stx) #,(cadr defs+ctc-stx)) ns)))
   (ty-pred val))
 
-(define (sexp->type ty-datum)
+(define (sexp->type ty-datum [mpi #f])
+  #;(when (module-path-index? mpi)
+    ;; TODO use MPI to get common definitions, instead of keeping in ty-datum
+    (define tgt-mpi
+      (module-path-index-join
+        (list 'submod
+              (if (module-path-index-submodule mpi) ".." "..")
+              '#%type-decl)
+        mpi))
+    (parameterize ((current-namespace ns))
+      (dynamic-require tgt-mpi #f)))
   (eval ty-datum ns))
 
 ;; elim : blame-source? (see transient-contract.rkt)

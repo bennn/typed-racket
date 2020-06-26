@@ -157,7 +157,7 @@
         [(cast-info? e)
          (define ty (cast-info-type e))
          (define blame-val (cast-info-blame e))
-         (if (value-type-match? val ty curr-path (car blame-val))
+         (if (value-type-match? val ty curr-path (variable-reference->module-path-index (car blame-val)))
            '()
            (list (make-boundary (cadr blame-val) (caddr blame-val) ty)))]
         [else

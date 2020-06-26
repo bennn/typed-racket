@@ -382,10 +382,11 @@
            (define ctx (quote-srcloc stx))
            #`(#,(external-check-property #'#%expression check-valid-type)
               #,(ignore-some/expr
-                  #`(#%plain-app transient-assert
-                                 (#,(casted-expr-property #'#%expression store-existing-type) v)
-                                 #,new-ty-ctc '#,(syntax->datum #'ty) '#,ctx
-                                 (#%plain-app list 'boundary 'cast '#,ctx 'typed-world 'cast))
+                  #`(#%plain-app void
+                      (#%plain-app transient-assert
+                                   (#,(casted-expr-property #'#%expression store-existing-type) v)
+                                   #,new-ty-ctc '#,(syntax->datum #'ty) '#,ctx
+                                   (#%plain-app list 'boundary 'cast (#%variable-reference) 'typed-world 'cast)))
                   #'ty))])])]))
 
 

@@ -78,7 +78,6 @@
                         #,(get-alternate #'nm.orig-nm-r) cnt orig-ty-stx '#,(quote-srcloc #'nm.nm)
                         (#%plain-app
                          list 'boundary 'require/typed
-                         '#,(quote-srcloc #'nm.nm)
                          'lib
                          (current-contract-region))))))]))
 

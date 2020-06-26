@@ -8,7 +8,7 @@
  (rep type-rep prop-rep object-rep fme-utils)
  (utils tc-utils prefab identifier)
  (env type-name-env row-constraint-env)
- (only-in typed-racket/env/init-envs type->sexp)
+ (only-in typed-racket/env/init-envs type->transient-sexp)
  (rep core-rep rep-utils free-ids type-mask values-rep
       base-types numeric-base-types)
  (types resolve utils printer match-expanders union subtype)
@@ -160,9 +160,8 @@
                            ((guarded)
                             (or maybe-inline-val #'ctc-id))
                            ((transient)
-                            (with-syntax ((ty-datum (type->sexp type))
-                                          (ctx (build-source-location-list orig-id)))
-                              #'(#%plain-app make-transient-provide-contract ctc-id 'ty-datum 'ctx)))
+                            (with-syntax ((ty-datum (type->transient-sexp type)))
+                              #'(#%plain-app make-transient-provide-contract ctc-id 'ty-datum (#%variable-reference))))
                            ((erasure)
                             #'ctc-id))
                        #:pos-source #,blame-id

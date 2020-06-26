@@ -24,7 +24,7 @@
   (only-in typed-racket/private/parse-type
     parse-type)
   (only-in typed-racket/env/init-envs
-    type->sexp)
+    type->transient-sexp)
   (only-in typed-racket/env/transient-env
     transient-trusted-positive?)
   (only-in typed-racket/typecheck/internal-forms
@@ -100,9 +100,9 @@
         #:literals (#%plain-app #%plain-lambda begin case-lambda define-syntaxes define-values
                     find-method/who let-values letrec-values quote values)
         [r:transient-require
-          (with-syntax ([t (type->sexp (parse-type #'r.type))])
+          (with-syntax ([t (type->transient-sexp (parse-type #'r.type))])
             (register-ignored
-              #`(#%plain-app transient-assert r.name r.contract 't r.srcloc r.blame)))]
+              #`(#%plain-app void (#%plain-app transient-assert r.name r.contract 't (#%variable-reference) r.blame))))]
         ;; unsound within exn-handlers^ ?
         [(let-values ([(meth-id) meth-e])
            (let-values ([(obj-id) rcvr-e])
@@ -825,7 +825,7 @@
       #f
       (with-syntax ([ctc ctc-stx]
                     [dom-expr dom-stx]
-                    [ty-datum (type->sexp dom-type)]
+                    [ty-datum (type->transient-sexp dom-type)]
                     [ctx ctx]
                     [lambda-id lambda-id]
                     [from-datum from-datum])
@@ -880,7 +880,7 @@
                            (define if-stx
                              (with-syntax ([ctc ctc-stx]
                                            [v v-stx]
-                                           [ty-datum (type->sexp type)]
+                                           [ty-datum (type->transient-sexp type)]
                                            [ctx ctx])
                                #`(#%plain-app transient-assert v ctc 'ty-datum 'ctx
                                               (#%plain-app cons #,(or blame-id #'f-id)
