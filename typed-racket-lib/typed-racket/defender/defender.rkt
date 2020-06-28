@@ -100,9 +100,9 @@
         #:literals (#%plain-app #%plain-lambda begin case-lambda define-syntaxes define-values
                     find-method/who let-values letrec-values quote values)
         [r:transient-require
-          (with-syntax ([t (type->transient-sexp (parse-type #'r.type))])
-            (register-ignored
-              #`(#%plain-app void (#%plain-app transient-assert r.name r.contract 't (#%variable-reference) r.blame))))]
+         (with-syntax ([t (type->transient-sexp (parse-type #'r.type))])
+           (register-ignored
+             #`(#%plain-app void (#%plain-app transient-assert r.name r.contract 't r.srcloc r.blame))))]
         ;; unsound within exn-handlers^ ?
         [(let-values ([(meth-id) meth-e])
            (let-values ([(obj-id) rcvr-e])

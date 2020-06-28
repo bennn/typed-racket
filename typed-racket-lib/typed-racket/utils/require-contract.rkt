@@ -9,6 +9,7 @@
          (for-syntax racket/base
                      syntax/parse
                      syntax/location
+                     (only-in syntax/srcloc build-source-location-list)
                      (only-in typed-racket/typecheck/internal-forms internal)
                      (only-in "tc-utils.rkt" current-type-enforcement-mode)))
 
@@ -73,11 +74,17 @@
                     [else
                      (get-alternate #'nm.orig-nm-r)]))
               #,(when (eq? 'transient te-mode)
+                  ;; transient later turns this to an assert, cannot write the
+                  ;; assert now because type->sexp isn't ready
                   (internal
                     #`(transient-require-internal
-                        #,(get-alternate #'nm.orig-nm-r) cnt orig-ty-stx '#,(quote-srcloc #'nm.nm)
+                        #,(get-alternate #'nm.orig-nm-r)
+                        cnt
+                        orig-ty-stx
+                        '#,(build-source-location-list #'nm.nm)
                         (#%plain-app
                          list 'boundary 'require/typed
+                         (#%variable-reference)
                          'lib
                          (current-contract-region))))))]))
 

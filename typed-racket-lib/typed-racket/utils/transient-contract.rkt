@@ -70,7 +70,7 @@
 (define (raise-transient-error val ty-datum ctx from)
   (define boundary*
     (if (pre-boundary? from)
-      (list (make-blame-entry ty-datum from))
+      (list (pre-boundary->boundary ty-datum from))
       (blame-map-boundary* val (cdr from) (blame-compress-key (car from)))))
   (void
     (let ((num-b (length boundary*)))
@@ -108,8 +108,25 @@
 ;; make-blame-entry : (-> any/c (or/c symbol? (cons/c any/c symbol?)) blame-entry?)
 (define (make-blame-entry ty-datum from)
   (if (pre-boundary? from)
-    (cast-info (cadr from) ty-datum (cddr from))
+    (pre-boundary->cast-info ty-datum from)
     (check-info (cdr from) (eq-hash-code (car from)))))
+
+(define (cast-info->boundary ci)
+  (define ty (cast-info-type ci))
+  (define blame-val (cast-info-blame ci))
+  (define pos-mod
+    (let ((m (cadr blame-val)))
+      (if (path? m)
+        m
+        (let ((mpi (variable-reference->module-path-index (car blame-val))))
+          (resolved-module-path-name (module-path-index-resolve (module-path-index-join m mpi)))))))
+  (make-boundary pos-mod (caddr blame-val) ty))
+
+(define (pre-boundary->cast-info ty-datum from)
+  (cast-info (cadr from) ty-datum (cddr from)))
+
+(define (pre-boundary->boundary ty-datum from)
+  (cast-info->boundary (pre-boundary->cast-info ty-datum from)))
 
 (define (blame-map-ref v)
   (define entry# (hash-ref THE-BLAME-MAP (blame-compress-key v) (lambda () '#hash())))
@@ -140,6 +157,7 @@
   (void))
 
 (define (blame-map-boundary* val init-action key)
+  (printf "FIND BOUNDARY ~s ~s ~s~n" val init-action key)
   (let loop ([entry+path* (add-path* (blame-map-ref key) (list init-action))])
    (apply append
     (for/list ((e+p (in-list entry+path*)))
@@ -159,7 +177,7 @@
          (define blame-val (cast-info-blame e))
          (if (value-type-match? val ty curr-path (variable-reference->module-path-index (car blame-val)))
            '()
-           (list (make-boundary (cadr blame-val) (caddr blame-val) ty)))]
+           (list (cast-info->boundary e)))]
         [else
           (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
 

@@ -164,7 +164,7 @@
   [typed-require/struct
     (require/typed-internal name type #:struct-maker parent)]
   [transient-require
-    (transient-require-internal name contract type blame)]
+    (transient-require-internal name contract type srcloc blame)]
   [predicate-assertion
     (assert-predicate-internal type predicate)]
   [type-declaration
