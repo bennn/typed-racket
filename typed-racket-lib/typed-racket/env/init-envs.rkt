@@ -32,7 +32,8 @@
          type->transient-sexp)
 
 (define (type->transient-sexp t)
-  (list 'begin (get-extra-type-definitions) (type->sexp t)))
+  (type->sexp t))
+;;  `(let () ,@(make-env-init-codes) ,(type->sexp t))
 
 (define-syntax (define-initial-env stx)
   (syntax-parse stx

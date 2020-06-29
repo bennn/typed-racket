@@ -31,26 +31,32 @@
 ;;  follow `elim-path` into the type,
 ;;  check whether value satisfies the transient contract at the end of the road
 (define (value-type-match? val ty-datum elim-path mpi)
-  (define ty-path
+  (define ty-path*
     (let* ((ty-full (sexp->type ty-datum mpi)))
       (let loop ((ty ty-full)
                  (elim* elim-path))
         (if (null? elim*)
-          ty
+          (list ty)
           (let ((ty+ (type-step ty (car elim*))))
             (if ty+
-              (loop ty+ (cdr elim*))
+              (if (list? ty+)
+                (apply append (for/list ((t (in-list ty+))) (loop t elim*)))
+                (loop ty+ (cdr elim*)))
               (begin
                 (printf
                   "transient: PATH ERROR cannot follow ~s in ~s orig type ~s orig path ~s~n"
                   (car elim*) ty ty-full elim-path)
                 #f)))))))
-  (define ty-pred
-    ;; ... unit-tests/contract-tests.rkt
-    (let* ((ctc-fail (lambda (#:reason r) (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" ty-path r)))
-           (defs+ctc-stx (type->contract ty-path ctc-fail #:typed-side #f #:cache #f #:enforcement-mode 'transient)))
-      (eval #`(let () #,@(car defs+ctc-stx) #,(cadr defs+ctc-stx)) ns)))
-  (ty-pred val))
+  (printf "PATH ~s~n" ty-path*)
+  ;; Multiple paths come from unions ... if ANY node succeeds, then the value
+  ;;  matches this type
+  (for/or ([ty-path (in-list ty-path*)])
+    (define ty-pred
+      ;; ... unit-tests/contract-tests.rkt
+      (let* ((ctc-fail (lambda (#:reason r) (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" ty-path r)))
+             (defs+ctc-stx (type->contract ty-path ctc-fail #:typed-side #f #:cache #f #:enforcement-mode 'transient)))
+        (eval #`(let () #,@(car defs+ctc-stx) #,(cadr defs+ctc-stx)) ns)))
+    (ty-pred val)))
 
 (define (sexp->type ty-datum [mpi #f])
   #;(when (module-path-index? mpi)
@@ -72,6 +78,9 @@
   ;;  but they are here to be safe --- we need the blame-trails experiment
   ;;  to run successfully ASAP and can debug extra Transient checks later
   (match elim
+   [_
+    #:when (Union? ty)
+    (match ty ((Union-all: t*) t*))]
    [`(case-dom ,arg-idx . ,dom-len)
     (match ty
      [(Fun: arrow*)
