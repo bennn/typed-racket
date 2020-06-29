@@ -81,7 +81,7 @@
     (exn:fail:contract:blame:transient
       (format
         "transient-assert: value does not match static type\n  value: ~s\n  type: ~s\n  src: ~s"
-        val (sexp->type ty-datum) ctx)
+        val ty-datum #;(sexp->type ty-datum) ctx)
       (current-continuation-marks)
       boundary*)))
 
@@ -174,7 +174,10 @@
         [(cast-info? e)
          (define ty (cast-info-type e))
          (define blame-val (cast-info-blame e))
-         (if (value-type-match? val ty curr-path (variable-reference->module-path-index (car blame-val)))
+         (if (with-handlers ((exn:fail? (lambda (ex)
+                                               (printf "transient: internal error during value/type match~n value ~s~n type ~s~n message ~s~n" val ty (exn-message ex))
+                                               #f)))
+               (value-type-match? val ty curr-path (variable-reference->module-path-index (car blame-val))))
            '()
            (list (cast-info->boundary e)))]
         [else
