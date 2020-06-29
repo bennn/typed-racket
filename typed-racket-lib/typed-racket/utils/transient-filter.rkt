@@ -68,7 +68,25 @@
     (define sexp* (dynamic-require tgt-mpi 'transient-def-sexps))
     (for ((s (in-list sexp*)))
       (eval s ns)))
+  #;(when (module-path-index? mpi)
+    (define tgt-mpi
+      (module-path-index-join '(submod ".." #%type-decl) mpi))
+    (dynamic-require tgt-mpi #f))
   (eval ty-datum ns))
+
+#;(define (xerox datum)
+  (let loop ((v datum))
+    (cond
+      [(identifier? v)
+       (printf "ID ~s~n" v)
+       (syntax-e v)]
+      [(syntax? v)
+       (printf "syntax ~s~n" v)
+       (loop (syntax-e v))]
+      [(pair? v)
+       (cons (loop (car v)) (loop (cdr v)))]
+      [else
+        v])))
 
 ;; elim : blame-source? (see transient-contract.rkt)
 (define (type-step ty elim)
