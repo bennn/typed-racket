@@ -20,6 +20,11 @@
   typed-racket/env/type-alias-env
   typed-racket/types/struct-table
   typed-racket/types/abbrev
+
+  typed-racket/typecheck/typechecker
+  typed-racket/typecheck/tc-structs
+  typed-racket/typecheck/provide-handling
+
   ;; contract requires, need to `eval` code from type->contract
   (only-in racket/contract any/c)
   racket/list)
@@ -59,17 +64,17 @@
     (ty-pred val)))
 
 (define (sexp->type ty-datum [mpi #f])
-  #;(when (module-path-index? mpi)
-    ;; TODO use MPI to get common definitions, instead of keeping in ty-datum
-    (define tgt-mpi
-      (module-path-index-join
-        (list 'submod
-              (if (module-path-index-submodule mpi) ".." "..")
-              '#%type-decl)
-        mpi))
-    (parameterize ((current-namespace ns))
-      (dynamic-require tgt-mpi #f)))
-  (eval ty-datum ns))
+  (define revive
+    (if (module-path-index? mpi)
+      (let* ((tgt-mpi
+              (module-path-index-join
+                (list 'submod
+                      (if (module-path-index-submodule mpi) ".." "..")
+                      '#%type-decl)
+                mpi)))
+        (dynamic-require tgt-mpi 'transient-revive-type))
+      (lambda (t) (eval t ns))))
+  (revive ty-datum))
 
 ;; elim : blame-source? (see transient-contract.rkt)
 (define (type-step ty elim)
