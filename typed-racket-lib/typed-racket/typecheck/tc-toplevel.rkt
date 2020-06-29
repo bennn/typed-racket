@@ -504,7 +504,7 @@
            (begin-for-syntax
              (module* #%type-decl #f
                (#%plain-module-begin ;; avoid top-level printing and config
-                ;;(#%declare #:empty-namespace) ;; avoid binding info from here
+                (#%declare #:empty-namespace) ;; avoid binding info from here
                 (require typed-racket/types/numeric-tower typed-racket/env/type-name-env
                          typed-racket/env/global-env typed-racket/env/type-alias-env
                          typed-racket/types/struct-table typed-racket/types/abbrev
@@ -512,11 +512,7 @@
                 #,@(make-env-init-codes)
                 #,@(for/list ([a (in-list aliases)])
                      (match-define (list from to) a)
-                     #`(add-alias (quote-syntax #,from) (quote-syntax #,to)))
-                (define-namespace-anchor nsa)
-                (define (transient-revive-type sexp)
-                  (eval sexp (namespace-anchor->namespace nsa)))
-                (provide transient-revive-type))))
+                     #`(add-alias (quote-syntax #,from) (quote-syntax #,to))))))
            (begin-for-syntax (add-mod! (variable-reference->module-path-index
                                         (#%variable-reference))))
 
@@ -570,7 +566,15 @@
              (#%plain-module-begin
               (#%declare #:empty-namespace) ;; avoid binding info from here
               #,(extra-requires)
-              new-defs ...)))
+              new-defs ...))
+           #;(when (eq? 'transient (current-type-enforcement-mode))
+               #`(begin
+                   (define transient-def-sexps '(
+                     #,@(make-env-init-codes)
+                     #,@(for/list ([a (in-list aliases)])
+                          (match-define (list from to) a)
+                          #`(add-alias (quote-syntax #,from) (quote-syntax #,to)))))
+                   (provide transient-def-sexps))))
        #`(begin
            ;; Now we create definitions that are actually provided
            ;; from the module itself. There are two levels of

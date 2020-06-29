@@ -20,11 +20,6 @@
   typed-racket/env/type-alias-env
   typed-racket/types/struct-table
   typed-racket/types/abbrev
-
-  typed-racket/typecheck/typechecker
-  typed-racket/typecheck/tc-structs
-  typed-racket/typecheck/provide-handling
-
   ;; contract requires, need to `eval` code from type->contract
   (only-in racket/contract any/c)
   racket/list)
@@ -52,10 +47,9 @@
                   "transient: PATH ERROR cannot follow ~s in ~s orig type ~s orig path ~s~n"
                   (car elim*) ty ty-full elim-path)
                 #f)))))))
-  (printf "PATH ~s~n" ty-path*)
   ;; Multiple paths come from unions ... if ANY node succeeds, then the value
   ;;  matches this type
-  (for/or ([ty-path (in-list ty-path*)])
+  (for/or ([ty-path (in-list (or ty-path* '()))])
     (define ty-pred
       ;; ... unit-tests/contract-tests.rkt
       (let* ((ctc-fail (lambda (#:reason r) (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" ty-path r)))
@@ -64,17 +58,17 @@
     (ty-pred val)))
 
 (define (sexp->type ty-datum [mpi #f])
-  (define revive
-    (if (module-path-index? mpi)
-      (let* ((tgt-mpi
-              (module-path-index-join
-                (list 'submod
-                      (if (module-path-index-submodule mpi) ".." "..")
-                      '#%type-decl)
-                mpi)))
-        (dynamic-require tgt-mpi 'transient-revive-type))
-      (lambda (t) (eval t ns))))
-  (revive ty-datum))
+  #;(when (module-path-index? mpi)
+    (define tgt-mpi
+      (let* ((res-path (module-path-index-resolve mpi))
+             (res-name (resolved-module-path-name res-path)))
+        (if (pair? res-name)
+          (make-resolved-module-path (car res-name))
+          res-path)))
+    (define sexp* (dynamic-require tgt-mpi 'transient-def-sexps))
+    (for ((s (in-list sexp*)))
+      (eval s ns)))
+  (eval ty-datum ns))
 
 ;; elim : blame-source? (see transient-contract.rkt)
 (define (type-step ty elim)

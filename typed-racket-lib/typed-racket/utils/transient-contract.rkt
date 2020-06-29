@@ -157,7 +157,6 @@
   (void))
 
 (define (blame-map-boundary* val init-action key)
-  (printf "FIND BOUNDARY ~s ~s ~s~n" val init-action key)
   (let loop ([entry+path* (add-path* (blame-map-ref key) (list init-action))])
    (apply append
     (for/list ((e+p (in-list entry+path*)))
