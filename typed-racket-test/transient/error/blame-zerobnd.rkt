@@ -9,15 +9,15 @@
 ;;  appear at runtime. `map` is another way to escape.
 
 (module a racket/base
-  (define (abuse-callback f x)
-    (f -2))
-  (provide abuse-callback))
+  (define xs '(A B C))
+  (provide xs))
 
 (require/typed 'a
-  (abuse-callback (-> (-> String Symbol) String Symbol)))
+  (xs (Listof String)))
 
 (: my-f (-> String Symbol))
 (define (my-f s)
   (string->symbol s))
 
-(abuse-callback my-f "hello")
+(filter my-f xs)
+

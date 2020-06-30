@@ -469,8 +469,8 @@
          (define-values [pre* f post*] (split-application stx+))
          (cond
            [(or (is-ignored? f)
-                (blessed-codomain? f)
-                (cdr-list? f post*)
+                #;(blessed-codomain? f)
+                #;(cdr-list? f post*)
                 (blessed-forloop-function? f))
             stx+]
            [else
@@ -873,9 +873,18 @@
                   (let-values ([v*
                                  #,(cond
                                    [(and (pair? blame-sym) (eq? 'object-method-rng (car blame-sym)))
-                                    (printf "OBJECT SEND need to cast args where are they??? ~s~n  ~s~n" app-stx (syntax->datum app-stx))
-                                    (raise-user-error 'object-send-cannot-cast)
-                                    app-stx]
+                                    (syntax-parse app-stx #:literals (#%plain-app)
+                                     [(#%plain-app t0 t1 . arg*)
+                                      #`(#%plain-app t0 t1 .
+                                         #,(for/list ((arg (in-list (syntax->list #'arg*)))
+                                                      (i (in-naturals)))
+                                            (register-ignored
+                                             (quasisyntax/loc arg
+                                              (arg-cast #,arg (#%plain-app
+                                                               cons #,blame-id
+                                                                    (#%plain-app
+                                                                     cons 'object-method-dom
+                                                                     (#%plain-app cons #,(cdr blame-sym) '#,i))))))))])]
                                    [else
                                     (register-ignored
                                       (update-blame-for-args app-stx (if blame-id #f #'f-id)))])])

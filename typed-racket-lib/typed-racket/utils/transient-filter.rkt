@@ -282,6 +282,20 @@
       Univ]
      [_
       #f])]
+   [`(object-method-dom ,name . ,i)
+    (match ty
+     [(Instance: (Class: _ _ _ method* _ _))
+      (or
+        (for/first ((name+type (in-list method*))
+                    #:when (eq? name (car name+type)))
+          (type-step (cadr name+type) `(dom . ,i)))
+        #f)]
+     [(Instance: (? Name? t))
+      (raise-argument-error 'transient-filter "Class Type, not Name" t)]
+     [(Instance: (ClassTop:))
+      Univ]
+     [_
+      #f])]
    [`(object-method-rng ,name . ,i)
     (match ty
      [(Instance: (Class: _ _ _ method* _ _))
