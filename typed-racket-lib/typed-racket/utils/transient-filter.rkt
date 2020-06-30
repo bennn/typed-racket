@@ -44,8 +44,8 @@
                 (loop ty+ (cdr elim*)))
               (begin
                 (printf
-                  "transient: PATH ERROR cannot follow ~s in ~s orig type ~s orig path ~s~n"
-                  (car elim*) ty ty-full elim-path)
+                  "transient: PATH ERROR cannot follow ~s in ~s full type ~s orig type ~s orig path ~s~n"
+                  (car elim*) ty ty-full ty-datum elim-path)
                 #f)))))))
   ;; Multiple paths come from unions ... if ANY node succeeds, then the value
   ;;  matches this type
@@ -71,7 +71,7 @@
   (define f
     (let ()
       (define tgt-mpi
-        (module-path-index-join '(submod "." #%type-decl) mpi))
+        (module-path-index-join '(submod ".." #%type-decl) mpi))
       (dynamic-require tgt-mpi 'sexp->type)))
   (f ty-datum))
 

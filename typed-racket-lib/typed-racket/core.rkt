@@ -38,7 +38,7 @@
                       [with-refinements? (or (attribute refinement-reasoning?)
                                              (with-refinements?))])
          (tc-module/full te-mode stx pmb-form
-          (λ (new-mod pre-before-code pre-after-code)
+          (λ (new-mod make-pre-before-code pre-after-code)
             (define ctc-cache (make-hash))
             (define sc-cache (make-hash))
             (define (change-contract-fixups/cache forms)
@@ -91,9 +91,9 @@
                (begin0 (change-contract-fixups/cache (syntax->list #'defended-body))
                        (do-time "Fixed contract ids"))]
               ;; add the real definitions of contracts on the before- and after-code
-              [(before-code ...) (change-provide-fixups/cache (flatten-all-begins pre-before-code))]
               [(after-code ...) (begin0 (change-provide-fixups/cache (flatten-all-begins pre-after-code))
                                   (do-time "Generated contracts"))]
+              [(before-code ...) (change-provide-fixups/cache (flatten-all-begins (make-pre-before-code (hash-keys sc-cache))))]
               ;; potentially optimize the code based on the type information
               [(optimized-body ...) (maybe-optimize #'transformed-body)] ;; has own call to do-time
               ;; add in syntax property on useless expression to draw check-syntax arrows
@@ -106,7 +106,7 @@
              ;; use the regular %#module-begin from `racket/base' for top-level printing
              (arm #`(#%module-begin
                      #,(if (unbox include-extra-requires?) (extra-requires) #'(begin))
-                     before-defend-code ... #,@(add-sexp->type #'(before-code ...)) optimized-body ... after-code ... check-syntax-help)))))))]))
+                     before-defend-code ... before-code ... optimized-body ... after-code ... check-syntax-help)))))))]))
 
 (define (ti-core stx [te-mode guarded])
   (current-type-names (init-current-type-names))
