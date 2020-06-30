@@ -90,7 +90,7 @@
 ;; across multiple calls to type->contract.
 ;; This saves computation time and zo space for excessively large types
 ;; (such as mutually recursive class types).
-(define (generate-contract-def stx cache)
+(define (generate-contract-def stx cache sc-cache)
   (define prop (get-contract-def-property stx))
   (match-define (contract-def type-stx flat? maker? typed-side) prop)
   (define *typ (if type-stx (parse-type type-stx) t:-Dead-Code))
@@ -114,6 +114,7 @@
         #:typed-side (from-typed? typed-side)
         #:kind kind
         #:cache cache
+        #:sc-cache sc-cache
         (type->contract-fail
          typ type-stx
          #:ctc-str (if flat? "predicate" "contract"))))
@@ -124,7 +125,7 @@
                 (syntax->datum stx))]))
 
 ;; Generate a contract for a TR provide form
-(define (generate-contract-def/provide stx cache)
+(define (generate-contract-def/provide stx cache sc-cache)
   (match-define (list type untyped-id orig-id blame-id)
                 (contract-def/provide-property stx))
   (define failure-reason #f)
@@ -133,6 +134,7 @@
                     #:typed-side #t
                     #:kind 'impersonator
                     #:cache cache
+                    #:sc-cache sc-cache
                     ;; FIXME: get rid of this interface, make it functional
                     (λ (#:reason [reason #f]) (set! failure-reason reason))))
   (syntax-parse stx
@@ -219,33 +221,33 @@
 ;;   submodule, which always has the above `require`s.
 (define include-extra-requires? (box #f))
 
-(define (change-contract-fixups forms [ctc-cache (make-hash)])
+(define (change-contract-fixups forms [ctc-cache (make-hash)] [sc-cache (make-hash)])
   (with-new-name-tables
    (for/list ((e (in-list forms)))
      (if (not (has-contract-def-property? e))
          e
          (begin (set-box! include-extra-requires? #t)
-                (generate-contract-def e ctc-cache))))))
+                (generate-contract-def e ctc-cache sc-cache))))))
 
 ;; TODO: These are probably all in a specific place, which could avoid
 ;;       the big traversal
-(define (change-provide-fixups forms  [ctc-cache (make-hash)])
+(define (change-provide-fixups forms [ctc-cache (make-hash)] [sc-cache (make-hash)])
   (with-new-name-tables
    (for/list ([form (in-list forms)])
      (syntax-parse form #:literal-sets (kernel-literals)
        [_
         #:when (contract-def/provide-property form)
-        (generate-contract-def/provide form ctc-cache)]
+        (generate-contract-def/provide form ctc-cache sc-cache)]
        [(module* name #f forms ...)
         (quasisyntax/loc form
           (module* name #f
             #,@(change-provide-fixups (syntax->list #'(forms ...))
-                                      ctc-cache)))]
+                                      ctc-cache sc-cache)))]
        [((~literal #%plain-module-begin) forms ...)
         (quasisyntax/loc form
           (#%plain-module-begin
            #,@(change-provide-fixups (flatten-all-begins #'(begin forms ...))
-                                     ctc-cache)))]
+                                     ctc-cache sc-cache)))]
        [_ form]))))
 
 ;; get-max-contract-kind
@@ -308,17 +310,19 @@
    [else (raise-argument-error 'flip-side typed-side?-str side)]))
 
 ;; type->contract : Type Procedure
-;;                  #:typed-side Boolean #:kind Symbol #:cache Hash
+;;                  #:typed-side Boolean #:kind Symbol #:cache Hash #:sc-cache Hash
 ;;                  -> (U Any (List (Listof Syntax) Syntax))
 (define (type->contract ty init-fail
                         #:typed-side [typed-side #t]
                         #:kind [pre-kind 'impersonator]
                         #:cache [cache (make-hash)]
+                        #:sc-cache [sc-cache (make-hash)]
                         #:enforcement-mode [te-mode (current-type-enforcement-mode)])
   (let/ec escape
     (define (fail #:reason [reason #f]) (escape (init-fail #:reason reason)))
     (define sc
       (type->static-contract ty fail
+                             #:sc-cache sc-cache
                              #:typed-side typed-side
                              #:enforcement-mode te-mode))
     (define kind (if (eq? guarded te-mode) pre-kind 'flat))
@@ -343,18 +347,21 @@
   (triple sc sc sc))
 
 (define (type->static-contract type init-fail
+                               #:sc-cache [sc-cache (make-hash)]
                                #:typed-side [typed-side #t]
                                #:enforcement-mode [te-mode (current-type-enforcement-mode)])
   (case te-mode
     [(guarded)
-     (type->static-contract/guarded type init-fail #:typed-side typed-side)]
+     (type->static-contract/guarded type init-fail #:sc-cache sc-cache #:typed-side typed-side)]
     [(transient)
-     (type->static-contract/transient type)]
+     (type->static-contract/transient type #:sc-cache sc-cache)]
     [else
      any/sc]))
 
 (define (type->static-contract/guarded type init-fail
+                                       #:sc-cache [sc-cache (make-hash)]
                                        #:typed-side [typed-side #t])
+  ;; TODO sc-cache ignored
   (let/ec return
     (define (fail #:reason reason) (return (init-fail #:reason reason)))
     (let loop ([type type] [typed-side (if typed-side 'typed 'untyped)] [recursive-values (hash)])
@@ -768,7 +775,7 @@
         (fail #:reason "contract generation not supported for this type")]))))
 
 ;; TODO full tests
-(define (type->static-contract/transient type)
+(define (type->static-contract/transient type #:sc-cache sc-cache)
   (let loop ([type type])
     (define t->sc loop)
     (define (prop->sc p)
@@ -790,7 +797,7 @@
          (and-prop/sc (map prop->sc ps))]
         [(OrProp: ps)
          (or-prop/sc (map prop->sc ps))]))
-    (match type
+    (cached-match type sc-cache
      ;; Implicit recursive aliases
      [(Name: name-id args #f)
       any/sc]
@@ -972,6 +979,17 @@
       future?/sc]
      [_
       (raise-arguments-error 'type->static-contract/transient "contract generation not supported for this type" "type" type)])))
+
+(define-syntax (cached-match stx)
+  (syntax-case stx ()
+    [(_ type-expr sc-cache match-clause ...)
+     #'(let ([type type-expr])
+         (define key type)
+         (cond [(hash-ref sc-cache key #f)]
+               [else
+                (define sc (match type match-clause ...))
+                (hash-set! sc-cache key sc)
+                sc]))]))
 
 (define (remove-overlap sc* pattern*)
   (for/fold ((acc sc*))

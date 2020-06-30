@@ -57,7 +57,7 @@
         (eval #`(let () #,@(car defs+ctc-stx) #,(cadr defs+ctc-stx)) ns)))
     (ty-pred val)))
 
-(define (sexp->type ty-datum [mpi #f])
+(define (sexp->type ty-datum mpi)
   #;(when (module-path-index? mpi)
     (define tgt-mpi
       (let* ((res-path (module-path-index-resolve mpi))
@@ -68,11 +68,12 @@
     (define sexp* (dynamic-require tgt-mpi 'transient-def-sexps))
     (for ((s (in-list sexp*)))
       (eval s ns)))
-  #;(when (module-path-index? mpi)
-    (define tgt-mpi
-      (module-path-index-join '(submod ".." #%type-decl) mpi))
-    (dynamic-require tgt-mpi #f))
-  (eval ty-datum ns))
+  (define f
+    (let ()
+      (define tgt-mpi
+        (module-path-index-join '(submod "." #%type-decl) mpi))
+      (dynamic-require tgt-mpi 'sexp->type)))
+  (f ty-datum))
 
 #;(define (xerox datum)
   (let loop ((v datum))

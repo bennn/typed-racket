@@ -504,7 +504,7 @@
            (begin-for-syntax
              (module* #%type-decl #f
                (#%plain-module-begin ;; avoid top-level printing and config
-                (#%declare #:empty-namespace) ;; avoid binding info from here
+                ;; (#%declare #:empty-namespace) ;; avoid binding info from here
                 (require typed-racket/types/numeric-tower typed-racket/env/type-name-env
                          typed-racket/env/global-env typed-racket/env/type-alias-env
                          typed-racket/types/struct-table typed-racket/types/abbrev
@@ -512,7 +512,12 @@
                 #,@(make-env-init-codes)
                 #,@(for/list ([a (in-list aliases)])
                      (match-define (list from to) a)
-                     #`(add-alias (quote-syntax #,from) (quote-syntax #,to))))))
+                     #`(add-alias (quote-syntax #,from) (quote-syntax #,to)))
+                ;; --- bg
+                (define sexp->type
+                  (let ((sexp->type# #f))
+                    (lambda (s) (hash-ref sexp->type# s #f))))
+                (provide sexp->type))))
            (begin-for-syntax (add-mod! (variable-reference->module-path-index
                                         (#%variable-reference))))
 

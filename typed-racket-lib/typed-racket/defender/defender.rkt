@@ -88,7 +88,7 @@
 
 ;; =============================================================================
 
-(define (defend-top stx ctc-cache)
+(define (defend-top stx ctc-cache sc-cache)
   (define rev-extra-def* (box '()))
   (define (register-extra-defs! ex*)
     (unless (null? ex*)
@@ -112,7 +112,7 @@
          ;; send (for objects), MUST come before ignored exprs
          (define tc-res (type-of stx (lambda () Univ)))
          (define-values [extra* stx/check]
-           (protect-codomain tc-res #'real-case (build-source-location-list #'real-case) ctc-cache
+           (protect-codomain tc-res #'real-case (build-source-location-list #'real-case) ctc-cache sc-cache
                              #:blame (cons (cons 'object-method-rng #'meth-id) #'obj-id)))
          (void (register-extra-defs! extra*))
          (if stx/check
@@ -301,7 +301,7 @@
                                     [(let-values (((arg-id) (~and if-expr (if test default-expr arg)))) f-rest)
                                      ;; optional, default expression may need defense
                                      (define arg-ty (tc-results->type1 (type-of #'if-expr)))
-                                     (define-values [ex* arg+] (protect-domain arg-ty #'arg (build-source-location-list f-body) ctc-cache #'outer-f-name arg-idx))
+                                     (define-values [ex* arg+] (protect-domain arg-ty #'arg (build-source-location-list f-body) ctc-cache sc-cache #'outer-f-name arg-idx))
                                      (void (register-extra-defs! ex*))
                                      (quasisyntax/loc f-body
                                        (let-values (((arg-id)
@@ -316,7 +316,7 @@
                                     [(let-values (((arg-id) arg-val)) f-rest)
                                      ;; normal arg
                                      (define arg-ty (tc-results->type1 (type-of #'arg-val)))
-                                     (define-values [ex* arg-val+] (protect-domain arg-ty #'arg-val (build-source-location-list f-body) ctc-cache #'outer-f-name arg-idx))
+                                     (define-values [ex* arg-val+] (protect-domain arg-ty #'arg-val (build-source-location-list f-body) ctc-cache sc-cache #'outer-f-name arg-idx))
                                      (void (register-extra-defs! ex*))
                                      (quasisyntax/loc f-body
                                        (let-values (((arg-id)
@@ -373,7 +373,7 @@
                                                                 ((dom (in-list dom*)))
                                                         (if (pair? dom) (cons (car dom) acc) acc))))]
                                             [(ex* fst+)
-                                             (protect-domain fst-ty fst (build-source-location-list fst) ctc-cache #'f-name arg-idx)])
+                                             (protect-domain fst-ty fst (build-source-location-list fst) ctc-cache sc-cache #'f-name arg-idx)])
                                 (void (register-extra-defs! ex*))
                                 (if fst+ (cons fst+ check*) check*))))])
                    (if (null? check-formal*)
@@ -438,7 +438,7 @@
                                                                              ((dom (in-list dom*)))
                                                                      (if (pair? dom) (cons (car dom) acc) acc))))]
                                                          [(ex* fst+)
-                                                          (protect-case-domain fst-ty fst (build-source-location-list fst) ctc-cache #'f-name arg-idx this-formals-len)])
+                                                          (protect-case-domain fst-ty fst (build-source-location-list fst) ctc-cache sc-cache #'f-name arg-idx this-formals-len)])
                                              (void (register-extra-defs! ex*))
                                              (if fst+ (cons fst+ check*) check*))))])
                                (if (null? check-formal*)
@@ -476,7 +476,7 @@
            [else
             (define cod-tc-res (type-of stx))
             (define-values [extra* stx/cod]
-              (protect-codomain cod-tc-res stx+ (build-source-location-list stx) ctc-cache))
+              (protect-codomain cod-tc-res stx+ (build-source-location-list stx) ctc-cache sc-cache))
             (void (register-extra-defs! extra*))
             (if stx/cod
               (readd-props stx/cod stx)
@@ -809,16 +809,16 @@
                      (dynamic-require mpi+ #f)
                      #t)))))))))
 
-(define (protect-domain dom-type dom-stx ctx ctc-cache lambda-id idx)
-  (protect-domain/from dom-type dom-stx ctx ctc-cache lambda-id (cons 'dom idx)))
+(define (protect-domain dom-type dom-stx ctx ctc-cache sc-cache lambda-id idx)
+  (protect-domain/from dom-type dom-stx ctx ctc-cache sc-cache lambda-id (cons 'dom idx)))
 
-(define (protect-case-domain dom-type dom-stx ctx ctc-cache lambda-id arg-idx this-formals-len)
-  (protect-domain/from dom-type dom-stx ctx ctc-cache lambda-id (cons 'case-dom (cons arg-idx this-formals-len))))
+(define (protect-case-domain dom-type dom-stx ctx ctc-cache sc-cache  lambda-id arg-idx this-formals-len)
+  (protect-domain/from dom-type dom-stx ctx ctc-cache sc-cache lambda-id (cons 'case-dom (cons arg-idx this-formals-len))))
 
-(define (protect-domain/from dom-type dom-stx ctx ctc-cache lambda-id from-datum)
+(define (protect-domain/from dom-type dom-stx ctx ctc-cache sc-cache lambda-id from-datum)
   (define-values [extra-def* ctc-stx]
     (if dom-type
-      (type->flat-contract dom-type ctc-cache)
+      (type->flat-contract dom-type ctc-cache sc-cache)
       (values '() #f)))
   (define dom-stx+
     (if (not ctc-stx)
@@ -835,7 +835,7 @@
   (values extra-def* dom-stx+))
 
 ;; protect-codomain : ???
-(define (protect-codomain cod-tc-res app-stx ctx ctc-cache #:blame [blame-info #f])
+(define (protect-codomain cod-tc-res app-stx ctx ctc-cache sc-cache #:blame [blame-info #f])
   (define t* (tc-results->type* cod-tc-res))
   (define-values [blame-sym blame-id]
     (if blame-info
@@ -844,7 +844,7 @@
   (define-values [extra-def* ctc-stx*]
     (if (or (not t*) (null? t*))
       (values '() '())
-      (type->flat-contract* t* ctc-cache)))
+      (type->flat-contract* t* ctc-cache sc-cache)))
   (define check-cod? (ormap values ctc-stx*))
   (define cod-stx+
     (let ()
@@ -1122,7 +1122,7 @@
       '()
       (cons (car stx*) (syntax*->syntax ctx (cdr stx*))))))
 
-(define (type->flat-contract t ctc-cache)
+(define (type->flat-contract t ctc-cache sc-cache)
   (cond
     [(or (eq? t Univ)
          ;; TODO what's correct for unsafe-undef?
@@ -1132,7 +1132,7 @@
      (define (fail #:reason r)
        (raise-user-error 'type->flat-contract "failed to convert type ~a to flat contract because ~a" t r))
      (match-define (list defs ctc)
-       (type->contract t fail #:typed-side #false #:cache ctc-cache))
+       (type->contract t fail #:typed-side #false #:cache ctc-cache #:sc-cache sc-cache))
      (match t
       [(Refine: _ _)
        ;; do not lift defs; they may use a local var
@@ -1146,12 +1146,12 @@
        (for-each register-ignored! defs)
        (values defs ctc+)])]))
 
-(define (type->flat-contract* t* ctc-cache)
+(define (type->flat-contract* t* ctc-cache sc-cache)
   (for/fold ((extra-def* '())
              (ctc-stx* '())
              #:result (values (reverse extra-def*) (reverse ctc-stx*)))
             ((t (in-list t*)))
-    (define-values [ex* ctc-stx] (type->flat-contract t ctc-cache))
+    (define-values [ex* ctc-stx] (type->flat-contract t ctc-cache sc-cache))
     (values (rev-append ex* extra-def*) (cons ctc-stx ctc-stx*))))
 
 (define (rev-append a* b*)

@@ -12,6 +12,7 @@
          (rep type-rep)
          (for-template (base-env top-interaction))
          (utils utils tc-utils arm)
+         (only-in typed-racket/env/init-envs type->transient-sexp)
          "standard-inits.rkt"
          "tc-setup.rkt")
 
@@ -39,15 +40,46 @@
          (tc-module/full te-mode stx pmb-form
           (λ (new-mod pre-before-code pre-after-code)
             (define ctc-cache (make-hash))
+            (define sc-cache (make-hash))
             (define (change-contract-fixups/cache forms)
-              (change-contract-fixups forms ctc-cache))
+              (change-contract-fixups forms ctc-cache sc-cache))
             (define (change-provide-fixups/cache forms)
-              (change-provide-fixups forms ctc-cache))
+              (change-provide-fixups forms ctc-cache sc-cache))
             (define (defend/cache body-stx)
-              (define-values [extra-def* body+] (maybe-defend body-stx ctc-cache))
+              (define-values [extra-def* body+] (maybe-defend body-stx ctc-cache sc-cache))
               (when extra-def*
                 (set-box! include-extra-requires? #t))
               (cons (or extra-def* '()) body+))
+            (define (add-sexp->type form*-stx)
+              ;; look fo #%type-decl submod, replace a #f with a hash
+              (for/list ((form (in-list (syntax-e form*-stx))))
+                (syntax-parse form #:literals (begin-for-syntax module* #%plain-module-begin define let)
+                 [(begin-for-syntax
+                    (module* #%type-decl #f
+                      (#%plain-module-begin
+                       pre-form* ...
+                       (define sexp->type
+                         (let ((sexp->type# #f))
+                           body))
+                       post-form* ...)))
+                  (quasisyntax/loc form
+                    (begin-for-syntax
+                      (module* #%type-decl #f
+                        (#%plain-module-begin
+                         pre-form* ...
+                         (define sexp->type
+                           (let ((sexp->type#
+                                  (make-immutable-hash
+                                    ;; TODO use the contracts here too, to avoid an eval later?
+                                    #,(for/list ((ty (in-hash-keys sc-cache)))
+                                        (with-syntax ((ty-datum (type->transient-sexp ty)))
+                                          (syntax-local-introduce
+                                            (syntax/loc form
+                                              (#%plain-app cons 'ty-datum 'ty-datum))))))))
+                             body))
+                         post-form* ...))))]
+                 [_
+                   form])))
             (with-syntax*
              (;; pmb = #%plain-module-begin
               [(pmb . body2) new-mod]
@@ -74,7 +106,7 @@
              ;; use the regular %#module-begin from `racket/base' for top-level printing
              (arm #`(#%module-begin
                      #,(if (unbox include-extra-requires?) (extra-requires) #'(begin))
-                     before-defend-code ... before-code ... optimized-body ... after-code ... check-syntax-help)))))))]))
+                     before-defend-code ... #,@(add-sexp->type #'(before-code ...)) optimized-body ... after-code ... check-syntax-help)))))))]))
 
 (define (ti-core stx [te-mode guarded])
   (current-type-names (init-current-type-names))

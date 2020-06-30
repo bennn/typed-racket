@@ -39,11 +39,11 @@
           (do-time "Optimized")))
       body))
 
-(define (maybe-defend body-stx ctc-cache)
+(define (maybe-defend body-stx ctc-cache sc-cache)
   (case (current-type-enforcement-mode)
     [(transient)
      (do-time "Starting defender")
-     (define-values [extra-def* body+] (defend-top body-stx ctc-cache))
+     (define-values [extra-def* body+] (defend-top body-stx ctc-cache sc-cache))
      (do-time "End defender")
      (values extra-def* body+)]
     [else
