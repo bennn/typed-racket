@@ -867,10 +867,18 @@
                          [f-id (generate-temporary 't-fun)])
             (define new-stx
               (quasisyntax/loc app-stx
-                (let-values (((f-id) #,(if blame-id #''#f (syntax-parse app-stx #:literals (#%plain-app apply) ((#%plain-app (~optional apply) e . arg*) #'e)))))
-                  (let-values ([v* #,(if blame-id app-stx (syntax-parse app-stx #:literals (#%plain-app apply)
-                                                                        ((#%plain-app apply _ . arg*) #'(#%plain-app apply f-id . arg*))
-                                                                        ((#%plain-app _ . arg*) #'(#%plain-app f-id . arg*))))])
+                (let-values (((f-id)
+                              ;; last resort: if we don't statically know who to blame, evaluate the function and bind to this id
+                              #,(if blame-id #''#f (syntax-parse app-stx #:literals (#%plain-app apply) ((#%plain-app (~optional apply) e . arg*) #'e)))))
+                  (let-values ([v*
+                                 #,(cond
+                                   [(and (pair? blame-sym) (eq? 'object-method-rng (car blame-sym)))
+                                    (printf "OBJECT SEND need to cast args where are they??? ~s~n  ~s~n" app-stx (syntax->datum app-stx))
+                                    (raise-user-error 'object-send-cannot-cast)
+                                    app-stx]
+                                   [else
+                                    (register-ignored
+                                      (update-blame-for-args app-stx (if blame-id #f #'f-id)))])])
                     (begin
                       #,@(for/list ((ctc-stx (in-list ctc-stx*))
                                     (type (in-list t*))
@@ -1013,6 +1021,64 @@
    [_
     (raise-argument-error 'infer-blame-source
                           "application" app-stx)]))
+
+;; TODO register-ignored!
+;;
+;; Rewrite app-stx to update the blame map for every argument,
+;;  according to what the function in app-stx does
+(define (update-blame-for-args app-stx f-id)
+  (syntax-parse app-stx #:literals (#%plain-app #%expression apply quote)
+    [(#%plain-app apply _ . arg*)
+     (printf "APPLY how to update blame map??? ~s~n" (syntax->datum #'arg*))
+     ;; #'(#%plain-app apply f-id . arg*)
+     (raise-user-error 'apply-cannot-update-blame)]
+    ;; --- mpair
+    [(#%plain-app (~and fn (~or (~literal set-mcar!)
+                                (~literal unsafe-set-mcar!))) mp-e arg-e)
+     #`(let ((mp-v mp-e))
+         (#%plain-app fn mp-v (#%plain-app arg-cast arg-e (#%plain-app cons mp-v 'mcar))))]
+    [(#%plain-app (~and fn (~or (~literal set-mcdr!)
+                                (~literal unsafe-set-mcdr!))) mp-e arg-e)
+     #`(let ((mp-v mp-e))
+         (#%plain-app fn mp-v (#%plain-app arg-cast arg-e (#%plain-app cons mp-v 'mcdr))))]
+    ;; --- vector
+    ;; vector-cas vector-set*!
+    [(#%plain-app (~and fn (~or (~literal vector-set!)
+                                (~literal vector*-set!)
+                                (~literal unsafe-vector-set!))) vec-e pos arg-e)
+     #`(let ((vec-v vec-e))
+         (#%plain-app fn vec-v pos (#%plain-app arg-cast arg-e (#%plain-app cons vec-v 'vector-elem))))]
+    ;; --- box
+    ;; box-cas ?
+    [(#%plain-app (~and fn (~or (~literal set-box!)
+                                (~literal set-box*!)
+                                (~literal unsafe-set-box!))) box-e arg-e)
+     #`(let ((box-v box-e))
+         (#%plain-app fn box-v (#%plain-app arg-cast arg-e (#%plain-app cons box-v 'box-elem))))]
+    ;; --- hash
+    ;; hash-set*! hash-ref! hash-update! hash-union! 
+    [(#%plain-app (~and fn (~literal hash-set!)) hash-e key arg-e)
+     #`(let ((hash-v hash-e))
+         (#%plain-app fn hash-v key (#%plain-app arg-cast arg-e (#%plain-app cons hash-v 'hash-value))))]
+    ;; --- TODO dict-set!
+    ;; --- set
+    [(#%plain-app (~and fn (~literal set-add!)) set-e arg-e)
+     #`(let ((set-v set-e))
+         (#%plain-app fn set-v (#%plain-app arg-cast arg-e (#%plain-app cons set-v 'set-elem))))]
+    ;; --- TODO struct mutator
+    ;; --- class
+    ;; TODO need class-internal.rkt to export set-field!/proc
+    [(#%plain-app (~and fn (~datum set-field!/proc)) (quote tgt) obj arg-e)
+     #`(#%plain-app fn (quote tgt) obj (#%plain-app arg-cast arg-e (#%plain-app cons obj '(object-field . tgt))))]
+    ;; --- function
+    [(#%plain-app f-expr . arg*)
+     #`(#%plain-app #,(or f-id #'f-expr) .
+         #,(for/list ((arg (in-list (syntax->list #'arg*)))
+                      (i (in-naturals)))
+             (quasisyntax/loc arg
+               (arg-cast #,arg (#%plain-app cons #,(or f-id #'f-expr) '(dom . #,i))))))]
+    [_
+      (raise-argument-error 'update-blame-for-args "function-app syntax?" app-stx)]))
 
 (define (literal-function x)
   (syntax-parse x

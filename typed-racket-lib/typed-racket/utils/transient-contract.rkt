@@ -11,6 +11,10 @@
   ;; If value matches predicate, update blame & return value.
   ;; Error otherwise
 
+  arg-cast
+  ;; (-> value from value)
+  ;; Apply to function args, records a "cast"
+
   raise-transient-error
   make-transient-provide-contract)
 
@@ -138,6 +142,10 @@
     (hash-update! THE-BLAME-MAP (blame-compress-key val)
                   (lambda (curr) (blame-entry*-add curr be))
                   (lambda () (blame-entry*-init be)))))
+
+(define (arg-cast val from)
+  (blame-map-set! val #f from)
+  val)
 
 (define (blame-entry*-init v)
   (hash v 0))
