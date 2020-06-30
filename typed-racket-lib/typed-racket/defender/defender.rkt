@@ -78,7 +78,7 @@
     (only-in racket/unsafe/undefined unsafe-undefined)
     typed-racket/types/numeric-predicates
     typed-racket/utils/transient-contract
-    (only-in racket/private/class-internal get-field/proc find-method/who)
+    (only-in racket/private/class-internal get-field/proc find-method/who do-make-object)
     (only-in typed-racket/private/class-literals class-internal)))
 
 (provide defend-top)
@@ -841,88 +841,102 @@
     (if blame-info
       (values (car blame-info) (cdr blame-info))
       (infer-blame-source app-stx t*)))
-  (cond
-   [(or (not t*) (null? t*))
-    (values '() #f)]
-   [else
-    (define-values [extra-def* ctc-stx*]
-      (type->flat-contract* t* ctc-cache))
-    (define cod-stx+
-      (if (not (ormap values ctc-stx*))
-        ;; Nothing to check
-        #f
-        ;; Assemble everything into a syntax object that:
-        ;; - performs the application
-        ;; - binds the result(s) to temporary variable(s)
-        ;; - checks the tag of each temporary
-        (let ()
-          (define var-name 'dyn-cod)
-          ;; - application returns +1 results:
-          ;;   - bind all,
-          ;;   - check the ones with matching contracts,
-          ;;   - return all
-          (with-syntax* ([v*
-                          (for/list ([_t (in-list t*)])
-                            (generate-temporary var-name))]
-                         [f-id (generate-temporary 't-fun)])
-            (define new-stx
-              (quasisyntax/loc app-stx
-                (let-values (((f-id)
-                              ;; last resort: if we don't statically know who to blame, evaluate the function and bind to this id
-                              #,(if blame-id #''#f (syntax-parse app-stx #:literals (#%plain-app apply) ((#%plain-app (~optional apply) e . arg*) #'e)))))
-                  (let-values ([v*
-                                 #,(cond
-                                   [(and (pair? blame-sym) (eq? 'object-method-rng (car blame-sym)))
-                                    (syntax-parse app-stx #:literals (#%plain-app)
-                                     [(#%plain-app t0 t1 . arg*)
-                                      #`(#%plain-app t0 t1 .
-                                         #,(for/list ((arg (in-list (syntax->list #'arg*)))
-                                                      (i (in-naturals)))
-                                            (register-ignored
-                                             (quasisyntax/loc arg
-                                              (arg-cast #,arg (#%plain-app
-                                                               cons #,blame-id
-                                                                    (#%plain-app
-                                                                     cons 'object-method-dom
-                                                                     (#%plain-app cons #,(cdr blame-sym) '#,i))))))))])]
-                                   [else
-                                    (register-ignored
-                                      (update-blame-for-args app-stx (if blame-id #f #'f-id)))])])
-                    (begin
-                      #,@(for/list ((ctc-stx (in-list ctc-stx*))
-                                    (type (in-list t*))
-                                    (v-stx (in-list (syntax-e #'v*)))
-                                    (i (in-naturals))
-                                    #:when ctc-stx)
-                           (define if-stx
-                             (with-syntax ([ctc ctc-stx]
-                                           [v v-stx]
-                                           [ty-datum (type->transient-sexp type)]
-                                           [ctx ctx])
-                               #`(#%plain-app transient-assert v ctc 'ty-datum 'ctx
-                                              (#%plain-app cons #,(or blame-id #'f-id)
-                                                                #,(cond
-                                                                    [(eq? blame-sym 'rng)
-                                                                     (with-syntax ((datum (cons blame-sym i)))
-                                                                       #''datum)]
-                                                                    [(and (pair? blame-sym)
-                                                                          (eq? (car blame-sym) 'object-method-rng))
-                                                                     (with-syntax ((blame-sym (car blame-sym))
-                                                                                   (meth-id (cdr blame-sym))
-                                                                                   (i i))
-                                                                       #`(#%plain-app cons 'blame-sym
-                                                                                      (#%plain-app cons meth-id 'i)))]
-                                                                    [else
-                                                                     (with-syntax ((datum blame-sym))
-                                                                       #''datum)])))))
-                           (register-ignored! if-stx)
-                           if-stx)
-                      (#%plain-app values . v*))))))
-            (void
-              (add-typeof-expr new-stx cod-tc-res)
-              (register-ignored! (caddr (syntax-e new-stx))))
-            new-stx))))
-    (values extra-def* cod-stx+)]))
+  (define-values [extra-def* ctc-stx*]
+    (if (or (not t*) (null? t*))
+      (values '() '())
+      (type->flat-contract* t* ctc-cache)))
+  (define check-cod? (ormap values ctc-stx*))
+  (define cod-stx+
+    (let ()
+      (define var-name 'dyn-cod)
+      (define f-id (generate-temporary 't-fun))
+      (define new-stx
+        (quasisyntax/loc app-stx
+          (let-values (((#,f-id)
+                        ;; last resort: if we don't statically know who to blame, evaluate the function and bind to this id
+                        #,(if blame-id #''#f (syntax-parse app-stx #:literals (#%plain-app apply) ((#%plain-app (~optional apply) e . arg*) #'e)))))
+            #,(with-syntax ([app+
+                             ;; rewrite app with blame-map updates
+                             (cond
+                               [(and (pair? blame-sym) (eq? 'object-method-rng (car blame-sym)))
+                                (syntax-parse app-stx #:literals (#%plain-app let-values)
+                                 [(#%plain-app t0 t1 . arg*)
+                                  ;; plain `send` app
+                                  #`(#%plain-app t0 t1 .
+                                     #,(for/list ((arg (in-list (syntax->list #'arg*)))
+                                                  (i (in-naturals)))
+                                        ;; jesus
+                                        (register-ignored
+                                         (quasisyntax/loc arg
+                                          (#%plain-app arg-cast #,arg
+                                           (#%plain-app cons #,blame-id
+                                            (#%plain-app cons 'object-method-dom
+                                             (#%plain-app cons #,(cdr blame-sym) '#,i))))))))]
+                                 [(let-values (((obj-id) obj-e)
+                                               ((meth-id) meth-e)
+                                               . send-arg*)
+                                    body)
+                                   ;; kwarg `send`
+                                   #`(let-values (((obj-id) obj-e)
+                                                  ((meth-id) meth-e)
+                                                  .
+                                                  #,(for/list ((send-arg (in-list (syntax->list #'send-arg*)))
+                                                               (i (in-naturals)))
+                                                      (syntax-parse send-arg
+                                                       [((arg-id) arg-e)
+                                                        #`((arg-id) (#%plain-app arg-cast arg-e
+                                                                       (#%plain-app cons #,blame-id
+                                                                        (#%plain-app cons 'object-method-dom
+                                                                         (#%plain-app cons #,(cdr blame-sym) '#,i)))))]
+                                                       [_
+                                                         (raise-argument-error 'protect-codomain "((id) expr)" send-arg)])))
+                                      body)]
+                                 [_
+                                   (raise-argument-error 'protect-codomain "send application?" app-stx)])]
+                               [else
+                                (register-ignored
+                                  (update-blame-for-args app-stx (if blame-id #f f-id)))])])
+                (if check-cod?
+                  (with-syntax ([v*
+                                 (for/list ([_t (in-list t*)])
+                                   (generate-temporary var-name))])
+                    #`(let-values ([v* app+])
+                        (begin
+                          #,@(for/list ((ctc-stx (in-list ctc-stx*))
+                                        (type (in-list t*))
+                                        (v-stx (in-list (syntax-e #'v*)))
+                                        (i (in-naturals))
+                                        #:when ctc-stx)
+                               (define if-stx
+                                 (with-syntax ([ctc ctc-stx]
+                                               [v v-stx]
+                                               [ty-datum (type->transient-sexp type)]
+                                               [ctx ctx])
+                                   #`(#%plain-app transient-assert v ctc 'ty-datum 'ctx
+                                                  (#%plain-app cons #,(or blame-id f-id)
+                                                                    #,(cond
+                                                                        [(eq? blame-sym 'rng)
+                                                                         (with-syntax ((datum (cons blame-sym i)))
+                                                                           #''datum)]
+                                                                        [(and (pair? blame-sym)
+                                                                              (eq? (car blame-sym) 'object-method-rng))
+                                                                         (with-syntax ((blame-sym (car blame-sym))
+                                                                                       (meth-id (cdr blame-sym))
+                                                                                       (i i))
+                                                                           #`(#%plain-app cons 'blame-sym
+                                                                                          (#%plain-app cons meth-id 'i)))]
+                                                                        [else
+                                                                         (with-syntax ((datum blame-sym))
+                                                                           #''datum)])))))
+                               (register-ignored! if-stx)
+                               if-stx)
+                             (#%plain-app values . v*))))
+                  #'app+)))))
+      (void
+        (add-typeof-expr new-stx cod-tc-res)
+        (register-ignored! (caddr (syntax-e new-stx))))
+      new-stx))
+  (values extra-def* cod-stx+))
 
 (define-syntax-class struct-accessor
   #:attributes (field-index)
@@ -1017,6 +1031,8 @@
    ;; --- class
    [(#%plain-app (~literal get-field/proc) (quote tgt) obj)
     (values (cons 'object-field (syntax-e #'tgt)) #'obj)]
+   [(#%plain-app (~literal do-make-object) blame cls . arg*)
+    (values 'object-new #'cls)]
    ;; --- function (the default)
    [(#%plain-app (~optional (~datum apply)) (~or unknown-f:id (#%expression unknown-f:id)) . _)
     (values 'rng #'unknown-f)]
@@ -1085,7 +1101,7 @@
          #,(for/list ((arg (in-list (syntax->list #'arg*)))
                       (i (in-naturals)))
              (quasisyntax/loc arg
-               (arg-cast #,arg (#%plain-app cons #,(or f-id #'f-expr) '(dom . #,i))))))]
+               (#%plain-app arg-cast #,arg (#%plain-app cons #,(or f-id #'f-expr) '(dom . #,i))))))]
     [_
       (raise-argument-error 'update-blame-for-args "function-app syntax?" app-stx)]))
 

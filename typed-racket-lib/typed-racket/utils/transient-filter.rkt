@@ -268,6 +268,8 @@
       Univ]
      [_
        #f])]
+   ['object-new
+    (make-Instance ty)]
    [`(object-field . ,name)
     (match ty
      [(Instance: (Class: _ _ field* _ _ _))
