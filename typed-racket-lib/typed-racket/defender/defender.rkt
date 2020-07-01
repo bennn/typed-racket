@@ -925,6 +925,9 @@
                                                                                        (i i))
                                                                            #`(#%plain-app cons 'blame-sym
                                                                                           (#%plain-app cons meth-id 'i)))]
+                                                                        [(and (pair? blame-sym)
+                                                                              (syntax? (cdr blame-sym)))
+                                                                         #`(#%plain-app cons '#,(car blame-sym) #,(cdr blame-sym))]
                                                                         [else
                                                                          (with-syntax ((datum blame-sym))
                                                                            #''datum)])))))
@@ -1028,6 +1031,9 @@
    ;; --- struct
    [(#%plain-app f:struct-accessor x)
     (values (cons 'struct-elem (syntax-e #'f.field-index)) #'x)]
+   [(#%plain-app (~or (~literal unsafe-struct-ref)
+                      (~literal unsafe-struct*-ref)) v k)
+    (values (cons 'struct-elem #'k) #'v)]
    ;; --- class
    [(#%plain-app (~literal get-field/proc) (quote tgt) obj)
     (values (cons 'object-field (syntax-e #'tgt)) #'obj)]
