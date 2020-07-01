@@ -120,7 +120,8 @@
   (define blame-val (cast-info-blame ci))
   (define pos-mod
     (let ((m (cadr blame-val)))
-      (if (path? m)
+      (if (or (path? m)
+              (and (pair? m) (path? (car m)))) ;; submod path
         m
         (let ((mpi (variable-reference->module-path-index (car blame-val))))
           (resolved-module-path-name (module-path-index-resolve (module-path-index-join m mpi)))))))
