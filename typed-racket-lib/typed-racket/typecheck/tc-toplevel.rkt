@@ -491,7 +491,6 @@
       (define/with-syntax (new-export-defs ...) export-defs)
       (define/with-syntax (new-provs ...) provs)
       (values
-        (lambda (transient-ty*)
        #`(begin
            ;; This syntax-time submodule records all the types for all
            ;; definitions in this module, as well as type alias
@@ -505,7 +504,7 @@
            (begin-for-syntax
              (module* #%type-decl #f
                (#%plain-module-begin ;; avoid top-level printing and config
-                ;; (#%declare #:empty-namespace) ;; avoid binding info from here
+                (#%declare #:empty-namespace) ;; avoid binding info from here
                 (require typed-racket/types/numeric-tower typed-racket/env/type-name-env
                          typed-racket/env/global-env typed-racket/env/type-alias-env
                          typed-racket/types/struct-table typed-racket/types/abbrev
@@ -514,18 +513,7 @@
                 #,@(for/list ([a (in-list aliases)])
                      (match-define (list from to) a)
                      #`(add-alias (quote-syntax #,from) (quote-syntax #,to)))
-                ;; --- bg
-                (define sexp->type
-                  (let ((sexp->type#
-                         (make-immutable-hash
-                           ;; TODO use the contracts here too, to avoid an eval later?
-                           (#%plain-app list .
-                             #,(for/list ((ty (in-list transient-ty*)))
-                                 (with-syntax ((ty-datum (type->sexp ty)))
-                                   (syntax-local-introduce
-                                     #'(#%plain-app cons 'ty-datum ty-datum))))))))
-                    (lambda (s) (hash-ref sexp->type# s #f))))
-                (provide sexp->type))))
+                )))
            (begin-for-syntax (add-mod! (variable-reference->module-path-index
                                         (#%variable-reference))))
 
@@ -588,7 +576,6 @@
                           (match-define (list from to) a)
                           #`(add-alias (quote-syntax #,from) (quote-syntax #,to)))))
                    (provide transient-def-sexps))))
-        )
        #`(begin
            ;; Now we create definitions that are actually provided
            ;; from the module itself. There are two levels of

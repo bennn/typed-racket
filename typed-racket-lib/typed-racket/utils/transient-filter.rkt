@@ -68,12 +68,12 @@
     (define sexp* (dynamic-require tgt-mpi 'transient-def-sexps))
     (for ((s (in-list sexp*)))
       (eval s ns)))
-  (define f
+  #;(define f
     (let ()
       (define tgt-mpi
         (module-path-index-join '(submod ".." #%type-decl) mpi))
       (dynamic-require tgt-mpi 'sexp->type)))
-  (f ty-datum))
+  (eval ty-datum ns))
 
 #;(define (xerox datum)
   (let loop ((v datum))
