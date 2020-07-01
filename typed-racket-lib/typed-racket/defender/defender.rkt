@@ -73,6 +73,7 @@
     racket/base)
   (for-template
     racket/base
+    racket/list
     (only-in racket/contract/base any/c)
     racket/unsafe/ops
     (only-in racket/unsafe/undefined unsafe-undefined)
