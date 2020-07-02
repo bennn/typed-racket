@@ -75,7 +75,7 @@
   (define boundary*
     (if (pre-boundary? from)
       (list (pre-boundary->boundary ty-datum from))
-      (blame-map-boundary* val (cdr from) (blame-compress-key (car from)))))
+      (blame-map-boundary* val (cdr from) (blame-compress-key* (car from)))))
   (void
     (let ((num-b (length boundary*)))
       (log-transient-info "blaming ~a boundar~a" num-b (if (= 1 num-b) "y" "ies")))
@@ -105,6 +105,11 @@
 (define THE-BLAME-MAP (make-hasheq))
 
 (define blame-compress-key eq-hash-code)
+
+(define (blame-compress-key* x)
+  (if (list? x)
+    (map blame-compress-key x)
+    (list (blame-compress-key x))))
 
 (define (pre-boundary? x)
   (and (pair? x) (eq? 'boundary (car x))))
@@ -165,8 +170,12 @@
     (log-transient-info " )"))
   (void))
 
-(define (blame-map-boundary* val init-action key)
-  (let loop ([entry+path* (add-path* (blame-map-ref key) (list init-action))])
+(define (blame-map-boundary* val init-action key*)
+  #;(printf "FIND BND ~s ~s ~s~n" val init-action key*)
+  (let loop ([entry+path*
+               (apply append
+                 (for/list ((key (in-list key*)))
+                   (add-path* (blame-map-ref key) (list init-action))))])
    (apply append
     (for/list ((e+p (in-list entry+path*)))
       (define e (car e+p))

@@ -33,6 +33,7 @@
 (define (value-type-match? val ty-datum elim-path mpi)
   (define ty-path*
     (let* ((ty-full (sexp->type ty-datum mpi)))
+      #;(printf "VT match ~s ~s~n" val ty-full)
       (let loop ((ty ty-full)
                  (elim* elim-path))
         (if (null? elim*)
@@ -291,7 +292,8 @@
       (or
         (for/first ((name+type (in-list method*))
                     #:when (eq? name (car name+type)))
-          (type-step (cadr name+type) `(dom . ,i)))
+          ;; +1 to skip Self arg
+          (type-step (cadr name+type) `(dom . ,(+ i 1))))
         #f)]
      [(Instance: (? Name? t))
       (raise-argument-error 'transient-filter "Class Type, not Name" t)]
