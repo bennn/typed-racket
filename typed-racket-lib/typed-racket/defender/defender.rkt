@@ -1096,6 +1096,34 @@
    [(#%plain-app (~or (~literal cdr)
                       (~literal unsafe-cdr)) x)
     (values 'cdr #'x)]
+   [(#%plain-app (~literal caar) x) (values 'caar #'x)]
+   [(#%plain-app (~literal cadr) x) (values 'cadr #'x)]
+   [(#%plain-app (~literal cdar) x) (values 'cdar #'x)]
+   [(#%plain-app (~literal cddr) x) (values 'cddr #'x)]
+   [(#%plain-app (~literal caaar) x) (values 'caaar #'x)]
+   [(#%plain-app (~literal caadr) x) (values 'caadr #'x)]
+   [(#%plain-app (~literal cadar) x) (values 'cadar #'x)]
+   [(#%plain-app (~literal caddr) x) (values 'caddr #'x)]
+   [(#%plain-app (~literal cdaar) x) (values 'cdaar #'x)]
+   [(#%plain-app (~literal cdadr) x) (values 'cdadr #'x)]
+   [(#%plain-app (~literal cddar) x) (values 'cddar #'x)]
+   [(#%plain-app (~literal cdddr) x) (values 'cdddr #'x)]
+   [(#%plain-app (~literal caaaar) x) (values 'caaaar #'x)]
+   [(#%plain-app (~literal caaadr) x) (values 'caaadr #'x)]
+   [(#%plain-app (~literal caadar) x) (values 'caadar #'x)]
+   [(#%plain-app (~literal caaddr) x) (values 'caaddr #'x)]
+   [(#%plain-app (~literal cadaar) x) (values 'cadaar #'x)]
+   [(#%plain-app (~literal cadadr) x) (values 'cadadr #'x)]
+   [(#%plain-app (~literal caddar) x) (values 'caddar #'x)]
+   [(#%plain-app (~literal cadddr) x) (values 'cadddr #'x)]
+   [(#%plain-app (~literal cdaaar) x) (values 'cdaaar #'x)]
+   [(#%plain-app (~literal cdaadr) x) (values 'cdaadr #'x)]
+   [(#%plain-app (~literal cdadar) x) (values 'cdadar #'x)]
+   [(#%plain-app (~literal cdaddr) x) (values 'cdaddr #'x)]
+   [(#%plain-app (~literal cddaar) x) (values 'cddaar #'x)]
+   [(#%plain-app (~literal cddadr) x) (values 'cddadr #'x)]
+   [(#%plain-app (~literal cdddar) x) (values 'cdddar #'x)]
+   [(#%plain-app (~literal cddddr) x) (values 'cddddr #'x)]
    ;; --- list
    [(#%plain-app (~or (~literal list-ref)
                       (~literal unsafe-list-ref)) x pos)
@@ -1177,6 +1205,9 @@
     (values (cons 'object-field (syntax-e #'tgt)) #'obj)]
    [(#%plain-app (~literal do-make-object) blame cls . arg*)
     (values 'object-new #'cls)]
+   ;; --- call-with-values
+   [(#%plain-app (~literal call-with-values) gen-e rcv-v:id)
+    (values 'cod #'rcv-v)]
    ;; --- function (the default)
    [(#%plain-app (~optional (~datum apply)) (~or unknown-f:id (#%expression unknown-f:id)) . _)
     (values 'rng #'unknown-f)]
@@ -1226,6 +1257,10 @@
                                 (~literal unsafe-vector-set!))) vec-e pos arg-e)
      #`(let ((vec-v vec-e))
          (#%plain-app fn vec-v pos (#%plain-app arg-cast arg-e (#%plain-app cons vec-v 'vector-elem))))]
+    [(#%plain-app (~and fn (~literal vector-copy!)) vec-e0 pos-0 vec-e1 . rest)
+     #'(let* ((vec-v0 vec-e0)
+              (vec-v1 vec-e1))
+         (#%plain-app fn (#%plain-app arg-cast vec-v0 (#%plain-app cons vec-v1 'noop)) pos-0 vec-v1 . rest))]
     ;; --- box
     ;; box-cas ?
     [(#%plain-app (~and fn (~or (~literal set-box!)
