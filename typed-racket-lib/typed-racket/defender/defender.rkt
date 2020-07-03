@@ -264,6 +264,7 @@
                                                         ([body+ (readd-props (loop #'body #f) #'body)]
                                                          [dom* (map Arrow-dom (syntax->arrows #'core-fn))]
                                                          [ids-to-blame
+                                                           ;; blame class and the self object
                                                            (with-syntax ((rcvr (car (syntax->list #'formals))))
                                                              #'(#%plain-app list outer-class-name rcvr))]
                                                          [check-formal*
@@ -330,8 +331,10 @@
                                                  #,(let* ([arg* (syntax->list #'f-args)]
                                                           [final-idx (length arg*)]
                                                           [ids-to-blame
-                                                           (with-syntax ((rcvr (last arg*)))
-                                                             #'(#%plain-app list outer-class-name rcvr))])
+                                                           ;; blame method's class and the "self" object
+                                                           ;;  the "self" is somewhere in the args list, I think (optional ... self mand ...),
+                                                           ;;  but it's easier to find with set! below
+                                                           (box #f)])
                                                      (let dom-check-loop ([f-body #'f-body]
                                                                           [arg-idx 0])
                                                        (if (= arg-idx final-idx)
@@ -340,12 +343,15 @@
                                                           #:literals (let-values if)
                                                           [(let-values (((arg-id:id) arg-val:id)) f-rest)
                                                            #:when (= 0 arg-idx)
+                                                           (set-box! ids-to-blame
+                                                             (with-syntax ((rcvr #'arg-val))
+                                                               #'(#%plain-app list outer-class-name rcvr)))
                                                            (quasisyntax/loc f-body
                                                              (let-values (((arg-id) arg-val)) #,(dom-check-loop #'f-rest (+ arg-idx 1))))]
                                                           [(let-values (((arg-id) (~and if-expr (if test default-expr arg)))) f-rest)
                                                            ;; optional, default expression may need defense
                                                            (define arg-ty (tc-results->type1 (type-of #'if-expr)))
-                                                           (define-values [ex* arg+] (protect-method-domain arg-ty #'arg (build-source-location-list f-body) ctc-cache sc-cache ids-to-blame method-name arg-idx))
+                                                           (define-values [ex* arg+] (protect-method-domain arg-ty #'arg (build-source-location-list f-body) ctc-cache sc-cache (unbox ids-to-blame) method-name arg-idx))
                                                            (void (register-extra-defs! ex*))
                                                            (quasisyntax/loc f-body
                                                              (let-values (((arg-id)
@@ -360,7 +366,7 @@
                                                           [(let-values (((arg-id) arg-val)) f-rest)
                                                            ;; normal arg
                                                            (define arg-ty (tc-results->type1 (type-of #'arg-val)))
-                                                           (define-values [ex* arg-val+] (protect-method-domain arg-ty #'arg-val (build-source-location-list f-body) ctc-cache sc-cache ids-to-blame method-name arg-idx))
+                                                           (define-values [ex* arg-val+] (protect-method-domain arg-ty #'arg-val (build-source-location-list f-body) ctc-cache sc-cache (unbox ids-to-blame) method-name arg-idx))
                                                            (void (register-extra-defs! ex*))
                                                            (quasisyntax/loc f-body
                                                              (let-values (((arg-id)

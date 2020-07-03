@@ -287,7 +287,9 @@
      [_
       #f])]
    [`(object-method-dom ,name . ,i)
-    (match ty
+     #f
+    ;; 2020-07-03 : trouble with optional/keyword methods, see ....-test/transient/error/blame-method-7.rkt
+    #;(match ty
      [(Instance: (Class: _ _ _ method* _ _))
       (or
         (for/first ((name+type (in-list method*))
