@@ -22,6 +22,7 @@
   typed-racket/types/abbrev
   ;; contract requires, need to `eval` code from type->contract
   (only-in racket/contract any/c)
+  racket/set
   racket/list)
 
 (define-namespace-anchor nsa)

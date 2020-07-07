@@ -118,7 +118,10 @@
 (define (make-blame-entry ty-datum from)
   (if (pre-boundary? from)
     (pre-boundary->cast-info ty-datum from)
-    (check-info (cdr from) (eq-hash-code (car from)))))
+    (begin
+      #;(printf "TTT make check-info ~s ~s~n" (eq-hash-code (car from)) (object-name (car from)))
+      (check-info (cdr from) (eq-hash-code (car from)))))
+  )
 
 (define (cast-info->boundary ci)
   (define ty (cast-info-type ci))
