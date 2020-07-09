@@ -136,7 +136,11 @@
          #:with outer-class-name (gensym 'Sclass)
          ;; class def, see typecheck/check-class-unit
          (define class-name-table
-           (car (trawl-for-property #'make-methods-body tr:class:name-table-property)))
+           (let ((v (trawl-for-property #'make-methods-body tr:class:name-table-property)))
+             (if (pair? v)
+               (car v)
+               (raise-syntax-error 'defender:class (format "cannot find tr:class:name-table-property, got ~s" v)
+                                   stx #'make-methods-body))))
          (define parse-info
            (syntax-parse class-name-table
             [tbl:internal-class-data
@@ -266,8 +270,13 @@
                                                          [dom* (map Arrow-dom (syntax->arrows #'core-fn))]
                                                          [ids-to-blame
                                                            ;; blame class and the self object
-                                                           (with-syntax ((rcvr (car (syntax->list #'formals))))
-                                                             #'(#%plain-app list outer-class-name rcvr))]
+                                                           (let ((f* (syntax-e #'formals)))
+                                                             (unless (pair? f*)
+                                                               (raise-syntax-error 'defend-method-def "#%plain-lambda formals are not a pair" val #'formals))
+                                                             (unless (identifier? (car f*))
+                                                               (raise-syntax-error 'defend-method-def "#%plain-lambda formals do not begin with an identifier" val #'formals))
+                                                             (with-syntax ((rcvr (car f*)))
+                                                               #'(#%plain-app list outer-class-name rcvr)))]
                                                          [check-formal*
                                                            (let protect-loop ([args #'formals]
                                                                               [dom* dom*]
@@ -282,6 +291,8 @@
                                                                                  (values (car args) (cdr args))]
                                                                                 [(syntax? args)
                                                                                  (let ((e (syntax-e args)))
+                                                                                   (unless (pair? e)
+                                                                                     (raise-syntax-error 'defend-method-def "strange syntax in method formals" #'formals args))
                                                                                    (values (car e) (cdr e)))]
                                                                                 [else
                                                                                   (raise-syntax-error 'defend-top "#%plain-lambda formals" #'formals args)])]
