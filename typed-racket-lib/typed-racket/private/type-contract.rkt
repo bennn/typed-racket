@@ -308,13 +308,15 @@
                         #:enforcement-mode [te-mode (current-type-enforcement-mode)])
   (let/ec escape
     (define (fail #:reason [reason #f]) (escape (init-fail #:reason reason)))
-    (instantiate/optimize
-     (type->static-contract ty #:typed-side typed-side fail)
-     fail
-     kind
-     #:cache cache
-     #:trusted-positive typed-side
-     #:trusted-negative (not typed-side))))
+    (define sc
+      (type->static-contract ty fail
+                             #:typed-side typed-side
+                             #:enforcement-mode te-mode))
+    (define kind (if (eq? guarded te-mode) pre-kind 'flat))
+    (instantiate/optimize sc fail kind
+      #:cache cache
+      #:trusted-positive typed-side
+      #:trusted-negative (not typed-side))))
 
 (define any-wrap/sc (chaperone/sc #'any-wrap/c))
 

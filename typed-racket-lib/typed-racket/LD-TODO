@@ -527,6 +527,13 @@
   - fixed, remove tagged-zo-structs ... only use typed ... consequences?
 - [X] try blame for 2020-04-27 11:00
   see 'transient-blame' branch and $GT/blame-trails/meeting/2020-04-27
+- [X] defender, need extra cases for kw+opt+rest functions?
+      see transient-blame branch
+      arg-idx vs num-args +1 confusion???
+  - no, no problem
+    transient-blame needs to count up, because `protect-domain` needs an index
+    but transient only uses `num-args` variable and counts down, easy
+
 
 - [ ] #lang typed/racket/transient
   - [ ] module+ unsoundness
@@ -552,10 +559,6 @@
         that can EASILY accept arg
   - [ ] private/with-type ... allow transient as well as guarded
     - [ ] with-type, add te-mode param and update docs
-
-- [ ] defender, need extra cases for kw+opt+rest functions?
-      see transient-blame branch
-      arg-idx vs num-args +1 confusion???
 
 - [ ] do not copy tests,
       change the test language to accept multiple error outputs,
@@ -605,11 +608,11 @@
    - remove recursive fn checks? thats tail calls !
 
 - [ ] no dom checks for private methods
+
 - [ ] no self checks for any methods ... see transient-blame branch
 
 
 ## unsorted
-
 
 - [ ] defend holes, nothing protected in here (`struct` may have same holes)
   - [X] module+
