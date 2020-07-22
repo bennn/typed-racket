@@ -149,6 +149,7 @@
 - [X] suffixtree 4s typed 40s tagged???
       that's not too far off from ICFP after all ... 10s slower
       2020-03-03 down to 30s
+      2020-07-21 back 50s ... because of typed-id
 - [X] TR master, need pattern-match to create list/sc
   2020-03-03 looks like its never created, gee!
   if we had this on master, LD can use to check list? and
@@ -534,7 +535,6 @@
     transient-blame needs to count up, because `protect-domain` needs an index
     but transient only uses `num-args` variable and counts down, easy
 
-
 - [ ] #lang typed/racket/transient
   - [ ] module+ unsoundness
     tried to add a syntax-time variable to the local env
@@ -685,3 +685,17 @@
   (random-ref list0)
   ```
   2020-05-02 : the above WORKS, but accessors test fails
+
+
+#### samth questions
+
+- [X] #lang?
+  - yes make new langs
+
+- [X] copy tests?
+  - no, change the test language to look for "expects" and use port hacking
+    to run different languages on 'same' code
+
+- [ ] `lookup-id-type/lexical` ok? uses `provide/contract-info-original-id`
+
+- [ ] 
