@@ -5,41 +5,93 @@
 
 # Summary
 
-Brief (e.g. one paragraph) explanation of the feature.
+The goal is to add two new languages to Typed Racket (TR). These language use
+the same static types as TR to compile a program, but have different opinions
+about what types mean when a program runs.
+
+Here is a quick comparison. To ground the discussion, let's say we have
+the declaration `(: str* (Listof String))` in typed code. The value of `str*`
+can come from untyped code, so the question "what do types mean?" really asks
+what untyped values can enter this variable, and what values lead to a run-time
+error.
+
+1. Normal `#lang typed/racket` offers _Deep_ types. The whole static type means
+   something at run-time. For `str*`, the value is guaranteed to be a list
+   of only strings.
+
+2. New `#lang typed/racket/shallow` gives weaker, _Shallow_ types. Only
+   the outer-most part of the type, the constructor, means something. For
+   `str*`, the value is guaranteed to be a list, but there is no guarantee
+   about the elements. That said, if our typed code takes `(car str*)` then
+   the result has type `String` and is guaranteed to be a string --- if the
+   list had a bad element, the program would raise an error at the `car`.
+
+3. New `#lang typed/racket/optional` is like the `no-check` languages, but
+   actually type-checks the code. These _Optional_ types mean nothing at
+   run-time. The value of `str*` could be anything.
+
+For the rest of this RFC, the focus is on Shallow types and how we plan to
+implement them using the _Transient_ semantics. The idea with Transient is
+to rewrite all typed code with simple assertions about the shape of values.
+
+By contrast to Transient, normal TR gets Deep types through the Guarded
+(aka Natural) semantics. The idea with Guarded is to keep a strict boundary
+between typed and untyped code with flat contracts, chaperones, and
+impersonators.
+
+The Optional idea is simple: use TR type checker at compile-time and normal
+`#lang racket` behavior at run-time.
+
+(Optional is here, rather than a separate RFC, to test that PR #948 has a
+flexible way to pick different meannings for types. I'm hoping code that works
+for 3 ideas will be able to handle other ideas if needed.)
+
 
 # Motivation
 
-Why are we doing this? What use cases does it support? What is the expected outcome?
+> Why are we doing this? What use cases does it support? What is the expected outcome?
 
 # Guide-level explanation
 
-Explain the proposal as if it was already included in the language and you were
-teaching it to another Typed Racket programmer. That generally means:
-
-- Introducing new named concepts.
-- Explaining the feature largely in terms of examples.
-- Explaining how Typed Racket programmers should *think* about the feature.
-
-For implementation-oriented RFCs (e.g. for type checker internals), focus on how
-type system contributors should think about the change, and give examples of its
-concrete impact.
+> Explain the proposal as if it was already included in the language and you were
+> teaching it to another Typed Racket programmer. That generally means:
+> 
+> - Introducing new named concepts.
+> - Explaining the feature largely in terms of examples.
+> - Explaining how Typed Racket programmers should *think* about the feature.
+> 
+> For implementation-oriented RFCs (e.g. for type checker internals), focus on how
+> type system contributors should think about the change, and give examples of its
+> concrete impact.
 
 # Reference-level explanation
 
-Explain the design in sufficient detail that:
-
-- Its interaction with other features is clear.
-- It is reasonably clear how the feature would be implemented.
-- Corner cases are dissected by example.
-
-Return to the examples given in the previous section, and explain more fully how
-the detailed proposal makes those examples work.
+> Explain the design in sufficient detail that:
+> 
+> - Its interaction with other features is clear.
+> - It is reasonably clear how the feature would be implemented.
+> - Corner cases are dissected by example.
+> 
+> Return to the examples given in the previous section, and explain more fully how
+> the detailed proposal makes those examples work.
 
 
 # Drawbacks and Alternatives
 [drawbacks]: #drawbacks
 
-Why should we *not* do this? Could we do something else instead?
+Drawback: more languages = more choices = more ways to get confused.
+And people may be surprised that typed-to-typed communication is still
+ expensive (because Deep needs to protect itself against Shallow types).
+
+One alternative is to keep trying to make TR faster.
+
+Another is to implement Shallow types using wrappers instead of the Transient
+strategy. With wrappers, interaction with TR should be faster. But doing may
+require new contracts (or chaperones), and will prevent some typed/untyped
+mixes that Transient allows (unless we can make new chaperones to allow them).
+
+Overall, Transient seems like a great compromise to try first. If it somehow
+fails, we can always deprecate and try a new language.
 
 
 # Prior art
