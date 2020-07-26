@@ -35,19 +35,40 @@ Explain the design in sufficient detail that:
 Return to the examples given in the previous section, and explain more fully how
 the detailed proposal makes those examples work.
 
+
 # Drawbacks and Alternatives
 [drawbacks]: #drawbacks
 
 Why should we *not* do this? Could we do something else instead?
 
+
 # Prior art
 [prior-art]: #prior-art
 
-Discuss prior art, both the good and the bad, in relation to this proposal.
-A few examples of what this can include are:
+> - Does this feature exist in other programming languages and what experience
+>   have their community had?
 
-- Does this feature exist in other programming languages and what experience have their community had?
-- Papers: Are there published papers, books, great blog posts, etc that discuss this? Be _specific_!
+Shallow types are in Reticulated Python and Grace.
+
+Reticulated is the original home of the Transient semantics. Michael Vitousek
+invented Transient; his dissertation talks about experiences (esp. Chap 4).
+
+Grace has shallow checks that were inspired by Transient.
+
+
+> - Papers: Are there published papers, books, blog posts, etc?
+
+Resources for transient semantics (Shallow):
+- <https://scholarworks.iu.edu/dspace/handle/2022/23172>
+- <https://2019.ecoop.org/details/ecoop-2019-papers/15/Transient-Typechecks-are-Almost-Free>
+
+Resources that compare Deep and Shallow types:
+- <http://prl.ccs.neu.edu/blog/2018/12/11/the-behavior-of-gradual-types-a-user-study/>
+- <http://prl.ccs.neu.edu/blog/2019/10/31/complete-monitors-for-gradual-types/>
+
+Resources that talk about many ways of mixing typed and untyped code:
+- <http://prl.ccs.neu.edu/blog/2018/10/06/a-spectrum-of-type-soundness-and-performance/>
+- <http://ccs.neu.edu/home/types/publications/publications.html#gfd-oopsla-2019>
 
 
 # Unresolved questions
