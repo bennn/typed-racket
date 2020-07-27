@@ -39,17 +39,234 @@ By contrast to Transient, normal TR gets Deep types through the Guarded
 between typed and untyped code with flat contracts, chaperones, and
 impersonators.
 
-The Optional idea is simple: use TR type checker at compile-time and normal
+The Optional idea is simple: use the TR type checker at compile-time and normal
 `#lang racket` behavior at run-time.
 
-(Optional is here, rather than a separate RFC, to test that PR #948 has a
+Note: Optional is here, rather than a separate RFC, to test that PR #948 has a
 flexible way to pick different meannings for types. I'm hoping code that works
-for 3 ideas will be able to handle other ideas if needed.)
+for 3 ideas will be able to handle other ideas if needed.
 
 
 # Motivation
 
-> Why are we doing this? What use cases does it support? What is the expected outcome?
+Deep types are expensive and difficult to enforce. Shallow types via the
+Transient semantics are often cheaper and always easier to check. Changing a
+program to use Shallow types may give two immediate benefits:
+
+  S1. A program should run faster if it mixes typed and untyped code.
+
+  S2. Some type-correct programs that cannot run in Deep can run in Shallow.
+
+That said, Deep types still have benefits over Shallow types:
+
+  D1. When a mixed typed/untyped program goes wrong, Deep types blame a
+      precise boundary between a typed module and an untyped one.
+
+  D2. Mostly-typed Deep programs often run faster than untyped, but Shallow
+      programs run slower with more types.
+
+Points S1 and S2 motivate Shallow. Points D1 and D2 motivate a mix of Deep
+and Shallow. The goal is to offer both as `#lang`s that can interact.
+
+### (S1) Shallow types can be faster
+
+These comments are about Shallow types as implemented by Transient.
+
+#### Example 1 : read-only data
+
+When an untyped list flows into Deep code, the whole list gets a
+runtime check. When the same list flows to Shallow code, there is a simple
+`list?` check only; other checks come as needed. So, simple list functions
+should run much faster.
+
+  ```
+  (: get-first (-> (Listof String) String))
+  (define (get-first str*)
+    (car str*))
+  ```
+
+If `get-first` lives in a `#lang typed/racket/deep` module, every call walks
+the whole list. But if `get-first` is in a `#lang typed/racket/shallow` module,
+only 1 element gets checked.
+
+
+### Example 2 : mutable data
+
+When an untyped vector flows into Deep code, it gets wrapped in a chaperone
+to make sure that its future behavior matches the type. When a vector flows
+into Shallow code, there is one `vector?` check; there is no wrapper, and
+element checks only happen when needed.
+
+Here is a very simple example:
+
+  ```
+  (: vector-id (-> (Vectorof Real) (Vectorof Real)))
+  (define (vector-id v)
+    v)
+  ```
+
+With Deep types, the incoming vector gets wrapped in a chaperone. All future
+uses of this vector need to go through the chaperone --- so those future uses
+suffer indirection and checking costs.
+
+With Shallow types, this code has one `vector?` check. The vector `v` does
+not get a wrapper.
+
+
+### Example 3 : functions
+
+Deep types wrap and chaperone functions (just like mutable data). Shallow
+types spot-check the result of function calls, but do not create wrappers.
+
+Here's another simple example, a typed wrapper around the `racket/base` map
+function:
+
+  ```
+  (: rmap (-> (-> Real Boolean) (Listof Real) (Listof Boolean)))
+  (define (rmap f r*)
+    (map f r*))
+  ```
+
+With Deep types, the function `f` gets a wrapper. When `map` uses this function,
+the wrapper checks that `f` gets a `Real` and returns a `Boolean`.
+
+With Shallow types, there are two checks: does `f` look good? does `r*` look
+good? These checks are basically `procedure?` and `list?`. That's all!
+
+
+### (S2) Shallow types can allow new interactions
+
+Deep types need to use wrappers to check/protect mutable values. Every kind of
+mutable value in Racket needs a custom kind of wrapper. But some wrappers do
+not exist yet ... so TR conservatively rejects some programs.
+
+For example, mpairs are mutable and do not have a wrapper. So the following
+"good" program gives a runtime error with Deep types:
+
+  ```
+  #lang racket
+
+  (module t typed/racket
+    (: add-mpair (-> (MPairof Real Real) Real))
+    (define (add-mpair mp)
+      (+ (mcar mp) (mcdr mp)))
+    (provide add-mpair))
+
+  (require 't)
+
+  (add-mpair (mcons 2 4))
+  ;; Type Checker: could not convert type to a contract;
+  ;; contract generation not supported for this type
+  ```
+
+Shallow types (via Transient) can run the program, no problem. For Shallow type
+safety, the typed function checks `mpair?` of its input and `real?` after the
+getter functions.
+
+
+Another example is syntax. Syntax objects can contain mutable values, and
+so syntax objects need a wrapper to safely travel across Deep code.
+Implementing these wrappers would require changes to basic parts of Racket,
+including the macro expander.
+
+
+### (D1) Deep types give better errors
+
+Thanks to the heavy checking and careful use of wrappers, Deep types give a
+strong guarantee: every communication between typed and untyped code will
+either match the types or halt the program. In other words, there is no way
+that untyped code can sneak a bad value into typed code.
+
+Because of this Deep-types guarantee (called "complete monitoring" in the
+papers), TR can blame one _correct_ source-code boundary when a check fails.
+The boundary is correct in the sense that something is definitely wrong:
+either the untyped code produced a bad value, or typed code has a bad
+expectation.
+
+Shallow types cannot always blame a single boundary because they don't always
+fully guard a boundary. Let's go back to lists; here is a typed function that
+looks at part of a list and passes it on:
+
+  ```
+  (: spot-check (-> (Listof Symbol) (Listof Symbol)))
+  (define (spot-check sym*)
+    (cons (cadr sym*) (cons (car sym*) (cddr sym*))))
+  ```
+
+With Shallow types, there is no guarantee that the result is a list of symbols.
+Suppose it's not --- that we start with a list `'(A B "C")` and it crosses
+several typed/untyped boundaries before typed code finally realizes the 3rd
+element is a string. Unless we keep a record of everywhere the list has been,
+there is no way to point back to the first `spot-check` call.
+
+Shallow-type blame gets even worse when we have typed claims about untyped
+libraries. In the example below, the types in the middle incorrectly say
+that the library on top sends numbers to its callback. The client on the
+bottom assumes the types are right --- and if the types are Shallow, they
+do not protect the client from unexpected input:
+
+  ```
+  #lang racket
+
+  (module library racket
+    (define (sender f)
+      (f "hello"))
+    (provide sender))
+
+  (module types typed/racket/shallow
+    (require/typed/provide (submod ".." library)
+      (sender (-> (-> Real Real) Real))))
+
+  (module client racket
+    (require (submod ".." types))
+    (sender (lambda (n) (add1 n))))
+
+  (require 'client)
+  ;; Shallow => add1 contract violation
+  ```
+
+
+The blog post here shows that Shallow types can miss errors:
+
+  <http://prl.ccs.neu.edu/blog/2019/10/31/complete-monitors-for-gradual-types/>
+
+Section 2.3 of the paper behind that blog post talks about Shallow types cannot
+pinpoint the origin of a type mixup:
+
+  <https://www2.ccs.neu.edu/racket/pubs/oopsla19-gfd.pdf>
+
+
+### (D2) Adding types affects Deep and Shallow differently
+
+Deep types check the boundaries between typed and untyped code. If there are
+no boundaries, there are no checks.
+
+Shallow types via Transient pre-emptively protect typed code. Every expression
+in typed code might get compiled to have a check around it --- depending on
+whether the code can receive untyped input.
+
+Early experience with Deep and Shallow/Transient suggests a few general claims
+about how adding types changes performance:
+
+- Deep types can add a huge slowdown when typed and untyped code share
+  mutable data.
+
+- Deep types also enable optimizations. If there are no crippling typed/untyped
+  boundaries in a program, typed code is often faster than untyped.
+
+- Shallow types add a low, steady overhead as more code gets typed.
+
+- Shallow types enable some optimizations, but these rarely outweigh the cost
+  of the checks.
+
+Slide 105 here contains a summary picture:
+
+  <http://ccs.neu.edu/home/types/publications/apples-to-apples/gf-icfp-2018-slides.pdf>
+
+The summary is based on data in pages 3--8 here:
+
+  <http://ccs.neu.edu/home/types/publications/apples-to-apples/gf-icfp-2018-supplement.pdf>
+
 
 # Guide-level explanation
 
