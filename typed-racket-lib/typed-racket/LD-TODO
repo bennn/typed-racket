@@ -606,6 +606,8 @@
     maybe undo contract redirect
    - can trust T data structures too?
    - remove recursive fn checks? thats tail calls !
+  - [ ] literal-lambda? table in current module, see how helps,
+    then try table on side
 
 - [ ] no dom checks for private methods
 
