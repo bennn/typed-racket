@@ -1,13 +1,13 @@
-- Feature Name: transient-erasure-semantics
+- Feature Name: shallow-optional-semantics
 - Start Date: 2020-07-21
 - RFC PR: (leave this empty)
 - Feature Commit(s): (leave this empty)
 
 # Summary
 
-The goal is to add two new languages to Typed Racket (TR). These language use
-the same static types as TR to compile a program, but have different opinions
-about what types mean when a program runs.
+This RFC adds two new languages to Typed Racket (TR): shallow and optional.
+These language use the same static types as TR to compile a program, but have
+different opinions about what types mean when a program runs.
 
 Here is a quick comparison. To ground the discussion, let's say we have
 the declaration `(: str* (Listof String))` in typed code. The value of `str*`
