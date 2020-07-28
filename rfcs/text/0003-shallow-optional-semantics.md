@@ -9,11 +9,12 @@ This RFC adds two new languages to Typed Racket (TR): shallow and optional.
 These language use the same static types as TR to compile a program, but have
 different opinions about what types mean when a program runs.
 
-Here is a quick comparison. To ground the discussion, let's say we have
-the declaration `(: str* (Listof String))` in typed code. The value of `str*`
-can come from untyped code, so the question "what do types mean?" really asks
-what untyped values can enter this variable, and what values lead to a run-time
-error.
+Here is a quick comparison, using the declaration `(: str* (Listof String))`
+to ground the discussion.
+
+(Remember, the value of `str*` can come from untyped code, so asking
+ "what do types mean?" really asks which untyped values can enter this variable
+ and which values lead to a run-time error.)
 
 1. Normal `#lang typed/racket` offers _Deep_ types. The whole static type means
    something at run-time. For `str*`, the value is guaranteed to be a list
@@ -23,12 +24,12 @@ error.
    the outer-most part of the type, the constructor, means something. For
    `str*`, the value is guaranteed to be a list, but there is no guarantee
    about the elements. That said, if our typed code takes `(car str*)` then
-   the result has type `String` and is guaranteed to be a string --- if the
-   list had a bad element, the program would raise an error at the `car`.
+   the result has type `String` and is guaranteed to be a string --- otherwise
+   the program raises an error.
 
 3. New `#lang typed/racket/optional` is like the `no-check` languages, but
-   actually type-checks the code. These _Optional_ types mean nothing at
-   run-time. The value of `str*` could be anything.
+   actually type-checks code. These _Optional_ types mean nothing at run-time.
+   The value of `str*` could be anything.
 
 For the rest of this RFC, the focus is on Shallow types and how we plan to
 implement them using the _Transient_ semantics. The idea with Transient is
@@ -42,7 +43,7 @@ impersonators.
 The Optional idea is simple: use the TR type checker at compile-time and normal
 `#lang racket` behavior at run-time.
 
-Note: Optional is here, rather than a separate RFC, to test that PR #948 has a
+Optional is here, rather than a separate RFC, to test that PR #948 has a
 flexible way to pick different meannings for types. I'm hoping code that works
 for 3 ideas will be able to handle other ideas if needed.
 
@@ -53,7 +54,7 @@ Deep types are expensive and difficult to enforce. Shallow types via the
 Transient semantics are often cheaper and always easier to check. Changing a
 program to use Shallow types may give two immediate benefits:
 
-  S1. A program should run faster if it mixes typed and untyped code.
+  S1. A program should run faster if it heavily mixes typed and untyped code.
 
   S2. Some type-correct programs that cannot run in Deep can run in Shallow.
 
@@ -68,16 +69,16 @@ That said, Deep types still have benefits over Shallow types:
 Points S1 and S2 motivate Shallow. Points D1 and D2 motivate a mix of Deep
 and Shallow. The goal is to offer both as `#lang`s that can interact.
 
+
 ### (S1) Shallow types can be faster
 
 These comments are about Shallow types as implemented by Transient.
 
 #### Example 1 : read-only data
 
-When an untyped list flows into Deep code, the whole list gets a
-runtime check. When the same list flows to Shallow code, there is a simple
-`list?` check only; other checks come as needed. So, simple list functions
-should run much faster.
+When an untyped list flows into Deep code, the whole list gets a runtime check.
+When the same list flows to Shallow code, there is a simple `list?` check only;
+other checks come as needed. So, simple list functions should run much faster.
 
   ```
   (: get-first (-> (Listof String) String))
@@ -87,15 +88,15 @@ should run much faster.
 
 If `get-first` lives in a `#lang typed/racket/deep` module, every call walks
 the whole list. But if `get-first` is in a `#lang typed/racket/shallow` module,
-only 1 element gets checked.
+only 1 element gets checked (because only 1 element gets accessed).
 
 
 ### Example 2 : mutable data
 
 When an untyped vector flows into Deep code, it gets wrapped in a chaperone
 to make sure that its future behavior matches the type. When a vector flows
-into Shallow code, there is one `vector?` check; there is no wrapper, and
-element checks only happen when needed.
+into Shallow code, there is one `vector?` check. Shallow does not add a
+wrapper and element checks only happen when needed.
 
 Here is a very simple example:
 
@@ -105,9 +106,9 @@ Here is a very simple example:
     v)
   ```
 
-With Deep types, the incoming vector gets wrapped in a chaperone. All future
-uses of this vector need to go through the chaperone --- so those future uses
-suffer indirection and checking costs.
+With Deep types, the incoming vector gets wrapped in a chaperone. After this
+vector flows out, all future uses of it need to go through the chaperone ---
+so those future uses suffer indirection and checking costs.
 
 With Shallow types, this code has one `vector?` check. The vector `v` does
 not get a wrapper.
@@ -128,19 +129,21 @@ function:
   ```
 
 With Deep types, the function `f` gets a wrapper. When `map` uses this function,
-the wrapper checks that `f` gets a `Real` and returns a `Boolean`.
+the wrapper checks that `f` gets a `Real` and returns a `Boolean` for every
+element in the list. Deep also pre-emptively checks the list `r*` before
+shipping it to `map`.
 
-With Shallow types, there are two checks: does `f` look good? does `r*` look
-good? These checks are basically `procedure?` and `list?`. That's all!
+With Shallow types, there are two checks: does `f` look good? and does `r*` look
+good? These checks are basically `procedure?` and `list?`. That's all.
 
 
 ### (S2) Shallow types can allow new interactions
 
 Deep types need to use wrappers to check/protect mutable values. Every kind of
 mutable value in Racket needs a custom kind of wrapper. But some wrappers do
-not exist yet ... so TR conservatively rejects some programs.
+not exist yet, and so TR conservatively rejects some programs.
 
-For example, mpairs are mutable and do not have a wrapper. So the following
+For example, mpairs are mutable and do not have a wrapper. Thus, the following
 "good" program gives a runtime error with Deep types:
 
   ```
@@ -164,10 +167,9 @@ safety, the typed function checks `mpair?` of its input and `real?` after the
 getter functions.
 
 
-Another example is syntax. Syntax objects can contain mutable values, and
-so syntax objects need a wrapper to safely travel across Deep code.
-Implementing these wrappers would require changes to basic parts of Racket,
-including the macro expander.
+Syntax objects also lack wrappers. (Wrappers are needed for Deep types because
+a syntax object may contain a mutable value.) Implementing these wrappers would
+require changes to basic parts of Racket, including the macro expander.
 
 
 ### (D1) Deep types give better errors
@@ -179,12 +181,12 @@ that untyped code can sneak a bad value into typed code.
 
 Because of this Deep-types guarantee (called "complete monitoring" in the
 papers), TR can blame one _correct_ source-code boundary when a check fails.
-The boundary is correct in the sense that something is definitely wrong:
+The boundary is correct in the sense that something is definitely wrong here:
 either the untyped code produced a bad value, or typed code has a bad
 expectation.
 
-Shallow types cannot always blame a single boundary because they don't always
-fully guard a boundary. Let's go back to lists; here is a typed function that
+Shallow types cannot always blame a single boundary because they rarely check
+a boundary completely. Let's go back to lists; here is a typed function that
 looks at part of a list and passes it on:
 
   ```
@@ -194,16 +196,18 @@ looks at part of a list and passes it on:
   ```
 
 With Shallow types, there is no guarantee that the result is a list of symbols.
-Suppose it's not --- that we start with a list `'(A B "C")` and it crosses
-several typed/untyped boundaries before typed code finally realizes the 3rd
-element is a string. Unless we keep a record of everywhere the list has been,
-there is no way to point back to the first `spot-check` call.
+Suppose that we start with a list `'(A B "C")` and it goes through this
+function and later crosses several typed/untyped boundaries and finally
+some typed code realizes the 3rd element is a string. Unless we keep a record
+of every place the list has been, there is no way to point back to the first
+`spot-check` call. There is also no reason the first boundary should always
+be blamed.
 
 Shallow-type blame gets even worse when we have typed claims about untyped
-libraries. In the example below, the types in the middle incorrectly say
-that the library on top sends numbers to its callback. The client on the
-bottom assumes the types are right --- and if the types are Shallow, they
-do not protect the client from unexpected input:
+libraries. There might be no blame at all. In the example below, the types in
+the middle incorrectly say that the library on top sends numbers to its
+callback. The client on the bottom assumes the types are right --- and if the
+types are Shallow, they do not protect the client from unexpected input:
 
   ```
   #lang racket
@@ -270,27 +274,33 @@ The summary is based on data in pages 3--8 here:
 
 # Guide-level explanation
 
-> Explain the proposal as if it was already included in the language and you were
-> teaching it to another Typed Racket programmer. That generally means:
-> 
-> - Introducing new named concepts.
-> - Explaining the feature largely in terms of examples.
-> - Explaining how Typed Racket programmers should *think* about the feature.
-> 
-> For implementation-oriented RFCs (e.g. for type checker internals), focus on how
-> type system contributors should think about the change, and give examples of its
-> concrete impact.
+(The Guide doesn't talk about the `no-check` languages, and I don't think it
+ should get in to Shallow and Optional either. Deep types are the dream and
+ the default; other stuff belongs in the reference.)
+
 
 # Reference-level explanation
 
-> Explain the design in sufficient detail that:
-> 
-> - Its interaction with other features is clear.
-> - It is reasonably clear how the feature would be implemented.
-> - Corner cases are dissected by example.
-> 
-> Return to the examples given in the previous section, and explain more fully how
-> the detailed proposal makes those examples work.
+## 8 Typed Racket Syntax With Shallow Types
+
+(the reference will use parts of the motivation above, a short description
+ like the one for optional typing below, and maybe some tips about when
+ to use Shallow types)
+
+
+## 9 Typed Racket Syntax With Optional Types
+
+The `typed/racket/optional` and `typed/racket/base/optional` languages provide
+the same bindings as `typed/racket` and `typed/racket/base` and use the same
+type-checking, but have the same run-time behavior as `racket` and
+`racket/base`. Typed Racket types are normally true claims about the ways
+that a program can behave, but in these optional languages the types say
+nothing about behavior.
+
+Optional typing is useful if you want the type-checker to spot-check your
+program and are willing to deal with arbitrary Racket behaviors. For example,
+an optionally-typed function with type `(-> Integer Integer)` could receive
+a string as input and return a symbol.
 
 
 # Drawbacks and Alternatives
@@ -314,9 +324,6 @@ fails, we can always deprecate and try a new language.
 # Prior art
 [prior-art]: #prior-art
 
-> - Does this feature exist in other programming languages and what experience
->   have their community had?
-
 Shallow types are in Reticulated Python and Grace.
 
 Reticulated is the original home of the Transient semantics. Michael Vitousek
@@ -324,8 +331,6 @@ invented Transient; his dissertation talks about experiences (esp. Chap 4).
 
 Grace has shallow checks that were inspired by Transient.
 
-
-> - Papers: Are there published papers, books, blog posts, etc?
 
 Resources for transient semantics (Shallow):
 - <https://scholarworks.iu.edu/dspace/handle/2022/23172>
@@ -352,6 +357,7 @@ PR #948 has a list of lower-level todo items.
 Documentation. What should it include, and how should it be organized to
  introduce new TR languages.
 
+
 > - What parts of the design do you expect to resolve through the implementation
 >   of this feature before stabilization?
 
@@ -369,6 +375,7 @@ Documentation. What should it include, and how should it be organized to
 3. How to minimize the cost of each check, probably by avoiding `racket/contract`
    combinators.
 
+
 > - What related issues do you consider out of scope for this RFC that could be
 >   addressed in the future independently of the solution that comes out of this
 >   RFC?
@@ -385,7 +392,7 @@ Below are 4 issues related to the transient semantics.
   ```
     (define (f (xy : (Pairor Real Real))) : Real
       (+ (car xy) (car xy))
-  
+
       #;(+ (check real? (car xy)) (check real? (car xy))))
   ```
 
