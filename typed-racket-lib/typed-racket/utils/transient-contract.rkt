@@ -4,6 +4,8 @@
 
 (provide
   procedure-arity-includes-keywords?
+  transient-and/c
+  transient-or/c
   transient-assert
   raise-transient-error)
 
@@ -42,6 +44,24 @@
            (loop (cdr expected-kw*) (cdr actual-kw*)))
           (else ;#(keyword<? actual expected)
            (loop expected-kw* (cdr actual-kw*)))))))
+
+(define (transient-and/c . pred*)
+  (lambda (x)
+    (let loop ((p?* pred*))
+      (if (null? p?*)
+        #true
+        (if ((car p?*) x)
+          (loop (cdr p?*))
+          #false)))))
+
+(define (transient-or/c . pred*)
+  (lambda (x)
+    (let loop ((p?* pred*))
+      (if (null? p?*)
+        #false
+        (if ((car p?*) x)
+          #true
+          (loop (cdr p?*)))))))
 
 (define (transient-assert val pred ty-str ctx)
   (if (pred val)

@@ -535,6 +535,8 @@
     transient-blame needs to count up, because `protect-domain` needs an index
     but transient only uses `num-args` variable and counts down, easy
 
+
+
 - [ ] #lang typed/racket/transient
   - [ ] module+ unsoundness
     tried to add a syntax-time variable to the local env
@@ -596,6 +598,12 @@
 
 ## reduce checks
 
+- [ ] no more contracts in transient,
+  - replace or/sc
+  - remove racket/contract/base import?
+  - remove contracts from numeric-contracts submod
+  - anything else?
+
 - [ ] enable typed-id? check, safely
    well ok, not so hard,
    - try to put info on provided ID
@@ -613,6 +621,15 @@
 
 - [ ] no self checks for any methods ... see transient-blame branch
 
+- [ ] type-contract : should `make-procedure-arity-flat/sc
+      use a transient helper, instead of generating lambda everywhere?
+      We save a little with macro-time tests ...
+       but it'd also be front-loaded
+
+- [ ] remove any/c/proc provide contracts
+      (beware: (transient-or any/c/proc))
+
+- [ ] transient/error/with-type-guarded.rkt ... error where is racket/contract/private/misc ?
 
 ## unsorted
 
