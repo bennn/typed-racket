@@ -845,7 +845,7 @@
      [(Fun: arrows)
       (if (null? arrows)
         procedure?/sc
-        (apply transient-or/sc (map arrow->sc/transient arrows)))]
+        (apply transient-and/sc (map arrow->sc/transient arrows)))]
      [(DepFun: raw-dom _ _)
       (define num-mand-args (length raw-dom))
       (make-procedure-arity-flat/sc num-mand-args '() '())]
