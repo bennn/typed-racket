@@ -534,7 +534,13 @@
   - no, no problem
     transient-blame needs to count up, because `protect-domain` needs an index
     but transient only uses `num-args` variable and counts down, easy
-
+- [X] TODO does (All (A) A) break type system with
+      transient? It's inhabited now
+      ... maybe names should be none/c
+      ... maybe NOT (All (A) (-> A A)) still needs to work!
+      yes, it's a problem
+       either `inst` must check,
+       or no contract
 
 
 - [ ] #lang typed/racket/transient
@@ -596,13 +602,19 @@
 
 - [ ] defender, need "ignored" cases?
 
+- [ ] TODO TODO TODO
+      case-> is an AND and that works right????
+
+
 ## reduce checks
 
 - [ ] no more contracts in transient,
-  - replace or/sc
-  - remove racket/contract/base import?
-  - remove contracts from numeric-contracts submod
-  - anything else?
+  - [X] replace or/sc
+  - [X] remove racket/contract/base import?
+    No, need define-module-boundary-contract
+  - [ ] remove contracts from numeric-contracts submod
+    Done, but can we make it prettier?
+  - [ ] simplify numeric-predicates, nonnegative? don't check real?
 
 - [ ] enable typed-id? check, safely
    well ok, not so hard,

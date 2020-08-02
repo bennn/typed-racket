@@ -906,12 +906,14 @@
       thread-cell?/sc]
      [(ClassTop:) class?/sc]
      [(UnitTop:) unit?/sc]
-     [(Poly: _ b)
-      (t->sc b)]
-     [(PolyDots: _ b)
-      (t->sc b)]
-     [(PolyRow: _ _ body)
-      (t->sc body)]
+     [(or (Poly: _ b)
+          (PolyDots: _ b)
+          (PolyRow: _ _ b))
+      (let ((sc (t->sc b)))
+        (when (eq? sc any/sc)
+          ;; 2020-08-02 : can remove this check if `inst` can be an elimination form
+          (raise-arguments-error 'type->static-contract/transient "cannot generate contract for polymorphic type" "type" type))
+        sc)]
      [(Mu: n b)
       (t->sc b)]
      [(Instance: (? Name? t))
