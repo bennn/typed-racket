@@ -542,6 +542,9 @@
        either `inst` must check,
        or no contract
 
+- [ ] (All (A) (Union String A)) unsound ... gotta
+  - could track NAME going down and use none/c
+  - or, look for (or/sc any/sc) after??? NO fails for (U String Any)
 
 - [ ] #lang typed/racket/transient
   - [ ] module+ unsoundness
@@ -628,6 +631,10 @@
    - remove recursive fn checks? thats tail calls !
   - [ ] literal-lambda? table in current module, see how helps,
     then try table on side
+    HANG ON, not gonna work, can change the pr1XXX example to use `+`
+     directly and we have a problem ... literal id `+` with bad type
+     can do same with any other function, even lambda defined in current file
+     ... they get a funny intersection type that must be killed with `ann` though
 
 - [ ] no dom checks for private methods
 
