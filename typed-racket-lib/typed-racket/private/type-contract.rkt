@@ -855,9 +855,11 @@
       (if (null? arrows)
         procedure?/sc
         (apply transient-and/sc (map arrow->sc/transient arrows)))]
-     [(DepFun: raw-dom _ _)
+     [(DepFun: raw-dom _ rng)
       (define num-mand-args (length raw-dom))
-      (make-procedure-arity-flat/sc num-mand-args '() '())]
+      (if (arrow-rng-has-prop? rng)
+        none/sc
+        (make-procedure-arity-flat/sc num-mand-args '() '()))]
      [(Set: _) set?/sc]
      [(or (Sequence: _)
           (SequenceTop:)
@@ -1014,15 +1016,37 @@
 
 (define arrow->sc/transient
   (let ((conv (match-lambda [(Keyword: kw _ _) kw])))
-    (match-lambda
-      [(Arrow: _ (RestDots: _ _) _ _)
-       procedure?/sc]
-      [(Arrow: dom _ kws _)
-       (define num-mand-args (length dom))
-       (define-values [mand-kws opt-kws]
-         (let-values ([(mand-kws opt-kws) (partition-kws kws)])
-           (values (map conv mand-kws) (map conv opt-kws))))
-       (make-procedure-arity-flat/sc num-mand-args mand-kws opt-kws)])))
+    (lambda (orig-ty)
+      (match orig-ty
+        [(Arrow: _ _ _ rng)
+         #:when (arrow-rng-has-prop? rng)
+         none/sc]
+        [(Arrow: _ (RestDots: _ _) _ _)
+         procedure?/sc]
+        [(Arrow: dom _ kws _)
+         (define num-mand-args (length dom))
+         (define-values [mand-kws opt-kws]
+           (let-values ([(mand-kws opt-kws) (partition-kws kws)])
+             (values (map conv mand-kws) (map conv opt-kws))))
+         (make-procedure-arity-flat/sc num-mand-args mand-kws opt-kws)]))))
+
+(define (arrow-rng-has-prop? rng)
+  (match rng
+    [(Values: (list (Result: _
+                             (PropSet: (TrueProp:)
+                                       (TrueProp:))
+                             (Empty:)) ...))
+     #f]
+    ;; Functions that don't return
+    [(Values: (list (Result: (== -Bottom) _ _) ...))
+     #f]
+    ;; functions with props or objects
+    [(Values: (list (Result: rngs _ _) ...))
+     #true]
+    [(? ValuesDots?)
+     #f]
+    [(? AnyValues?)
+     #f]))
 
 (define (make-procedure-arity-flat/sc num-mand mand-kws opt-kws)
   (flat/sc
