@@ -181,7 +181,6 @@
   (case (or te-mode (current-type-enforcement-mode))
     ((guarded)
      #'(require
-         (submod typed-racket/private/type-contract predicates)
          typed-racket/utils/utils
          (for-syntax typed-racket/utils/utils)
          typed-racket/utils/any-wrap typed-racket/utils/struct-type-c
@@ -197,7 +196,6 @@
          racket/contract/parametric))
     ((transient)
      #'(require
-         (submod typed-racket/private/type-contract predicates)
          (only-in racket/contract/base define-module-boundary-contract)
          typed-racket/utils/transient-contract))
     (else
@@ -1406,23 +1404,12 @@
                  [_ #false])))]
        [_ #false]))))
 
-(module predicates racket/base
-  (require racket/extflonum)
-  (provide nonnegative? nonpositive?
-           extflonum? extflzero? extflnonnegative? extflnonpositive?)
-  (define nonnegative? (lambda (x) (and (real? x) (>= x 0))))
-  (define nonpositive? (lambda (x) (and (real? x) (<= x 0))))
-  (define extflzero? (lambda (x) (extfl= x 0.0t0)))
-  (define extflnonnegative? (lambda (x) (extfl>= x 0.0t0)))
-  (define extflnonpositive? (lambda (x) (extfl<= x 0.0t0))))
-
 (module numeric-contracts racket/base
   (require
     "../utils/utils.rkt"
     (static-contracts combinators)
     (for-template
       racket/base
-      (submod ".." predicates)
       (prefix-in t: (types numeric-predicates))))
   (provide (all-defined-out))
 
@@ -1433,38 +1420,38 @@
   (define positive-index/sc (numeric/sc Positive-Index (lambda (x) (and (t:index? x) (positive? x)))))
   (define index/sc (numeric/sc Index t:index?))
   (define positive-fixnum/sc (numeric/sc Positive-Fixnum (lambda (x) (and (fixnum? x) (positive? x)))))
-  (define nonnegative-fixnum/sc (numeric/sc Nonnegative-Fixnum (lambda (x) (and (fixnum? x) (nonnegative? x)))))
-  (define nonpositive-fixnum/sc (numeric/sc Nonpositive-Fixnum (lambda (x) (and (fixnum? x) (nonpositive? x)))))
+  (define nonnegative-fixnum/sc (numeric/sc Nonnegative-Fixnum (lambda (x) (and (fixnum? x) (>= x 0)))))
+  (define nonpositive-fixnum/sc (numeric/sc Nonpositive-Fixnum (lambda (x) (and (fixnum? x) (<= x 0)))))
   (define fixnum/sc (numeric/sc Fixnum fixnum?))
   (define positive-integer/sc (numeric/sc Positive-Integer (lambda (x) (and (exact-integer? x) (positive? x)))))
   (define natural/sc (numeric/sc Natural exact-nonnegative-integer?))
   (define negative-integer/sc (numeric/sc Negative-Integer (lambda (x) (and (exact-integer? x) (negative? x)))))
-  (define nonpositive-integer/sc (numeric/sc Nonpositive-Integer (lambda (x) (and (exact-integer? x) (nonpositive? x)))))
+  (define nonpositive-integer/sc (numeric/sc Nonpositive-Integer (lambda (x) (and (exact-integer? x) (<= x 0)))))
   (define integer/sc (numeric/sc Integer exact-integer?))
   (define positive-rational/sc (numeric/sc Positive-Rational (lambda (x) (and (t:exact-rational? x) (positive? x)))))
-  (define nonnegative-rational/sc (numeric/sc Nonnegative-Rational (lambda (x) (and (t:exact-rational? x) (nonnegative? x)))))
+  (define nonnegative-rational/sc (numeric/sc Nonnegative-Rational (lambda (x) (and (t:exact-rational? x) (>= x 0)))))
   (define negative-rational/sc (numeric/sc Negative-Rational (lambda (x) (and (t:exact-rational? x) (negative? x)))))
-  (define nonpositive-rational/sc (numeric/sc Nonpositive-Rational (lambda (x) (and (t:exact-rational? x) (nonpositive? x)))))
+  (define nonpositive-rational/sc (numeric/sc Nonpositive-Rational (lambda (x) (and (t:exact-rational? x) (<= x 0)))))
   (define rational/sc (numeric/sc Rational t:exact-rational?))
   (define flonum-zero/sc (numeric/sc Float-Zero (lambda (x) (and (flonum? x) (zero? x)))))
-  (define nonnegative-flonum/sc (numeric/sc Nonnegative-Float (lambda (x) (and (flonum? x) (nonnegative? x)))))
-  (define nonpositive-flonum/sc (numeric/sc Nonpositive-Float (lambda (x) (and (flonum? x) (nonpositive? x)))))
+  (define nonnegative-flonum/sc (numeric/sc Nonnegative-Float (lambda (x) (and (flonum? x) (>= x 0)))))
+  (define nonpositive-flonum/sc (numeric/sc Nonpositive-Float (lambda (x) (and (flonum? x) (<= x 0)))))
   (define flonum/sc (numeric/sc Float flonum?))
   (define single-flonum-zero/sc (numeric/sc Single-Flonum-Zero (lambda (x) (and (single-flonum? x) (zero? x)))))
   (define inexact-real-zero/sc (numeric/sc Inexact-Real-Zero (lambda (x) (and (inexact-real? x) (zero? x)))))
   (define positive-inexact-real/sc (numeric/sc Positive-Inexact-Real (lambda (x) (and (inexact-real? x) (positive? x)))))
-  (define nonnegative-single-flonum/sc (numeric/sc Nonnegative-Single-Flonum (lambda (x) (and (single-flonum? x) (nonnegative? x)))))
-  (define nonnegative-inexact-real/sc (numeric/sc Nonnegative-Inexact-Real (lambda (x) (and (inexact-real? x) (nonpositive? x)))))
+  (define nonnegative-single-flonum/sc (numeric/sc Nonnegative-Single-Flonum (lambda (x) (and (single-flonum? x) (>= x 0)))))
+  (define nonnegative-inexact-real/sc (numeric/sc Nonnegative-Inexact-Real (lambda (x) (and (inexact-real? x) (<= x 0)))))
   (define negative-inexact-real/sc (numeric/sc Negative-Inexact-Real (lambda (x) (and (inexact-real? x) (negative? x)))))
-  (define nonpositive-single-flonum/sc (numeric/sc Nonpositive-Single-Flonum (lambda (x) (and (single-flonum? x) (nonnegative? x)))))
-  (define nonpositive-inexact-real/sc (numeric/sc Nonpositive-Inexact-Real (lambda (x) (and (inexact-real? x) (nonpositive? x)))))
+  (define nonpositive-single-flonum/sc (numeric/sc Nonpositive-Single-Flonum (lambda (x) (and (single-flonum? x) (>= x 0)))))
+  (define nonpositive-inexact-real/sc (numeric/sc Nonpositive-Inexact-Real (lambda (x) (and (inexact-real? x) (<= x 0)))))
   (define single-flonum/sc (numeric/sc Single-Flonum single-flonum?))
   (define inexact-real/sc (numeric/sc Inexact-Real inexact-real?))
   (define real-zero/sc (numeric/sc Real-Zero (lambda (x) (and (real? x) (zero? x)))))
   (define positive-real/sc (numeric/sc Positive-Real (lambda (x) (and (real? x) (positive? x)))))
-  (define nonnegative-real/sc (numeric/sc Nonnegative-Real nonnegative?)) ; implies `real?`
+  (define nonnegative-real/sc (numeric/sc Nonnegative-Real (lambda (x) (and (real? x) (>= x 0)))))
   (define negative-real/sc (numeric/sc Negative-Real (lambda (x) (and (real? x) (negative? x)))))
-  (define nonpositive-real/sc (numeric/sc Nonpositive-Real nonpositive?)) ; implies `real?`
+  (define nonpositive-real/sc (numeric/sc Nonpositive-Real (lambda (x) (and (real? x) (<= x 0)))))
   (define real/sc (numeric/sc Real real?))
   (define exact-number/sc (numeric/sc Exact-Number (lambda (x) (and (number? x) (exact? x)))))
   (define inexact-complex/sc
@@ -1475,9 +1462,9 @@
                        (inexact-real? (real-part x))))))
   (define number/sc (numeric/sc Number number?))
 
-  (define extflonum-zero/sc (numeric/sc ExtFlonum-Zero (lambda (x) (and (extflonum? x) (extflzero? x)))))
-  (define nonnegative-extflonum/sc (numeric/sc Nonnegative-ExtFlonum (lambda (x) (and (extflonum? x) (extflnonnegative? x)))))
-  (define nonpositive-extflonum/sc (numeric/sc Nonpositive-ExtFlonum (lambda (x) (and (extflonum? x) (extflnonpositive? x)))))
+  (define extflonum-zero/sc (numeric/sc ExtFlonum-Zero (lambda (x) (and (extflonum? x) (extfl= x 0.0t0)))))
+  (define nonnegative-extflonum/sc (numeric/sc Nonnegative-ExtFlonum (lambda (x) (and (extflonum? x) (extfl>= x 0.0t0)))))
+  (define nonpositive-extflonum/sc (numeric/sc Nonpositive-ExtFlonum (lambda (x) (and (extflonum? x) (extfl<= x 0.0t0)))))
   (define extflonum/sc (numeric/sc ExtFlonum extflonum?))
 
   )
