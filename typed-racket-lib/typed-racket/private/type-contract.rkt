@@ -762,17 +762,19 @@
 ;; TODO full tests
 (define (type->static-contract/transient type)
   (define typed-side 'both)
-  (let loop ([type type])
-    (define t->sc loop)
+  (let t->sc ([type type]
+              [bound-all-vars '()])
     (define (prop->sc p)
       ;;bg copied from above, but uses different t->sc
       (match p
-        [(TypeProp: o (app t->sc sc))
+        [(TypeProp: o t)
+         (define sc (t->sc t bound-all-vars))
          (cond
            [(not (equal? flat-sym (get-max-contract-kind sc)))
             (raise-user-error 'type->static-contract/transient "proposition contract generation not supported for non-flat types")]
            [else (is-flat-type/sc (obj->sc o) sc)])]
-        [(NotTypeProp: o (app t->sc sc))
+        [(NotTypeProp: o t)
+         (define sc (t->sc t bound-all-vars))
          (cond
            [(not (equal? flat-sym (get-max-contract-kind sc)))
             (raise-user-error 'type->static-contract/transient "proposition contract generation not supported for non-flat types")]
@@ -790,7 +792,7 @@
      ;; Ordinary type applications or struct type names, just resolve
      [(or (App: _ _)
           (Name/struct:))
-      (t->sc (resolve-once type))]
+      (t->sc (resolve-once type) bound-all-vars)]
      [(Univ:) any/sc]
      [(Bottom:) (transient-or/sc)]
      ;; This comes before Base-ctc to use the Value-style logic
@@ -809,29 +811,36 @@
         (raise-arguments-error 'type->static-contract/transient "unexpected Val-able value" "value" v "original type" type)])]
      [(Base-name/contract: sym ctc) (flat/sc ctc)]
      [(Distinction: _ _ t) ; from define-new-subtype
-      (t->sc t)]
+      (t->sc t bound-all-vars)]
      [(Refinement: par p?)
-      (transient-and/sc (t->sc par) (flat/sc p?))]
+      (transient-and/sc (t->sc par bound-all-vars) (flat/sc p?))]
      [(BaseUnion: bbits nbits)
       (define numeric (make-BaseUnion #b0 nbits))
-      (define other-scs (map t->sc (bbits->base-types bbits)))
+      (define other-scs
+        (for/list ((base-t (in-list (bbits->base-types bbits))))
+          (t->sc base-t bound-all-vars)))
       (define numeric-sc (numeric-type->static-contract numeric))
       (if numeric-sc
           (apply transient-or/sc numeric-sc other-scs)
-          (apply transient-or/sc (append other-scs (map t->sc (nbits->base-types nbits)))))]
+          (apply transient-or/sc (append other-scs
+                                         (for/list ((base-t (in-list (nbits->base-types nbits))))
+                                            (t->sc base-t bound-all-vars)))))]
      [(? Union? t)
       (match (normalize-type t)
         [(Union-all-flat: elems)
-         (let* ([sc* (map t->sc elems)]
+         (let* ([sc* (for/list ((e (in-list elems)))
+                       (t->sc e bound-all-vars))]
                 [sc* (remove-duplicates sc*)]
                 [sc* (remove-overlap sc*
                        (list
                          (cons vector?/sc (list mutable-vector?/sc immutable-vector?/sc))
                          (cons hash?/sc (list mutable-hash?/sc weak-hash?/sc immutable-hash?/sc))))])
            (apply transient-or/sc sc*))]
-        [t (t->sc t)])]
+        [t (t->sc t bound-all-vars)])]
      [(Intersection: ts raw-prop)
-      (define scs (map t->sc ts))
+      (define scs
+        (for/list ((t (in-list ts)))
+          (t->sc t bound-all-vars)))
       (define prop/sc
         (cond
           [(TrueProp? raw-prop) #f]
@@ -897,7 +906,9 @@
           (Prompt-TagTop:))
       prompt-tag?/sc]
      [(F: v)
-      any/sc]
+      (if (member v bound-all-vars)
+        none/sc
+        any/sc)]
      [(or (MPair: _ _)
           (MPairTop:))
       mpair?/sc]
@@ -906,18 +917,14 @@
       thread-cell?/sc]
      [(ClassTop:) class?/sc]
      [(UnitTop:) unit?/sc]
-     [(or (Poly: _ b)
-          (PolyDots: _ b)
-          (PolyRow: _ _ b))
-      (let ((sc (t->sc b)))
-        (when (eq? sc any/sc)
-          ;; 2020-08-02 : can remove this check if `inst` can be an elimination form
-          (raise-arguments-error 'type->static-contract/transient "cannot generate contract for polymorphic type" "type" type))
-        sc)]
+     [(or (Poly: vs b)
+          (PolyDots: (list vs ... _) b)
+          (PolyRow: vs _ b))
+      (t->sc b (append bound-all-vars vs))]
      [(Mu: n b)
-      (t->sc b)]
+      (t->sc b bound-all-vars)]
      [(Instance: (? Name? t))
-      (t->sc (make-Instance (resolve-once t)))]
+      (t->sc (make-Instance (resolve-once t)) bound-all-vars)]
      [(Instance: (Class: _ _ fields methods _ _))
       (make-object-shape/sc (map car fields) (map car methods))]
      [(Class: row-var inits fields publics augments _)
@@ -930,10 +937,10 @@
      [(StructTypeTop:)
       struct-type?/sc]
      [(StructType: s)
-      (t->sc s)]
+      (t->sc s bound-all-vars)]
      [(Struct-Property: s)
       ;; TODO test by accessing the property ... use a default one
-      (t->sc s)]
+      (t->sc s bound-all-vars)]
      [(or (Prefab: key _)
           (PrefabTop: key))
       ;; TODO test

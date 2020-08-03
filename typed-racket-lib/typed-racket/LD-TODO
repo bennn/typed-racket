@@ -541,10 +541,14 @@
       yes, it's a problem
        either `inst` must check,
        or no contract
-
-- [ ] (All (A) (Union String A)) unsound ... gotta
+- [X] (All (A) (Union String A)) unsound ... gotta
   - could track NAME going down and use none/c
   - or, look for (or/sc any/sc) after??? NO fails for (U String Any)
+  - tests = transient/error/poly-non-function-?.rkt
+
+- [ ] OT predicates can break everything (values : (All (T) (-> Any Any : T)))
+  kills all optimizations and soundness, remove!
+  - tests = transient/error/????
 
 - [ ] #lang typed/racket/transient
   - [ ] module+ unsoundness
