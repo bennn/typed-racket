@@ -338,7 +338,7 @@
     [(guarded)
      (type->static-contract/guarded type init-fail #:typed-side typed-side)]
     [(transient)
-     (type->static-contract/transient type)]
+     (type->static-contract/transient type #:typed-side typed-side)]
     [else
      any/sc]))
 
@@ -758,8 +758,7 @@
         (fail #:reason "contract generation not supported for this type")]))))
 
 ;; TODO full tests
-(define (type->static-contract/transient type)
-  (define typed-side 'both)
+(define (type->static-contract/transient type #:typed-side [typed-side? #t])
   (let t->sc ([type type]
               [bound-all-vars '()])
     (define (prop->sc p)
@@ -852,10 +851,12 @@
      [(Fun: arrows)
       (if (null? arrows)
         procedure?/sc
-        (apply transient-and/sc (map arrow->sc/transient arrows)))]
+        (apply transient-and/sc
+               (for/list ((arr (in-list arrows)))
+                 (arrow->sc/transient arr typed-side?))))]
      [(DepFun: raw-dom _ rng)
       (define num-mand-args (length raw-dom))
-      (if (arrow-rng-has-prop? rng)
+      (if (and (not typed-side?) (arrow-rng-has-prop? rng))
         none/sc
         (make-procedure-arity-flat/sc num-mand-args '() '()))]
      [(Set: _) set?/sc]
@@ -1014,10 +1015,10 @@
 
 (define arrow->sc/transient
   (let ((conv (match-lambda [(Keyword: kw _ _) kw])))
-    (lambda (orig-ty)
+    (lambda (orig-ty typed-side?)
       (match orig-ty
         [(Arrow: _ _ _ rng)
-         #:when (arrow-rng-has-prop? rng)
+         #:when (and (not typed-side?) (arrow-rng-has-prop? rng))
          none/sc]
         [(Arrow: _ (RestDots: _ _) _ _)
          procedure?/sc]
