@@ -549,6 +549,26 @@
   kills all optimizations and soundness, remove!
   - tests = transient/error/occurrence-type.rkt
   - replaced with none/sc
+- [X] organize benchmarks for eval.
+  - [X] jpeg typed/untyped-id issue, (not sure what ID)
+    have a simple fix via vector-map,
+    need to check perf. but anyway
+    guarded code gets precise type, but transient gets supertype to match
+     the handcrafted untyped contract ... don't see a work-around so recommend
+     changing the gtp-benchmark
+  - [X] lnm typed/untyped-id ... deferred
+- [X] no more contracts in transient,
+  - [X] replace or/sc
+  - [X] remove racket/contract/base import?
+    No, need define-module-boundary-contract
+  - [-] remove contracts from numeric-contracts submod
+    Done, but can we make it prettier?
+  - [X] simplify numeric-predicates, nonnegative? don't check real?
+- [X] optimize transient-or/c and/c if 1 contract?
+- [X] acquire 00100* fail, because need contracts for arrows with props!
+  lets distinguish typed-side ... if at boundary and value coming in,
+  can't assign ... should allow 00100*
+   and rule out untyped things with props
 
 - [ ] #lang typed/racket/transient
   - [ ] module+ unsoundness
@@ -579,26 +599,20 @@
       change the test language to accept multiple error outputs,
       use port tricks to choose guarded vs transient
 
-- [ ] organize benchmarks for eval.
-  - [X] jpeg typed/untyped-id issue, (not sure what ID)
-    have a simple fix via vector-map,
-    need to check perf. but anyway
-    guarded code gets precise type, but transient gets supertype to match
-     the handcrafted untyped contract ... don't see a work-around so recommend
-     changing the gtp-benchmark
-  - [ ] lnm typed/untyped-id issue
-    plot-pict in transient code cannot find a type
-    ... can we fix by registering a type somewhere?
-    NO this needs work
-    -> "use type and untyped-id" does not work, the untyped id may not be
-       safe / contract-protected, and even so the type might not describe
-       the contract --- anything goes in a typed/untyped-id
-    -> really need an optional 3rd arg for transient-id, up to user to put
-       something sensible as default ... require/typed is a good default
-       for the client, but how can we pick that default earlier with no place
-       to put the generated contract?
-    -> and THEN need typed-renaming struct to take optional 3rd arg, and
-       then need to reinterpret the first two fields (guarded untyped transient) ???
+
+- [-] lnm typed/untyped-id issue
+  plot-pict in transient code cannot find a type
+  ... can we fix by registering a type somewhere?
+  NO this needs work
+  -> "use type and untyped-id" does not work, the untyped id may not be
+     safe / contract-protected, and even so the type might not describe
+     the contract --- anything goes in a typed/untyped-id
+  -> really need an optional 3rd arg for transient-id, up to user to put
+     something sensible as default ... require/typed is a good default
+     for the client, but how can we pick that default earlier with no place
+     to put the generated contract?
+  -> and THEN need typed-renaming struct to take optional 3rd arg, and
+     then need to reinterpret the first two fields (guarded untyped transient) ???
 
 - [ ] runtime surprises
   - [ ] fsm 0000 way slow, 400 vs 4000
@@ -615,13 +629,6 @@
 
 ## reduce checks
 
-- [ ] no more contracts in transient,
-  - [X] replace or/sc
-  - [X] remove racket/contract/base import?
-    No, need define-module-boundary-contract
-  - [ ] remove contracts from numeric-contracts submod
-    Done, but can we make it prettier?
-  - [ ] simplify numeric-predicates, nonnegative? don't check real?
 
 - [ ] enable typed-id? check, safely
    well ok, not so hard,
