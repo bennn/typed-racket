@@ -569,6 +569,16 @@
   lets distinguish typed-side ... if at boundary and value coming in,
   can't assign ... should allow 00100*
    and rule out untyped things with props
+- [X] runtime surprises
+  - [X] fsm 0000 way slow, 400 vs 4000
+    cannot reproduce locally, must be something wrong with NSA code
+    was BC vs CS
+  - [X] snake 20x ?!
+    0*11 0*1011 10001* 10101* 11101*
+    seems LEGIT locally, can improve?
+    . yes, Sam TH had good suggestions
+- [X] TODO TODO TODO
+      case-> is an AND and that works right????
 
 - [ ] #lang typed/racket/transient
   - [ ] module+ unsoundness
@@ -599,7 +609,6 @@
       change the test language to accept multiple error outputs,
       use port tricks to choose guarded vs transient
 
-
 - [-] lnm typed/untyped-id issue
   plot-pict in transient code cannot find a type
   ... can we fix by registering a type somewhere?
@@ -614,21 +623,10 @@
   -> and THEN need typed-renaming struct to take optional 3rd arg, and
      then need to reinterpret the first two fields (guarded untyped transient) ???
 
-- [ ] runtime surprises
-  - [ ] fsm 0000 way slow, 400 vs 4000
-    cannot reproduce locally, must be something wrong with NSA code
-  - [ ] snake 20x ?!
-    0*11 0*1011 10001* 10101* 11101*
-    seems LEGIT locally, can improve?
-
 - [ ] defender, need "ignored" cases?
-
-- [ ] TODO TODO TODO
-      case-> is an AND and that works right????
 
 
 ## reduce checks
-
 
 - [ ] enable typed-id? check, safely
    well ok, not so hard,
