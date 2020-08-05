@@ -801,7 +801,7 @@
        [(void? v)
         (flat/sc #'void?)]
        [(or (symbol? v) (boolean? v) (keyword? v) (null? v) (eq? unsafe-undefined v))
-        (flat/sc #`(lambda (x) (eq? x '#,v)))]
+        (flat/sc #`(lambda (x) (void) (eq? x '#,v)))]
        [(or (number? v) (regexp? v) (byte-regexp? v) (string? v) (bytes? v) (char? v))
         (flat/sc #`(lambda (x) (equal? x '#,v)))]
        [else
