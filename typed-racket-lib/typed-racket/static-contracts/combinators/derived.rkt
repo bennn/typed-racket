@@ -20,7 +20,7 @@
 
 (define mpair?/sc (flat/sc #'mpair?))
 
-(define set?/sc (flat/sc #'set?))
+(define set?/sc (flat/sc #'(lambda (x) (or (set? x) (set-mutable? x) (set-weak? x)))))
 (define empty-set/sc (and/sc set?/sc (flat/sc #'set-empty?)))
 
 (define vector?/sc (flat/sc #'vector?))
