@@ -150,6 +150,7 @@
       that's not too far off from ICFP after all ... 10s slower
       2020-03-03 down to 30s
       2020-07-21 back 50s ... because of typed-id
+      2020-08-08 down to 3s, problem was both/ files, gotta be #:transient not #:guarded
 - [X] TR master, need pattern-match to create list/sc
   2020-03-03 looks like its never created, gee!
   if we had this on master, LD can use to check list? and
@@ -218,7 +219,7 @@
 - [X] revert static-contracts/combinators/structural.rkt
 - [X] need static-contracts/utils.rkt ???
   no, removed
-- [X] with-type error, generate-contract-def: current untyped context
+- [X] with-type, error, generate-contract-def: current untyped context
   moved `typed-context?` box reset a little later, no problem!
   so maybe, can use that box for the TE strategy
 - [X] investigate contract generation, where do names go what gets reused?
@@ -577,8 +578,7 @@
     0*11 0*1011 10001* 10101* 11101*
     seems LEGIT locally, can improve?
     . yes, Sam TH had good suggestions
-- [X] TODO TODO TODO
-      case-> is an AND and that works right????
+- [X] case-> is an AND and that works right???? yes
 
 - [ ] #lang typed/racket/transient
   - [ ] module+ unsoundness
