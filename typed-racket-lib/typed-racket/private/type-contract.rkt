@@ -297,7 +297,7 @@
    [else (raise-argument-error 'flip-side typed-side?-str side)]))
 
 ;; type->contract : Type Procedure
-;;                  #:typed-side Boolean #:kind Symbol #:cache Hash
+;;                  #:typed-side (U Void Boolean) #:kind Symbol #:cache Hash
 ;;                  -> (U Any (List (Listof Syntax) Syntax))
 (define (type->contract ty init-fail
                         #:typed-side [typed-side #t]
@@ -313,8 +313,8 @@
     (define kind (if (eq? guarded te-mode) pre-kind 'flat))
     (instantiate/optimize sc fail kind
       #:cache cache
-      #:trusted-positive typed-side
-      #:trusted-negative (not typed-side))))
+      #:trusted-positive (if (void? typed-side) #f typed-side)
+      #:trusted-negative (if (void? typed-side) #f (not typed-side)))))
 
 (define any-wrap/sc (chaperone/sc #'any-wrap/c))
 

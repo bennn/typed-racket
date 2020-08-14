@@ -580,6 +580,11 @@
     . yes, Sam TH had good suggestions
 - [X] case-> is an AND and that works right???? yes
 
+- [ ] go benchmark, unsound,
+  somehow ZERO transient checks in the body, what the heck,
+  (fix now, or after dissertation in shape? ... can collect data again later)
+- [ ] set? check wrong, need set-mutable? and set-weak? too
+
 - [ ] #lang typed/racket/transient
   - [ ] module+ unsoundness
     tried to add a syntax-time variable to the local env
