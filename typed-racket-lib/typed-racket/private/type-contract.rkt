@@ -297,7 +297,7 @@
    [else (raise-argument-error 'flip-side typed-side?-str side)]))
 
 ;; type->contract : Type Procedure
-;;                  #:typed-side (U Void Boolean) #:kind Symbol #:cache Hash
+;;                  #:typed-side (U 'both Boolean) #:kind Symbol #:cache Hash
 ;;                  -> (U Any (List (Listof Syntax) Syntax))
 (define (type->contract ty init-fail
                         #:typed-side [typed-side #t]
@@ -311,10 +311,14 @@
                              #:typed-side typed-side
                              #:enforcement-mode te-mode))
     (define kind (if (eq? guarded te-mode) pre-kind 'flat))
+    (define-values [trust-pos? trust-neg?]
+      (if (eq? typed-side 'both)
+        (values #f #f)
+        (values typed-side (not typed-side))))
     (instantiate/optimize sc fail kind
       #:cache cache
-      #:trusted-positive (if (void? typed-side) #f typed-side)
-      #:trusted-negative (if (void? typed-side) #f (not typed-side)))))
+      #:trusted-positive trust-pos?
+      #:trusted-negative trust-neg?)))
 
 (define any-wrap/sc (chaperone/sc #'any-wrap/c))
 
@@ -784,8 +788,15 @@
          (or-prop/sc (map prop->sc ps))]))
     (match type
      ;; Implicit recursive aliases
-     [(Name: name-id args #f)
-      any/sc]
+     [(Name: _name-id _args #f)
+      (cond [(lookup-name-sc type 'both) ]
+            [else
+             (define resolved-name (resolve-once type))
+             (register-name-sc type
+                               (λ () (t->sc resolved-name bound-all-vars))
+                               (λ () (t->sc resolved-name bound-all-vars))
+                               (λ () (t->sc resolved-name bound-all-vars)))
+             (lookup-name-sc type 'both)])]
      ;; Ordinary type applications or struct type names, just resolve
      [(or (App: _ _)
           (Name/struct:))
@@ -925,7 +936,15 @@
      [(Mu: n b)
       (t->sc b bound-all-vars)]
      [(Instance: (? Name? t))
-      (t->sc (make-Instance (resolve-once t)) bound-all-vars)]
+      #:when (Class? (resolve-once t))
+      (cond [(lookup-name-sc type 'both)]
+            [else
+             (define resolved (make-Instance (resolve-once t)))
+             (register-name-sc type
+                               (λ () (t->sc resolved bound-all-vars))
+                               (λ () (t->sc resolved bound-all-vars))
+                               (λ () (t->sc resolved bound-all-vars)))
+             (lookup-name-sc type 'both)])]
      [(Instance: (Class: _ _ fields methods _ _))
       (make-object-shape/sc (map car fields) (map car methods))]
      [(Class: row-var inits fields publics augments _)
