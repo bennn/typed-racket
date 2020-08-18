@@ -1,6 +1,6 @@
 #lang typed/racket/base #:transient
 
-;; Expected: contract generation error
+;; Expected: transient-assert error
 ;;
 ;; To remove the error, we need to treat `inst` as an elimination form
 ;; when the poly type does not guarantee some kind of shape.
