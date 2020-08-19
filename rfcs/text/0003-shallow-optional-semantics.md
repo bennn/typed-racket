@@ -44,8 +44,8 @@ The Optional idea is simple: use the TR type checker at compile-time and normal
 `#lang racket` behavior at run-time.
 
 Optional is here, rather than a separate RFC, to test that PR #948 has a
-flexible way to pick different meannings for types. I'm hoping code that works
-for 3 ideas will be able to handle other ideas if needed.
+flexible way to pick different meanings for types. I'm hoping code that works
+for 3 ideas will be able to handle others if needed.
 
 
 # Motivation
