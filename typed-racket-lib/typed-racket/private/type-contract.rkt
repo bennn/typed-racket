@@ -131,6 +131,7 @@
                     #:typed-side #t
                     #:kind 'impersonator
                     #:cache cache
+                    #:enforcement-mode 'guarded
                     ;; FIXME: get rid of this interface, make it functional
                     (λ (#:reason [reason #f]) (set! failure-reason reason))))
   (syntax-parse stx
@@ -195,8 +196,21 @@
          racket/sequence
          racket/contract/parametric))
     ((transient)
+     ;; need all the guarded requires, unfortunately, to make boundary contracts that protect guarded
      #'(require
-         (only-in racket/contract/base define-module-boundary-contract)
+         typed-racket/utils/utils
+         (for-syntax typed-racket/utils/utils)
+         typed-racket/utils/any-wrap typed-racket/utils/struct-type-c
+         typed-racket/utils/prefab-c
+         typed-racket/utils/opaque-object
+         typed-racket/utils/evt-contract
+         typed-racket/utils/hash-contract
+         typed-racket/utils/vector-contract
+         typed-racket/utils/sealing-contract
+         typed-racket/utils/promise-not-name-contract
+         typed-racket/utils/simple-result-arrow
+         racket/sequence
+         racket/contract/parametric
          typed-racket/utils/transient-contract))
     (else
      #'(begin))))

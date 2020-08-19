@@ -39,12 +39,17 @@
          (tc-module/full te-mode stx pmb-form
           (λ (new-mod pre-before-code pre-after-code)
             (define ctc-cache (make-hash))
+            (define shape-cache (make-hash))
             (define (change-contract-fixups/cache forms)
-              (change-contract-fixups forms ctc-cache))
+              (define the-cache
+                (if (eq? 'guarded (current-type-enforcement-mode))
+                  ctc-cache
+                  shape-cache))
+              (change-contract-fixups forms the-cache))
             (define (change-provide-fixups/cache forms)
               (change-provide-fixups forms ctc-cache))
             (define (defend/cache body-stx)
-              (define-values [extra-def* body+] (maybe-defend body-stx ctc-cache))
+              (define-values [extra-def* body+] (maybe-defend body-stx shape-cache))
               (when extra-def*
                 (set-box! include-extra-requires? #t))
               (cons (or extra-def* '()) body+))

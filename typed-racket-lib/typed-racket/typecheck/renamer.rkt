@@ -25,9 +25,30 @@
   ;; expansion time when the typed context flag is set correctly
   #:property prop:rename-transformer
   (λ (obj)
-    (if (eq? (current-type-enforcement-mode) (typed-renaming-enforcement-mode obj))
-        (typed-renaming-target obj)
-        (typed-renaming-alternate obj))))
+    (define te-mode (current-type-enforcement-mode))
+    (case (typed-renaming-enforcement-mode obj)
+      ((guarded)
+       (case te-mode
+         ((guarded)
+          (typed-renaming-target obj))
+         (else
+          (typed-renaming-alternate obj))))
+      ((transient)
+       (case te-mode
+         ((guarded)
+          (typed-renaming-alternate obj))
+         (else
+          (typed-renaming-target obj))))
+      ((erasure)
+       (case te-mode
+         ((guarded)
+          (typed-renaming-alternate obj))
+         ((transient)
+          (raise-arguments-error 'typed-renaming "cannot protect transient from erasure" "id" obj))
+         (else
+          (typed-renaming-target obj))))
+      (else
+        (raise-argument-error 'typed-renaming "type-enforcement-mode?" (typed-renaming-enforcement-mode obj))))))
 
 ;; Undo renaming for type lookup.
 ;; Used because of macros that mark the identifier used as the binding such as
