@@ -27,3 +27,6 @@
   (cddr x4) ;; no transient-assert
   (cdddr x4) ;; no transient-assert
   (cddddr x4)) ;; no transient-assert
+
+(let ((x5 : (Pairof Symbol Null) '(a . ())))
+  (cdr x5)) ;; no transient-assert

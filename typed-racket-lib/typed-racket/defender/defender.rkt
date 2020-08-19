@@ -32,6 +32,7 @@
   (only-in typed-racket/types/abbrev
     -Bottom
     -Void
+    -Null
     -String
     -Symbol
     -True
@@ -732,7 +733,7 @@
            (or (zero? d)
                (loop t-cdr (- d 1)))]
           [_
-           (zero? d)]))))
+           (and (zero? d) (eq? t -Null))]))))
 
 (define (module-path-index-join* . x*)
   (let loop ((x* x*))
