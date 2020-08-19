@@ -579,11 +579,17 @@
     seems LEGIT locally, can improve?
     . yes, Sam TH had good suggestions
 - [X] case-> is an AND and that works right???? yes
-
-- [ ] go benchmark, unsound,
+- [X] fsmoo 0010 1111 etc errors
+  gtp-measure: transient-assert: value does not match static type
+  value: #0=#0# type: (U False Nonnegative-Real) src: '(#f #f #f #f #f)
+  - cannot reproduce locally
+  - fixed by pulling on NSA, yikes
+- [X] go benchmark, unsound,
   somehow ZERO transient checks in the body, what the heck,
   (fix now, or after dissertation in shape? ... can collect data again later)
-- [ ] set? check wrong, need set-mutable? and set-weak? too
+- [X] set? check wrong, need set-mutable? and set-weak? too
+
+- [ ] deep needs contracts against shallow!!!
 
 - [ ] #lang typed/racket/transient
   - [ ] module+ unsoundness

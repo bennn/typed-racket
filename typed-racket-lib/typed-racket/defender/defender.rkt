@@ -280,7 +280,10 @@
                                     [(let-values (((arg-id) (~and if-expr (if test default-expr arg)))) f-rest)
                                      ;; optional, default expression may need defense
                                      (define arg-ty (tc-results->type1 (type-of #'if-expr)))
-                                     (define-values [ex* arg+] (protect-domain arg-ty #'arg (build-source-location-list f-body) ctc-cache))
+                                     (define-values [ex* arg+]
+                                       (if skip-dom?
+                                         (values '() #f)
+                                         (protect-domain arg-ty #'arg (build-source-location-list f-body) ctc-cache)))
                                      (void (register-extra-defs! ex*))
                                      (quasisyntax/loc f-body
                                        (let-values (((arg-id)
@@ -295,7 +298,10 @@
                                     [(let-values (((arg-id) arg-val)) f-rest)
                                      ;; normal arg
                                      (define arg-ty (tc-results->type1 (type-of #'arg-val)))
-                                     (define-values [ex* arg-val+] (protect-domain arg-ty #'arg-val (build-source-location-list f-body) ctc-cache))
+                                     (define-values [ex* arg-val+]
+                                       (if skip-dom?
+                                         (values '() #f)
+                                         (protect-domain arg-ty #'arg-val (build-source-location-list f-body) ctc-cache)))
                                      (void (register-extra-defs! ex*))
                                      (quasisyntax/loc f-body
                                        (let-values (((arg-id)
@@ -348,7 +354,10 @@
                                                       (for/fold ((acc '()))
                                                                 ((dom (in-list dom*)))
                                                         (if (pair? dom) (cons (car dom) acc) acc))))]
-                                            [(ex* fst+) (protect-domain fst-ty fst (build-source-location-list fst) ctc-cache)])
+                                            [(ex* fst+)
+                                             (if skip-dom?
+                                               (values '() #f)
+                                               (protect-domain fst-ty fst (build-source-location-list fst) ctc-cache))])
                                 (void (register-extra-defs! ex*))
                                 (if fst+ (cons fst+ check*) check*))))])
                    (if (null? check-formal*)
@@ -409,7 +418,10 @@
                                                                    (for/fold ((acc '()))
                                                                              ((dom (in-list dom*)))
                                                                      (if (pair? dom) (cons (car dom) acc) acc))))]
-                                                         [(ex* fst+) (protect-domain fst-ty fst (build-source-location-list fst) ctc-cache)])
+                                                         [(ex* fst+)
+                                                          (if skip-dom?
+                                                            (values '() #f)
+                                                            (protect-domain fst-ty fst (build-source-location-list fst) ctc-cache))])
                                              (void (register-extra-defs! ex*))
                                              (if fst+ (cons fst+ check*) check*))))])
                                (if (null? check-formal*)
@@ -720,7 +732,7 @@
            (or (zero? d)
                (loop t-cdr (- d 1)))]
           [_
-           #false]))))
+           (zero? d)]))))
 
 (define (module-path-index-join* . x*)
   (let loop ((x* x*))

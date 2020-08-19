@@ -2,8 +2,8 @@
 
 ;; Struct predicates don't need a typecheck
 ;;
-;; Expand this file,
-;;  make sure there is ONE raise-transient-error for `a?`
+;; Expand this file, jump to the bottom,
+;;  look for ONE transient-assert around `a?`
 
 (module a racket/base
   (provide (struct-out a))
