@@ -593,6 +593,16 @@
   test = transient/pass/lambda-allvar.rkt
   - allow "contains free variables" in prims-contract.rkt?
 
+- [ ] determinance, ..../pass/qmap.rkt
+      parse error defending a pcase-lambda?
+
+- [ ] 'check-syntax-binding ... introduced bug in optimizer?
+  transient/pass/mandlebrot.rkt
+
+- [ ] is require/untyped contract correct for transient? puts right ids in right place?
+  (jpeg transient-lib deep-client fails)
+  (... but rewrites can fix, extra functions that remove the union)
+
 - [ ] #lang typed/racket/transient
   - [ ] module+ unsoundness
     tried to add a syntax-time variable to the local env
