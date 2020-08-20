@@ -776,8 +776,8 @@
         (fail #:reason "contract generation not supported for this type")]))))
 
 ;; TODO full tests
-(define (type->static-contract/transient type #:typed-side [typed-side? #t])
-  (let t->sc ([type type]
+(define (type->static-contract/transient orig-type #:typed-side [typed-side? #t])
+  (let t->sc ([type orig-type]
               [bound-all-vars '()])
     (define (prop->sc p)
       ;;bg copied from above, but uses different t->sc
@@ -1007,7 +1007,7 @@
      [(Future: _)
       future?/sc]
      [_
-      (raise-arguments-error 'type->static-contract/transient "contract generation not supported for this type" "type" type)])))
+      (raise-arguments-error 'type->static-contract/transient "contract generation not supported for this type" "type" type "original" orig-type)])))
 
 (define (remove-overlap sc* pattern*)
   (for/fold ((acc sc*))

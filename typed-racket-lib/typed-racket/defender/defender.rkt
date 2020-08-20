@@ -349,12 +349,10 @@
                                                      (if (pair? dom) (cons (cdr dom) acc) acc))))
                                                (protect-loop rst dom+))]
                                             [(fst-ty)
-                                             (if (type-annotation fst)
-                                               (get-type fst #:default Univ)
-                                               (apply Un
-                                                      (for/fold ((acc '()))
-                                                                ((dom (in-list dom*)))
-                                                        (if (pair? dom) (cons (car dom) acc) acc))))]
+                                             (let ((ann-ty (and (type-annotation fst) (get-type fst #:default Univ))))
+                                               (if (and ann-ty (not (Error? ann-ty)))
+                                                 ann-ty
+                                                 (apply Un (for/list ((dom (in-list dom*)) #:when (pair? dom)) (car dom)))))]
                                             [(ex* fst+)
                                              (if skip-dom?
                                                (values '() #f)

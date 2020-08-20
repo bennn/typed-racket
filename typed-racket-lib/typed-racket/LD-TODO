@@ -588,8 +588,10 @@
   somehow ZERO transient checks in the body, what the heck,
   (fix now, or after dissertation in shape? ... can collect data again later)
 - [X] set? check wrong, need set-mutable? and set-weak? too
-
-- [ ] deep needs contracts against shallow!!!
+- [X] deep needs contracts against shallow!!!
+- [X] ((lambda ((x : A)) ....) y) finds 'Error' type
+  test = transient/pass/lambda-allvar.rkt
+  - allow "contains free variables" in prims-contract.rkt?
 
 - [ ] #lang typed/racket/transient
   - [ ] module+ unsoundness
