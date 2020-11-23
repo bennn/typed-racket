@@ -72,6 +72,7 @@
       (raise-transient-error val ty-datum ctx from))))
 
 (define (raise-transient-error val ty-datum ctx from)
+  (log-transient-info "blame tracing ~a ~a~n" from (blame-compress-key* (car from)))
   (define boundary*
     (if (pre-boundary? from)
       (list (pre-boundary->boundary ty-datum from))
