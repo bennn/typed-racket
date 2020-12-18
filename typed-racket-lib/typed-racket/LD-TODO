@@ -523,6 +523,10 @@
 
 ## unsorted
 
+- [ ] add #:row function in typed code, test see Asumu message from Nov 17
+- [ ] blame: store type off the side, keep ids in the blame map and
+      id -> type map off the side
+
 - [ ] quadT 01001101010011 #hash() higher-order value passed as Any, yikes
   - my PR for HashTableTop caused this 
     its a Typed / Untyped issue, nothing doing for transient
