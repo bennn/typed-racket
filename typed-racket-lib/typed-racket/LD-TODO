@@ -593,11 +593,31 @@
   test = transient/pass/lambda-allvar.rkt
   - allow "contains free variables" in prims-contract.rkt?
 
+- [ ] 2020-12-24 (1) test lang (2) pull rebase (3) all these bugs
+
 - [ ] determinance, ..../pass/qmap.rkt
       parse error defending a pcase-lambda?
 
 - [ ] 'check-syntax-binding ... introduced bug in optimizer?
   transient/pass/mandlebrot.rkt
+
+- [ ] why no transient check failure from parametr?
+      #lang typed/racket #:transient
+      (module p racket/base
+        (define world:paper-height (make-parameter 792.0+0.0i))
+        (provide world:paper-height))
+      (require/typed 'p (world:paper-height (Parameterof Float)))
+      (require (only-in typed/racket/draw pdf-dc%))
+      (define dc-output-port (open-output-bytes))
+      (define dc
+        (new pdf-dc%
+             [interactive #f][use-paper-bbox #f][as-eps #f]
+             [output dc-output-port]
+             [width 792.0]
+             [height (world:paper-height)]))
+
+
+- [ ] mark shape checks somehow ... any tiny thing for future later passes to pick up
 
 - [ ] is require/untyped contract correct for transient? puts right ids in right place?
   (jpeg transient-lib deep-client fails)
