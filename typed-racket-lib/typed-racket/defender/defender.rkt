@@ -409,7 +409,7 @@
              stx))]
         ;; -- ignore -----------------------------------------------------------
         [_
-         #:when (or (is-ignored? stx) ;; lookup in type-table's "ignored table"
+         #:when (or #;(is-ignored? stx) ;; lookup in type-table's "ignored table"
                     (has-contract-def-property? stx))
          ;; TODO investigate ... contract-def should never be here right?
          stx]
