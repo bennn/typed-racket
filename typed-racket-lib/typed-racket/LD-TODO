@@ -667,7 +667,7 @@
      then need to reinterpret the first two fields (guarded untyped transient) ???
 
 - [ ] defender, need "ignored" cases?
-
+  - [ ] kill them, prevents (new c% [x (car ints)]) from checking the car
 
 ## reduce checks
 
