@@ -240,7 +240,7 @@
               (letrec-values (((outer-class-name)
                (#%plain-app compose-class name superclass interface internal ...
                 #,(readd-props
-                    #`(#%plain-lambda (local-accessor local-mutator local-method-or-field ...)
+                    (quasisyntax/loc #'make-methods-lambda (#%plain-lambda (local-accessor local-mutator local-method-or-field ...)
                         #,(let defend-method-def ([val #'make-methods-body])
                             (cond
                               [(pair? val)
@@ -402,7 +402,7 @@
                                  (readd-props
                                    (datum->syntax val (cons (defend-method-def (car v)) (defend-method-def (cdr v))))
                                    val)
-                                 val)])))
+                                 val)]))))
                     #'make-methods-lambda)
                  (quote b) (quote #f))))
               outer-class-name))
@@ -426,7 +426,7 @@
                (~literal quote-syntax)) . _)
          stx]
         [(~and (~or :opt-lambda^ :kw-lambda^)
-               (let-values (((inner-f-name) (#%plain-lambda f-args f-body))) body))
+               (let-values (((inner-f-name) (~and inner-lambda-stx (#%plain-lambda f-args f-body)))) body))
          #:with outer-f-name (gensym 'Soptkey)
          ;; opt/kw function
          (define num-args (length (syntax->list #'f-args)))
@@ -434,7 +434,7 @@
            (quasisyntax/loc stx
              (letrec-values (((outer-f-name)
                (let-values (((inner-f-name)
-                           (#%plain-lambda f-args
+                           #,(quasisyntax/loc #'inner-lambda-stx (#%plain-lambda f-args
                              #,(let dom-check-loop ([f-body #'f-body]
                                                     [arg-idx 0])
                                  (if (= arg-idx num-args)
@@ -467,7 +467,7 @@
                                          #,(dom-check-loop #'f-rest (+ arg-idx 1))))]
                                     [_
                                      (raise-syntax-error 'defend-top "strange kw/opt function body"
-                                                         stx f-body)]))))))
+                                                         stx f-body)])))))))
                  #,(register-ignored #'body))))
                outer-f-name))
              stx)]
@@ -482,7 +482,7 @@
          (readd-props
            (quasisyntax/loc stx
             (letrec-values (((f-name)
-             (#%plain-lambda formals .
+             #,(quasisyntax/loc stx (#%plain-lambda formals .
                #,(let* ([body+ (readd-props (loop #'body #f) #'body)]
                         [dom* (map Arrow-dom (syntax->arrows stx))]
                         [check-formal*
@@ -523,7 +523,7 @@
                      body+
                      (cons
                        (quasisyntax/loc #'body (#%plain-app void . #,check-formal*))
-                       body+)))))) f-name))
+                       body+))))))) f-name))
            stx)]
         [(case-lambda [formals* . body*] ...)
          ;; case-lambda, similar to lambda
@@ -533,7 +533,7 @@
          (readd-props
            (quasisyntax/loc stx
             (letrec-values (((f-name)
-             (case-lambda .
+             #,(quasisyntax/loc stx (case-lambda .
                  #,(for/list ([formals (in-list (syntax-e #'(formals* ...)))]
                               [body (in-list (syntax-e #'(body* ...)))])
                      (cond
@@ -588,7 +588,7 @@
                                  body+
                                  (cons
                                    (quasisyntax/loc body (#%plain-app void . #,check-formal*))
-                                   body+)))])]))))) f-name))
+                                   body+)))])])))))) f-name))
            stx)]
         [(#%plain-app (letrec-values (((a:id) e0)) b:id) e1* ...)
          #:when (free-identifier=? #'a #'b)
