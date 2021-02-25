@@ -120,7 +120,7 @@
       ;; get all types at the `arg-idx` position
       ;; (Fun with optional args have multiple arrows)
       (define num-mand-args
-        (apply min (map (compose1 length Arrow-dom) arrow*)))
+        (if (null? arrow*) 0 (apply min (map (compose1 length Arrow-dom) arrow*))))
       (define ty%idx*
         (filter values
           (for/list ((arr (in-list arrow*)))
