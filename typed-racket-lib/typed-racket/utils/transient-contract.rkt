@@ -105,7 +105,7 @@
 
 (define THE-BLAME-MAP (make-weak-hasheq))
 
-(define blame-compress-key eq-hash-code)
+(define blame-compress-key values)
 
 (define (blame-compress-key* x)
   (if (list? x)
@@ -143,7 +143,7 @@
   (cast-info->boundary (pre-boundary->cast-info ty-datum from)))
 
 (define (blame-map-ref v)
-  (define entry# (hash-ref THE-BLAME-MAP (blame-compress-key v) (lambda () '#hash())))
+  (define entry# (weak-box-value (hash-ref THE-BLAME-MAP (blame-compress-key v) (lambda () '#hash())) '()))
   (map car (sort (hash->list entry#) > #:key cdr)))
 
 (define (blame-map-set! val ty-datum from)
@@ -158,18 +158,20 @@
   val)
 
 (define (blame-entry*-init v)
-  (hash v 0))
+  (make-weak-box (hash v 0)))
 
-(define (blame-entry*-add h v)
-  (if (hash-has-key? h v)
-    h
-    (hash-set h v (hash-count h))))
+(define (blame-entry*-add wb v)
+  (let ((h (weak-box-value wb #hash())))
+    (make-weak-box
+      (if (hash-has-key? h v)
+        h
+        (hash-set h v (hash-count h))))))
 
 (define (print-blame-map)
   (log-transient-info "blame map")
   (for (((k v) (in-hash THE-BLAME-MAP)))
     (log-transient-info " (~s (" k)
-    (for ((vv (in-hash-keys v)))
+    (for ((vv (in-hash-keys (weak-box-value v #hash()))))
       (log-transient-info "  ~s" vv))
     (log-transient-info " )"))
   (void))
