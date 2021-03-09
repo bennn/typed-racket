@@ -103,7 +103,7 @@
 ;; -----------------------------------------------------------------------------
 ;; --- blame map
 
-(define THE-BLAME-MAP (make-hasheq))
+(define THE-BLAME-MAP (make-weak-hasheq))
 
 (define blame-compress-key eq-hash-code)
 
