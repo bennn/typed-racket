@@ -105,7 +105,7 @@
 
 (define THE-BLAME-MAP (make-weak-hasheq))
 
-(define blame-compress-key eq-hash-code)
+(define blame-compress-key values #;eq-hash-code)
 
 (define (blame-compress-key* x)
   (if (list? x)
@@ -144,11 +144,11 @@
 
 (define (blame-map-ref v)
   (define entry# (hash-ref THE-BLAME-MAP (blame-compress-key v) (lambda () '#hash())))
-  (map car (sort (hash->list entry#) > #:key cdr)))
+  (filter values (map (lambda (x) (weak-box-value (car x))) (sort (hash->list entry#) > #:key cdr))))
 
 (define (blame-map-set! val ty-datum from)
   (unless (eq? val (eq-hash-code val))
-    (define be (make-blame-entry ty-datum from))
+    (define be (make-weak-box (make-blame-entry ty-datum from)))
     (hash-update! THE-BLAME-MAP (blame-compress-key val)
                   (lambda (curr) (blame-entry*-add curr be))
                   (lambda () (blame-entry*-init be)))))
@@ -170,7 +170,7 @@
   (for (((k v) (in-hash THE-BLAME-MAP)))
     (log-transient-info " (~s (" k)
     (for ((vv (in-hash-keys v)))
-      (log-transient-info "  ~s" vv))
+      (log-transient-info "  ~s" (weak-box-value vv)))
     (log-transient-info " )"))
   (void))
 
