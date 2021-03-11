@@ -105,7 +105,7 @@
 
 (define THE-BLAME-MAP (make-weak-hasheq))
 
-(define blame-compress-key eq-hash-code)
+(define blame-compress-key values)
 
 (define (blame-compress-key* x)
   (if (list? x)
