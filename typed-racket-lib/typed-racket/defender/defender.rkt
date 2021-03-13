@@ -105,7 +105,8 @@
         [r:transient-require
          (with-syntax ([t (type->transient-sexp (parse-type #'r.type))])
            (register-ignored
-             #`(#%plain-app void (#%plain-app transient-assert r.name r.contract 't r.srcloc r.blame))))]
+             (quasisyntax/loc stx
+               (#%plain-app void (#%plain-app transient-assert r.name r.contract 't r.srcloc r.blame)))))]
         ;; unsound within exn-handlers^ ?
         [(let-values ([(meth-id) meth-e])
            (let-values ([(obj-id) rcvr-e])
@@ -433,7 +434,8 @@
          (readd-props
            (quasisyntax/loc stx
              (letrec-values (((outer-f-name)
-               (let-values (((inner-f-name)
+               #,(quasisyntax/loc stx
+                 (let-values (((inner-f-name)
                            #,(quasisyntax/loc #'inner-lambda-stx (#%plain-lambda f-args
                              #,(let dom-check-loop ([f-body #'f-body]
                                                     [arg-idx 0])
@@ -448,13 +450,13 @@
                                      (void (register-extra-defs! ex*))
                                      (quasisyntax/loc f-body
                                        (let-values (((arg-id)
-                                                     (if test
+                                                     #,(quasisyntax/loc f-body (if test
                                                        #,(syntax-parse #'test
                                                           [((~literal #%expression) ((~literal quote) #f))
                                                            #'default-expr]
                                                           [_
                                                            (readd-props (loop #'default-expr #f) #'default-expr)])
-                                                       #,(if arg+ (readd-props arg+ #'arg) #'arg))))
+                                                       #,(if arg+ (readd-props arg+ #'arg) #'arg)))))
                                          #,(dom-check-loop #'f-rest (+ arg-idx 1))))]
                                     [(let-values (((arg-id) arg-val)) f-rest)
                                      ;; normal arg
@@ -468,7 +470,7 @@
                                     [_
                                      (raise-syntax-error 'defend-top "strange kw/opt function body"
                                                          stx f-body)])))))))
-                 #,(register-ignored #'body))))
+                 #,(register-ignored #'body)))))
                outer-f-name))
              stx)]
         [((~or #%plain-lambda case-lambda) . _)
@@ -599,8 +601,8 @@
          (with-syntax ((e0+ (readd-props (loop #'e0 skip?) #'e0))
                       ((e1*+ ...) (for/list ((e1 (in-list (syntax-e #'(e1* ...)))))
                                     (readd-props (loop e1 #f) e1))))
-           (syntax/loc stx
-             (#%plain-app (letrec-values (((a) e0+)) b) e1*+ ...))) ]
+           (quasisyntax/loc stx
+             (#%plain-app #,(quasisyntax/loc stx (letrec-values (((a) #,(quasisyntax/loc stx e0+)) #,(quasisyntax/loc stx b)) #,@(quasisyntax/loc stx (e1*+ ...))))))) ]
         [(x* ...)
          #:when (is-application? stx)
          (define stx+
@@ -632,7 +634,7 @@
          (define e+ (readd-props (loop #'e #f) #'e))
          (define e++
            (with-syntax ([e+ e+])
-             (syntax/loc stx (#%expression e+))))
+             (quasisyntax/loc stx (#%expression #,(quasisyntax/loc stx e+)))))
          (readd-props e++ stx)]
         [_
          #:when (type-ascription-property stx)
