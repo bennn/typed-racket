@@ -136,15 +136,19 @@
           (resolved-module-path-name (module-path-index-resolve (module-path-index-join m mpi)))))))
   (make-boundary pos-mod (caddr blame-val) ty))
 
+(define new-timestamp
+  (let ((t (box 0)))
+    (lambda () (begin0 (unbox t) (set-box! t (add1 (unbox t)))))))
+
 (define (pre-boundary->cast-info ty-datum from)
-  (cast-info (cadr from) ty-datum (cddr from)))
+  (ts-cast-info (cadr from) ty-datum (cddr from) (new-timestamp)))
 
 (define (pre-boundary->boundary ty-datum from)
   (cast-info->boundary (pre-boundary->cast-info ty-datum from)))
 
 (define (blame-map-ref v)
   (define entry# (hash-ref THE-BLAME-MAP (blame-compress-key v) (lambda () '#hash())))
-  (map car (sort (hash->list entry#) > #:key cdr)))
+  (map car (hash->list entry#)))
 
 (define (blame-map-set! val ty-datum from)
   (unless (eq? val (eq-hash-code val))
@@ -163,7 +167,7 @@
 (define (blame-entry*-add h v)
   (if (hash-has-key? h v)
     h
-    (hash-set h v (hash-count h))))
+    (hash-set h v #true)))
 
 (define (print-blame-map)
   (log-transient-info "blame map")
@@ -176,34 +180,36 @@
 
 (define (blame-map-boundary* val init-action key*)
   #;(printf "FIND BND ~s ~s ~s~n" val init-action key*)
-  (let loop ([entry+path*
-               (apply append
-                 (for/list ((key (in-list key*)))
-                   (add-path* (blame-map-ref key) (list init-action))))])
-   (apply append
-    (for/list ((e+p (in-list entry+path*)))
-      (define e (car e+p))
-      (define curr-path (cdr e+p))
-      (cond
-        [(check-info? e)
-         (define parent (check-info-parent e))
-         (define action (blame-entry-from e))
-         (define new-path
-           (if (noop-action? action)
-             curr-path
-             (cons action curr-path)))
-         (loop (add-path* (blame-map-ref parent) new-path))]
-        [(cast-info? e)
-         (define ty (cast-info-type e))
-         (define blame-val (cast-info-blame e))
-         (if (with-handlers ((exn:fail? (lambda (ex)
-                                               (printf "transient: internal error during value/type match~n value ~s~n type ~s~n message ~s~n" val ty (exn-message ex))
-                                               #f)))
-               (value-type-match? val ty curr-path (variable-reference->module-path-index (car blame-val))))
-           '()
-           (list (cast-info->boundary e)))]
-        [else
-          (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
+  (define ts-cast*
+    (let loop ([entry+path*
+                 (apply append
+                   (for/list ((key (in-list key*)))
+                     (add-path* (blame-map-ref key) (list init-action))))])
+      (apply append
+       (for/list ((e+p (in-list entry+path*)))
+         (define e (car e+p))
+         (define curr-path (cdr e+p))
+         (cond
+           [(check-info? e)
+            (define parent (check-info-parent e))
+            (define action (blame-entry-from e))
+            (define new-path
+              (if (noop-action? action)
+                curr-path
+                (cons action curr-path)))
+            (loop (add-path* (blame-map-ref parent) new-path))]
+           [(cast-info? e)
+            (define ty (cast-info-type e))
+            (define blame-val (cast-info-blame e))
+            (if (with-handlers ((exn:fail? (lambda (ex)
+                                                  (printf "transient: internal error during value/type match~n value ~s~n type ~s~n message ~s~n" val ty (exn-message ex))
+                                                  #f)))
+                  (value-type-match? val ty curr-path (variable-reference->module-path-index (car blame-val))))
+              '()
+              (list e))]
+           [else
+             (raise-argument-error 'blame-map-boundary* "blame-entry?" e)])))))
+  (map cast-info->boundary (sort ts-cast* > #:key ts-cast-info-time)))
 
 (define (add-path* entry* path)
   (for/list ((e (in-list entry*)))

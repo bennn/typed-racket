@@ -16,6 +16,7 @@
 
   (struct-out blame-entry)
   (struct-out cast-info)
+  (struct-out ts-cast-info)
   (struct-out check-info)
 
   blame-source?
@@ -76,6 +77,10 @@
 (struct cast-info blame-entry (
   type ;; string?, expected type
   blame ;; ???
+) #:prefab)
+
+(struct ts-cast-info cast-info (
+  time ;; natural?
 ) #:prefab)
 
 (struct check-info blame-entry (
