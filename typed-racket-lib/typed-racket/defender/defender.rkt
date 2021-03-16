@@ -6,7 +6,6 @@
 ;;
 ;; TODO
 ;; - [ ] need with-new-name-tables here?
-;; - [ ] syntax-track-origin ? syntax/loc/track-origin ?
 
 (require
   (only-in racket/format ~a)
@@ -987,8 +986,9 @@
                     [lambda-id lambda-id]
                     [from-datum from-datum])
         (register-ignored
-          (syntax/loc dom-stx
-            (#%plain-app transient-assert dom-expr ctc 'ty-datum 'ctx (#%plain-app cons lambda-id 'from-datum)))))))
+          (quasisyntax/loc dom-stx
+            (#%plain-app transient-assert dom-expr ctc 'ty-datum 'ctx
+              #,(quasisyntax/loc dom-stx (#%plain-app cons lambda-id 'from-datum))))))))
   (values extra-def* dom-stx+))
 
 ;; protect-codomain : ???
@@ -1011,7 +1011,7 @@
         (quasisyntax/loc app-stx
           (let-values (((#,f-id)
                         ;; last resort: if we don't statically know who to blame, evaluate the function and bind to this id
-                        #,(if blame-id #''#f (syntax-parse app-stx #:literals (#%plain-app apply) ((#%plain-app (~optional apply) e . arg*) #'e)))))
+                        #,(if blame-id #''#f (syntax-parse app-stx #:literals (#%plain-app apply) ((#%plain-app (~optional apply) e . arg*) (syntax/loc app-stx e))))))
             #,(with-syntax ([app+
                              ;; rewrite app with blame-map updates
                              (cond
@@ -1019,35 +1019,38 @@
                                 (syntax-parse app-stx #:literals (#%plain-app let-values)
                                  [(#%plain-app t0 t1 . arg*-stx)
                                   ;; plain `send` app
-                                  #`(#%plain-app t0 t1 .
+                                  (quasisyntax/loc app-stx
+                                    (#%plain-app t0 t1 .
                                      #,(for/list ((arg (in-list (syntax->list #'arg*-stx)))
                                                   (i (in-naturals)))
                                         ;; jesus
                                         (register-ignored
                                          (quasisyntax/loc arg
                                           (#%plain-app arg-cast #,arg
-                                           (#%plain-app cons #,blame-id
-                                            (#%plain-app cons 'object-method-dom
-                                             (#%plain-app cons #,(cdr blame-sym) '#,i))))))))]
+                                           #,(quasisyntax/loc arg (#%plain-app cons #,blame-id
+                                            #,(quasisyntax/loc arg (#%plain-app cons 'object-method-dom
+                                             #,(quasisyntax/loc arg (#%plain-app cons #,(cdr blame-sym) '#,i))))))))))))]
                                  [(let-values (((obj-id) obj-e)
                                                ((meth-id) meth-e)
                                                . send-arg*-stx)
                                     body)
                                    ;; kwarg `send`
-                                   #`(let-values (((obj-id) obj-e)
-                                                  ((meth-id) meth-e)
+                                   (quasisyntax/loc app-stx
+                                     (let-values (((obj-id) #,(quasisyntax/loc app-stx obj-e))
+                                                  ((meth-id) #,(quasisyntax/loc app-stx meth-e))
                                                   .
                                                   #,(for/list ((send-arg (in-list (syntax->list #'send-arg*-stx)))
                                                                (i (in-naturals)))
                                                       (syntax-parse send-arg
                                                        [((arg-id) arg-e)
-                                                        #`((arg-id) (#%plain-app arg-cast arg-e
-                                                                       (#%plain-app cons #,blame-id
-                                                                        (#%plain-app cons 'object-method-dom
-                                                                         (#%plain-app cons #,(cdr blame-sym) '#,i)))))]
+                                                        (quasisyntax/loc send-arg
+                                                          ((arg-id) #,(quasisyntax/loc send-arg (#%plain-app arg-cast arg-e
+                                                                       #,(quasisyntax/loc send-arg (#%plain-app cons #,blame-id
+                                                                        #,(quasisyntax/loc send-arg (#%plain-app cons 'object-method-dom
+                                                                         #,(quasisyntax/loc send-arg (#%plain-app cons #,(cdr blame-sym) '#,i))))))))))]
                                                        [_
                                                          (raise-argument-error 'protect-codomain "((id) expr)" send-arg)])))
-                                      body)]
+                                      body))]
                                  [_
                                    (raise-argument-error 'protect-codomain "send application?" app-stx)])]
                                [else
@@ -1057,7 +1060,8 @@
                   (with-syntax ([v*
                                  (for/list ([_t (in-list t*)])
                                    (generate-temporary var-name))])
-                    #`(let-values ([v* app+])
+                    (quasisyntax/loc app-stx
+                      (let-values ([v* #,(quasisyntax/loc app-stx app+)])
                         (begin
                           #,@(for/list ((ctc-stx (in-list ctc-stx*))
                                         (type (in-list t*))
@@ -1069,7 +1073,7 @@
                                                [v v-stx]
                                                [ty-datum (type->transient-sexp type)]
                                                [ctx ctx])
-                                   #`(#%plain-app transient-assert v ctc 'ty-datum 'ctx
+                                   (quasisyntax/loc v-stx (#%plain-app transient-assert v ctc 'ty-datum 'ctx
                                                   (#%plain-app cons #,(or blame-id f-id)
                                                                     #,(cond
                                                                         [(eq? blame-sym 'rng)
@@ -1087,10 +1091,10 @@
                                                                          #`(#%plain-app cons '#,(car blame-sym) #,(cdr blame-sym))]
                                                                         [else
                                                                          (with-syntax ((datum blame-sym))
-                                                                           #''datum)])))))
+                                                                           #''datum)]))))))
                                (register-ignored! if-stx)
                                if-stx)
-                             (#%plain-app values . v*))))
+                             (#%plain-app values . v*)))))
                   #'app+)))))
       (void
         (add-typeof-expr new-stx cod-tc-res)
@@ -1264,52 +1268,52 @@
     ;; --- mpair
     [(#%plain-app (~and fn (~or (~literal set-mcar!)
                                 (~literal unsafe-set-mcar!))) mp-e arg-e)
-     #`(let ((mp-v mp-e))
-         (#%plain-app fn mp-v (#%plain-app arg-cast arg-e (#%plain-app cons mp-v 'mcar))))]
+     (quasisyntax/loc app-stx (let ((mp-v mp-e))
+         #,(quasisyntax/loc app-stx (#%plain-app fn mp-v (quasisyntax/loc app-stx (#%plain-app arg-cast arg-e (#%plain-app cons mp-v 'mcar)))))))]
     [(#%plain-app (~and fn (~or (~literal set-mcdr!)
                                 (~literal unsafe-set-mcdr!))) mp-e arg-e)
-     #`(let ((mp-v mp-e))
-         (#%plain-app fn mp-v (#%plain-app arg-cast arg-e (#%plain-app cons mp-v 'mcdr))))]
+     (quasisyntax/loc app-stx (let ((mp-v #,(quasisyntax/loc app-stx mp-e)))
+         #,(quasisyntax/loc app-stx (#%plain-app fn mp-v #,(quasisyntax/loc app-stx (#%plain-app arg-cast arg-e (#%plain-app cons mp-v 'mcdr)))))))]
     ;; --- vector
     ;; vector-cas vector-set*!
     [(#%plain-app (~and fn (~or (~literal vector-set!)
                                 (~literal vector*-set!)
                                 (~literal unsafe-vector-set!))) vec-e pos arg-e)
-     #`(let ((vec-v vec-e))
-         (#%plain-app fn vec-v pos (#%plain-app arg-cast arg-e (#%plain-app cons vec-v 'vector-elem))))]
+     (quasisyntax/loc app-stx (let ((vec-v #,(quasisyntax/loc app-stx vec-e)))
+         #,(quasisyntax/loc app-stx (#%plain-app fn vec-v pos #,(quasisyntax/loc app-stx (#%plain-app arg-cast arg-e (#%plain-app cons vec-v 'vector-elem)))))))]
     [(#%plain-app (~and fn (~literal vector-copy!)) vec-e0 pos-0 vec-e1 . rest)
-     #'(let* ((vec-v0 vec-e0)
-              (vec-v1 vec-e1))
-         (#%plain-app fn (#%plain-app arg-cast vec-v0 (#%plain-app cons vec-v1 'noop)) pos-0 vec-v1 . rest))]
+     (quasisyntax/loc app-stx (let* ((vec-v0 #,(quasisyntax/loc app-stx vec-e0))
+              (vec-v1 #,(quasisyntax/loc app-stx vec-e1)))
+         #,(quasisyntax/loc app-stx (#%plain-app fn #,(quasisyntax/loc app-stx (#%plain-app arg-cast vec-v0 (#%plain-app cons vec-v1 'noop))) pos-0 vec-v1 . rest))))]
     ;; --- box
     ;; box-cas ?
     [(#%plain-app (~and fn (~or (~literal set-box!)
                                 (~literal set-box*!)
                                 (~literal unsafe-set-box!))) box-e arg-e)
-     #`(let ((box-v box-e))
-         (#%plain-app fn box-v (#%plain-app arg-cast arg-e (#%plain-app cons box-v 'box-elem))))]
+     (quasisyntax/loc app-stx (let ((box-v #,(quasisyntax/loc app-stx box-e)))
+         #,(quasisyntax/loc app-stx (#%plain-app fn box-v #,(quasisyntax/loc app-stx (#%plain-app arg-cast arg-e (#%plain-app cons box-v 'box-elem)))))))]
     ;; --- hash
     ;; hash-set*! hash-ref! hash-update! hash-union! 
     [(#%plain-app (~and fn (~literal hash-set!)) hash-e key arg-e)
-     #`(let ((hash-v hash-e))
-         (#%plain-app fn hash-v key (#%plain-app arg-cast arg-e (#%plain-app cons hash-v 'hash-value))))]
+     (quasisyntax/loc app-stx (let ((hash-v #,(quasisyntax/loc app-stx hash-e)))
+         #,(quasisyntax/loc app-stx (#%plain-app fn hash-v key (#%plain-app arg-cast arg-e (#%plain-app cons hash-v 'hash-value))))))]
     ;; --- TODO dict-set!
     ;; --- set
     [(#%plain-app (~and fn (~literal set-add!)) set-e arg-e)
-     #`(let ((set-v set-e))
-         (#%plain-app fn set-v (#%plain-app arg-cast arg-e (#%plain-app cons set-v 'set-elem))))]
+     (quasisyntax/loc app-stx (let ((set-v #,(quasisyntax/loc app-stx set-e)))
+         #,(quasisyntax/loc app-stx (#%plain-app fn set-v #,(quasisyntax/loc app-stx (#%plain-app arg-cast arg-e (#%plain-app cons set-v 'set-elem)))))))]
     ;; --- TODO struct mutator
     ;; --- class
     ;; TODO need class-internal.rkt to export set-field!/proc
     [(#%plain-app (~and fn (~datum set-field!/proc)) (quote tgt) obj arg-e)
-     #`(#%plain-app fn (quote tgt) obj (#%plain-app arg-cast arg-e (#%plain-app cons obj '(object-field . tgt))))]
+     (quasisyntax/loc app-stx (#%plain-app fn (quote tgt) obj #,(quasisyntax/loc app-stx (#%plain-app arg-cast arg-e (#%plain-app cons obj '(object-field . tgt))))))]
     ;; --- function
     [(#%plain-app f-expr . arg*)
-     #`(#%plain-app #,(or f-id #'f-expr) .
+     (quasisyntax/loc app-stx (#%plain-app #,(or f-id (quasisyntax/loc app-stx f-expr)) .
          #,(for/list ((arg (in-list (syntax->list #'arg*)))
                       (i (in-naturals)))
              (quasisyntax/loc arg
-               (#%plain-app arg-cast #,arg (#%plain-app cons #,(or f-id #'f-expr) '(dom . #,i))))))]
+               (#%plain-app arg-cast #,arg (#%plain-app cons #,(or f-id #'f-expr) '(dom . #,i)))))))]
     [_
       (raise-argument-error 'update-blame-for-args "function-app syntax?" app-stx)]))
 
