@@ -105,7 +105,7 @@
          (with-syntax ([t (type->transient-sexp (parse-type #'r.type))])
            (register-ignored
              (quasisyntax/loc stx
-               (#%plain-app void (#%plain-app transient-assert r.name r.contract 't r.srcloc r.blame)))))]
+               (#%plain-app void #,(quasisyntax/loc stx (#%plain-app transient-assert r.name r.contract 't r.srcloc r.blame))))))]
         ;; unsound within exn-handlers^ ?
         [(let-values ([(meth-id) meth-e])
            (let-values ([(obj-id) rcvr-e])
@@ -400,7 +400,7 @@
                                (define v (syntax-e val))
                                (if (pair? v)
                                  (readd-props
-                                   (datum->syntax val (cons (defend-method-def (car v)) (defend-method-def (cdr v))))
+                                   (datum->syntax val (cons (defend-method-def (car v)) (defend-method-def (cdr v))) val val)
                                    val)
                                  val)]))))
                     #'make-methods-lambda)
@@ -455,8 +455,8 @@
                                                            #'default-expr]
                                                           [_
                                                            (readd-props (loop #'default-expr #f) #'default-expr)])
-                                                       #,(if arg+ (readd-props arg+ #'arg) #'arg)))))
-                                         #,(dom-check-loop #'f-rest (+ arg-idx 1))))]
+                                                       #,(if arg+ (readd-props arg+ (quasisyntax/loc f-body arg)) (quasisyntax/loc f-body arg))))))
+                                         #,(dom-check-loop (quasisyntax/loc f-body f-rest) (+ arg-idx 1))))]
                                     [(let-values (((arg-id) arg-val)) f-rest)
                                      ;; normal arg
                                      (define arg-ty (tc-results->type1 (type-of #'arg-val)))
@@ -464,8 +464,8 @@
                                      (void (register-extra-defs! ex*))
                                      (quasisyntax/loc f-body
                                        (let-values (((arg-id)
-                                                     #,(if arg-val+ (readd-props arg-val+ #'arg-val) #'arg-val)))
-                                         #,(dom-check-loop #'f-rest (+ arg-idx 1))))]
+                                                     #,(if arg-val+ (readd-props arg-val+ (quasisyntax/loc f-body arg-val)) (quasisyntax/loc f-body arg-val))))
+                                         #,(dom-check-loop (quasisyntax/loc f-body f-rest) (+ arg-idx 1))))]
                                     [_
                                      (raise-syntax-error 'defend-top "strange kw/opt function body"
                                                          stx f-body)])))))))
@@ -597,8 +597,8 @@
          ;;  no need to check the domain --- use (loop e #true) to skip
          ;; TODO can the optimizer remove these checks instead?
          (define skip? (not (escapes? #'a #'e0 #false)))
-         (with-syntax ((e0+ (readd-props (loop #'e0 skip?) #'e0))
-                      ((e1*+ ...) (for/list ((e1 (in-list (syntax-e #'(e1* ...)))))
+         (with-syntax ((e0+ (readd-props (loop (syntax/loc stx e0) skip?) (syntax/loc stx e0)))
+                      ((e1*+ ...) (for/list ((e1 (in-list (syntax-e (syntax/loc stx (e1* ...))))))
                                     (readd-props (loop e1 #f) e1))))
            (quasisyntax/loc stx
              (#%plain-app #,(quasisyntax/loc stx (letrec-values (((a) #,(quasisyntax/loc stx e0+)) #,(quasisyntax/loc stx b)) #,@(quasisyntax/loc stx (e1*+ ...))))))) ]
@@ -607,7 +607,7 @@
          (define stx+
            (readd-props
              (syntax*->syntax stx
-               (for/list ([x (in-list (syntax-e #'(x* ...)))])
+               (for/list ([x (in-list (syntax-e (syntax/loc stx (x* ...))))])
                  (readd-props (loop x #f) x)))
              stx))
          (define-values [pre* f post*] (split-application stx+))
@@ -630,7 +630,7 @@
          stx]
         [((~literal #%expression) e)
          #:when (type-ascription-property stx)
-         (define e+ (readd-props (loop #'e #f) #'e))
+         (define e+ (readd-props (loop (syntax/loc stx e) #f) (syntax/loc stx e)))
          (define e++
            (with-syntax ([e+ e+])
              (quasisyntax/loc stx (#%expression #,(quasisyntax/loc stx e+)))))
@@ -641,7 +641,7 @@
         [(x* ...)
          (define stx+
            (syntax*->syntax stx
-             (for/list ((x (in-list (syntax-e #'(x* ...)))))
+             (for/list ((x (in-list (syntax-e (syntax/loc stx (x* ...))))))
                (readd-props (loop x #f) x))))
          (readd-props stx+ stx)]
         [_
@@ -741,7 +741,9 @@
 
 (define (readd-props new-stx old-stx)
   (readd-props! new-stx old-stx)
-  new-stx)
+  (for/fold ((acc new-stx))
+            ((k (in-list (syntax-property-symbol-keys old-stx))))
+    (syntax-property acc k (syntax-property old-stx k))))
 
 (define (register-ignored stx)
   (register-ignored! stx)
@@ -775,6 +777,11 @@
   (when (is-ignored? old-stx)
     (register-ignored! new-stx))
   (void))
+
+(define (maybe-errortrace new-stx old-stx)
+  (let* ((k 'errortrace:annotate)
+         (v (syntax-property old-stx k)))
+    (if v (syntax-property new-stx k v) new-stx)))
 
 ;; -----------------------------------------------------------------------------
 
@@ -1094,7 +1101,7 @@
                                                                            #''datum)]))))))
                                (register-ignored! if-stx)
                                if-stx)
-                             (#%plain-app values . v*)))))
+                             #,(quasisyntax/loc app-stx (#%plain-app values . v*))))))
                   #'app+)))))
       (void
         (add-typeof-expr new-stx cod-tc-res)
@@ -1269,7 +1276,7 @@
     [(#%plain-app (~and fn (~or (~literal set-mcar!)
                                 (~literal unsafe-set-mcar!))) mp-e arg-e)
      (quasisyntax/loc app-stx (let ((mp-v mp-e))
-         #,(quasisyntax/loc app-stx (#%plain-app fn mp-v (quasisyntax/loc app-stx (#%plain-app arg-cast arg-e (#%plain-app cons mp-v 'mcar)))))))]
+         #,(quasisyntax/loc app-stx (#%plain-app fn mp-v #,(quasisyntax/loc app-stx (#%plain-app arg-cast arg-e (#%plain-app cons mp-v 'mcar)))))))]
     [(#%plain-app (~and fn (~or (~literal set-mcdr!)
                                 (~literal unsafe-set-mcdr!))) mp-e arg-e)
      (quasisyntax/loc app-stx (let ((mp-v #,(quasisyntax/loc app-stx mp-e)))
@@ -1296,7 +1303,7 @@
     ;; hash-set*! hash-ref! hash-update! hash-union! 
     [(#%plain-app (~and fn (~literal hash-set!)) hash-e key arg-e)
      (quasisyntax/loc app-stx (let ((hash-v #,(quasisyntax/loc app-stx hash-e)))
-         #,(quasisyntax/loc app-stx (#%plain-app fn hash-v key (#%plain-app arg-cast arg-e (#%plain-app cons hash-v 'hash-value))))))]
+         #,(quasisyntax/loc app-stx (#%plain-app fn hash-v key #,(quasisyntax/loc app-stx (#%plain-app arg-cast arg-e (#%plain-app cons hash-v 'hash-value)))))))]
     ;; --- TODO dict-set!
     ;; --- set
     [(#%plain-app (~and fn (~literal set-add!)) set-e arg-e)
@@ -1332,7 +1339,8 @@
   (datum->syntax ctx
     (if (null? stx*)
       '()
-      (cons (car stx*) (syntax*->syntax ctx (cdr stx*))))))
+      (cons (car stx*) (syntax*->syntax ctx (cdr stx*))))
+    ctx ctx))
 
 (define (type->flat-contract t ctc-cache sc-cache)
   (cond
