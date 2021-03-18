@@ -570,7 +570,12 @@
 
 (define (readd-props new-stx old-stx)
   (readd-props! new-stx old-stx)
-  new-stx)
+  (copy-syntax-property* new-stx old-stx))
+
+(define (copy-syntax-property* new-stx old-stx)
+  (for/fold ((new-stx new-stx))
+            ((k (in-list (syntax-property-symbol-keys old-stx))))
+    (syntax-property new-stx k (syntax-property old-stx k))))
 
 (define (register-ignored stx)
   (register-ignored! stx)
@@ -870,7 +875,8 @@
   (datum->syntax ctx
     (if (null? stx*)
       '()
-      (cons (car stx*) (syntax*->syntax ctx (cdr stx*))))))
+      (cons (car stx*) (syntax*->syntax ctx (cdr stx*))))
+    ctx ctx))
 
 (define (type->flat-contract t ctc-cache)
   (cond
