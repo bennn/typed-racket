@@ -601,7 +601,7 @@
                       ((e1*+ ...) (for/list ((e1 (in-list (syntax-e (syntax/loc stx (e1* ...))))))
                                     (readd-props (loop e1 #f) e1))))
            (quasisyntax/loc stx
-             (#%plain-app #,(quasisyntax/loc stx (letrec-values (((a) #,(quasisyntax/loc stx e0+)) #,(quasisyntax/loc stx b)) #,@(quasisyntax/loc stx (e1*+ ...))))))) ]
+             (#%plain-app #,(quasisyntax/loc stx (letrec-values (((a) #,(quasisyntax/loc stx e0+))) #,(quasisyntax/loc stx b))) #,@(quasisyntax/loc stx (e1*+ ...))))) ]
         [(x* ...)
          #:when (is-application? stx)
          (define stx+
@@ -739,11 +739,13 @@
   (maybe-register-ignored new-stx old-stx)
   (void))
 
-(define (readd-props new-stx old-stx)
+(define (readd-props pre-stx old-stx)
+  (define new-stx
+    (for/fold ((acc pre-stx))
+              ((k (in-list (syntax-property-symbol-keys old-stx))))
+      (syntax-property acc k (syntax-property old-stx k))))
   (readd-props! new-stx old-stx)
-  (for/fold ((acc new-stx))
-            ((k (in-list (syntax-property-symbol-keys old-stx))))
-    (syntax-property acc k (syntax-property old-stx k))))
+  new-stx)
 
 (define (register-ignored stx)
   (register-ignored! stx)
